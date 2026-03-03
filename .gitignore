@@ -1,0 +1,15 @@
+# Environment (contains secrets)
+.env
+
+# Docker volumes
+postgres_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
