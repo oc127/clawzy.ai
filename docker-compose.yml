@@ -1,30 +1,48 @@
 # =============================================================================
-# Clawzy.ai PoC — Docker Compose
-# Services: LiteLLM Proxy + PostgreSQL + OpenClaw Gateway
+# Clawzy.ai — Docker Compose
+# Services: PostgreSQL + Redis + LiteLLM + Backend API + OpenClaw Gateway
 # Target: Alibaba Cloud ECS 4C8G Singapore
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  # PostgreSQL — LiteLLM metadata store
+  # PostgreSQL — shared database (LiteLLM + Clawzy backend)
   # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: clawzy-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: litellm
+      POSTGRES_USER: clawzy
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: litellm
+      POSTGRES_DB: clawzy
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      test: ["CMD-SHELL", "pg_isready -U clawzy"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis — caching, rate limiting, Celery broker
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: clawzy-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   # ---------------------------------------------------------------------------
   # LiteLLM Proxy — unified model gateway
@@ -37,7 +55,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
+      DATABASE_URL: postgresql://clawzy:${POSTGRES_PASSWORD}@postgres:5432/litellm_db
       STORE_MODEL_IN_DB: "True"
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       LITELLM_SALT_KEY: ${LITELLM_SALT_KEY}
@@ -59,7 +77,41 @@ services:
       start_period: 40s
 
   # ---------------------------------------------------------------------------
-  # OpenClaw Gateway — AI assistant engine
+  # Clawzy Backend API — FastAPI
+  # ---------------------------------------------------------------------------
+  backend:
+    build: ./backend
+    container_name: clawzy-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://clawzy:${POSTGRES_PASSWORD}@postgres:5432/clawzy
+      REDIS_URL: redis://redis:6379/0
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # OpenClaw Gateway — default AI assistant engine (PoC / demo)
+  # In production, user agents are created dynamically by the backend
   # ---------------------------------------------------------------------------
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
@@ -106,5 +158,6 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   openclaw_config:
   openclaw_workspace:
