@@ -10,29 +10,6 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: clawzy
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: clawzy
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U clawzy"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -47,14 +24,14 @@ jobs:
           ruff check backend/
       - name: Run tests
         env:
-          DATABASE_URL: postgresql+asyncpg://clawzy:test@localhost:5432/clawzy
+          DATABASE_URL: sqlite+aiosqlite:///file::memory:?cache=shared&uri=true
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET: test-secret
           LITELLM_URL: http://localhost:4000
           LITELLM_MASTER_KEY: sk-test
         run: |
           cd backend
-          python -m pytest tests/ -v --tb=short 2>/dev/null || echo "No tests yet — skipping"
+          python -m pytest tests/ -v --tb=short
 
   frontend:
     name: Frontend

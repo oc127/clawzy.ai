@@ -226,4 +226,33 @@ export async function getPlans() {
   >("/billing/plans");
 }
 
+export async function createPortalSession() {
+  return request<{ url: string }>("/billing/portal", { method: "POST" });
+}
+
+// --- Conversations ---
+export interface ConversationInfo {
+  id: string;
+  agent_id: string;
+  title: string | null;
+  updated_at: string;
+}
+
+export interface MessageInfo {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export async function listConversations(agentId: string) {
+  return request<ConversationInfo[]>(`/agents/${agentId}/conversations`);
+}
+
+export async function listMessages(conversationId: string, limit = 50) {
+  return request<MessageInfo[]>(
+    `/conversations/${conversationId}/messages?limit=${limit}`
+  );
+}
+
 export { ApiError };

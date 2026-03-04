@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { createChatSocket, type ChatMessage, type ChatSocket } from "@/lib/ws";
+import { listConversations, listMessages } from "@/lib/api";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -25,6 +26,29 @@ export default function ChatPage() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  // Load conversation history on mount
+  useEffect(() => {
+    if (!agentId) return;
+    listConversations(agentId)
+      .then((convs) => {
+        if (convs.length > 0) {
+          return listMessages(convs[0].id, 50);
+        }
+        return [];
+      })
+      .then((msgs) => {
+        if (msgs.length > 0) {
+          setMessages(
+            msgs.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
+          );
+          scrollToBottom();
+        }
+      })
+      .catch(() => {
+        // No history — that's fine
+      });
+  }, [agentId, scrollToBottom]);
 
   useEffect(() => {
     if (!agentId) return;

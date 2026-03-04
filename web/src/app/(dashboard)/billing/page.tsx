@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCredits, getPlans, createCheckoutSession, type CreditsInfo } from "@/lib/api";
+import { getCredits, getPlans, createCheckoutSession, createPortalSession, type CreditsInfo } from "@/lib/api";
 
 interface Plan {
   id: string;
@@ -70,10 +70,25 @@ export default function BillingPage() {
               </p>
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-800">
+          <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-between">
             <p className="text-sm text-gray-500">
               当前套餐: <span className="text-white font-medium">{PLAN_NAMES[credits.plan] || credits.plan}</span>
             </p>
+            {credits.plan !== "free" && (
+              <button
+                onClick={async () => {
+                  try {
+                    const { url } = await createPortalSession();
+                    window.location.href = url;
+                  } catch {
+                    alert("无法打开订阅管理页面");
+                  }
+                }}
+                className="text-sm text-blue-400 hover:text-blue-300"
+              >
+                管理订阅
+              </button>
+            )}
           </div>
         </div>
       )}
