@@ -1,4 +1,7 @@
-"""Chat service — streams LLM responses via LiteLLM and manages conversations."""
+"""Chat service — streams LLM responses via LiteLLM and manages conversations.
+
+当模型不可用时，自动切换到 fallback 客服模式，用友好的预设回复代替冷冰冰的错误。
+"""
 
 import json
 import logging
@@ -13,6 +16,7 @@ from app.config import settings
 from app.models.agent import Agent
 from app.models.chat import Conversation, Message, MessageRole
 from app.services.credits_service import deduct_credits, InsufficientCreditsError
+from app.services.fallback_service import get_fallback_reply
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +81,39 @@ async def get_conversation_history(
     return [{"role": m.role.value, "content": m.content} for m in messages]
 
 
+async def _send_fallback_reply(
+    db: AsyncSession,
+    conversation_id: str,
+    error_type: str,
+):
+    """当模型不可用时，发送友好的 fallback 回复（不扣积分）。
+
+    龙虾不是"报错"，而是像客服一样告诉用户情况。
+    """
+    reply = get_fallback_reply(error_type)
+
+    # 保存 fallback 回复到对话历史（标记为 system 回复，不扣积分）
+    await save_message(
+        db, conversation_id, MessageRole.assistant, reply,
+        model_name="fallback",  # 标记为 fallback，不是真实模型
+        credits_used=0,
+    )
+    await db.commit()
+
+    # 先流式发送 fallback 内容，让用户看到"龙虾在说话"而不是一个错误弹窗
+    yield json.dumps({"type": "stream", "content": reply})
+    yield json.dumps({
+        "type": "done",
+        "conversation_id": conversation_id,
+        "usage": {
+            "credits_used": 0,
+            "balance": None,  # 前端会处理 null
+            "model": "fallback",
+        },
+        "is_fallback": True,  # 告诉前端这是 fallback 回复
+    })
+
+
 async def stream_chat_completion(
     db: AsyncSession,
     user_id: str,
@@ -87,10 +124,15 @@ async def stream_chat_completion(
     """
     Stream a chat completion from LiteLLM.
 
+    当模型不可用时自动降级到 fallback 客服模式：
+    - 超时 → 友好提示 + 不扣积分
+    - 连接失败 → 友好提示 + 不扣积分
+    - 空回复 → 友好提示 + 不扣积分
+    - 积分不足 → 友好提示引导充值
+
     Yields JSON-encoded event dicts:
       {"type": "stream", "content": "..."}
-      {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
-      {"type": "error", "code": "...", "message": "..."}
+      {"type": "done", "usage": {...}, "conversation_id": "..."}
     """
     # Save user message
     await save_message(db, conversation_id, MessageRole.user, user_content)
@@ -122,11 +164,9 @@ async def stream_chat_completion(
                 if response.status_code != 200:
                     body = await response.aread()
                     logger.error("LiteLLM error %s: %s", response.status_code, body)
-                    yield json.dumps({
-                        "type": "error",
-                        "code": "model_error",
-                        "message": f"Model returned HTTP {response.status_code}",
-                    })
+                    # 降级到 fallback 客服模式
+                    async for event in _send_fallback_reply(db, conversation_id, "model_error"):
+                        yield event
                     return
 
                 async for line in response.aiter_lines():
@@ -157,26 +197,26 @@ async def stream_chat_completion(
                         tokens_output = usage.get("completion_tokens", 0)
 
     except httpx.TimeoutException:
-        yield json.dumps({
-            "type": "error",
-            "code": "timeout",
-            "message": "Model request timed out",
-        })
+        logger.warning("LiteLLM timeout for agent %s", agent.id)
+        async for event in _send_fallback_reply(db, conversation_id, "timeout"):
+            yield event
         return
+
     except httpx.ConnectError:
-        yield json.dumps({
-            "type": "error",
-            "code": "connection_error",
-            "message": "Cannot connect to model service",
-        })
+        logger.error("Cannot connect to LiteLLM for agent %s", agent.id)
+        async for event in _send_fallback_reply(db, conversation_id, "connection_error"):
+            yield event
+        return
+
+    except Exception:
+        logger.exception("Unexpected error in stream_chat_completion")
+        async for event in _send_fallback_reply(db, conversation_id, "model_error"):
+            yield event
         return
 
     if not full_content:
-        yield json.dumps({
-            "type": "error",
-            "code": "empty_response",
-            "message": "Model returned empty response",
-        })
+        async for event in _send_fallback_reply(db, conversation_id, "empty_response"):
+            yield event
         return
 
     # Estimate tokens if not provided by API
@@ -192,13 +232,14 @@ async def stream_chat_completion(
             tokens_input, tokens_output, agent.id,
         )
     except InsufficientCreditsError:
-        # Still save the message but warn user
+        # 已经产生了回复，保存但用 fallback 友好提示
         credits_used = 0
+        # 仍然保存回复内容，但额外发一条 fallback 提示
         yield json.dumps({
-            "type": "error",
-            "code": "insufficient_credits",
-            "message": "Credits insufficient, please top up",
+            "type": "stream",
+            "content": "\n\n---\n" + get_fallback_reply("insufficient_credits"),
         })
+        full_content += "\n\n---\n" + get_fallback_reply("insufficient_credits")
 
     # Save assistant message
     await save_message(

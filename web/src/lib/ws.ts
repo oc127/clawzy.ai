@@ -1,33 +1,140 @@
+/**
+ * WebSocket 客户端 — 带自动重连和友好断线提示
+ *
+ * 断线后自动重连（指数退避），重连期间告诉用户"龙虾正在重新连接"，
+ * 而不是让页面默默挂掉。
+ */
+
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/api/v1";
 
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_DELAY_MS = 1000;
+
 export interface ChatMessage {
-  type: "message" | "stream" | "done" | "error" | "agent_status";
+  type: "message" | "stream" | "done" | "error" | "agent_status" | "model_switched" | "pong" | "reconnected";
   content?: string;
-  usage?: { credits: number; balance: number };
+  usage?: { credits: number; balance: number | null };
   code?: string;
   status?: string;
+  is_fallback?: boolean;
+  conversation_id?: string;
+}
+
+export interface ChatSocket {
+  send: (data: object) => void;
+  close: () => void;
 }
 
 export function createChatSocket(
   agentId: string,
   onMessage: (msg: ChatMessage) => void,
-  onClose?: () => void
-): WebSocket {
-  const token = localStorage.getItem("token") || "";
-  const ws = new WebSocket(`${WS_BASE}/ws/chat/${agentId}?token=${token}`);
+  onStatusChange?: (status: "connected" | "connecting" | "disconnected") => void,
+): ChatSocket {
+  let ws: WebSocket | null = null;
+  let reconnectAttempts = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let intentionallyClosed = false;
+  let pingInterval: ReturnType<typeof setInterval> | null = null;
 
-  ws.onmessage = (event) => {
-    try {
-      const msg: ChatMessage = JSON.parse(event.data);
-      onMessage(msg);
-    } catch {
-      // ignore non-JSON messages
-    }
+  function connect() {
+    const token = localStorage.getItem("token") || "";
+    onStatusChange?.("connecting");
+
+    ws = new WebSocket(`${WS_BASE}/ws/chat/${agentId}?token=${token}`);
+
+    ws.onopen = () => {
+      reconnectAttempts = 0;
+      onStatusChange?.("connected");
+
+      // 如果是重连，通知用户
+      if (reconnectAttempts === 0 && reconnectTimer !== null) {
+        onMessage({
+          type: "reconnected",
+          content: "重新连上了！我们继续聊吧 🦞",
+        });
+      }
+
+      // 心跳保活：每 30 秒发一个 ping
+      pingInterval = setInterval(() => {
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 30_000);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg: ChatMessage = JSON.parse(event.data);
+        // 忽略 pong 心跳回复
+        if (msg.type !== "pong") {
+          onMessage(msg);
+        }
+      } catch {
+        // ignore non-JSON messages
+      }
+    };
+
+    ws.onclose = (event) => {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+
+      if (intentionallyClosed) {
+        onStatusChange?.("disconnected");
+        return;
+      }
+
+      // 非正常关闭 → 自动重连
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        const delay = Math.min(
+          BASE_DELAY_MS * Math.pow(2, reconnectAttempts),
+          30_000
+        );
+        reconnectAttempts++;
+        onStatusChange?.("connecting");
+
+        // 通知用户正在重连
+        onMessage({
+          type: "agent_status",
+          status: "reconnecting",
+          content: `连接断开了，正在重连 (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`,
+        });
+
+        reconnectTimer = setTimeout(connect, delay);
+      } else {
+        // 彻底失败
+        onStatusChange?.("disconnected");
+        onMessage({
+          type: "error",
+          code: "connection_lost",
+          content: "龙虾暂时联系不上了 😢 请刷新页面重试",
+        });
+      }
+    };
+
+    ws.onerror = () => {
+      // onerror 之后会触发 onclose，在 onclose 里处理重连
+    };
+  }
+
+  connect();
+
+  return {
+    send: (data: object) => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+      }
+    },
+    close: () => {
+      intentionallyClosed = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      if (pingInterval) {
+        clearInterval(pingInterval);
+      }
+      ws?.close();
+    },
   };
-
-  ws.onclose = () => {
-    onClose?.();
-  };
-
-  return ws;
 }
