@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[X]Claw System Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif; background: #0a0e1a; color: #e0e6f0; min-height: 100vh; padding: 40px 20px; }
+
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  h1 { text-align: center; font-size: 32px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { text-align: center; font-size: 15px; color: #7b8ab8; margin-bottom: 48px; }
+
+  /* User Flow */
+  .user-flow { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 48px; flex-wrap: wrap; }
+  .flow-step { background: linear-gradient(135deg, #1e293b, #1a2332); border: 1px solid #2d3a52; border-radius: 12px; padding: 12px 20px; font-size: 14px; font-weight: 600; color: #94a3c8; }
+  .flow-step.highlight { background: linear-gradient(135deg, #1e3a5f, #1a2d4a); border-color: #3b82f6; color: #60a5fa; }
+  .flow-arrow { color: #3b5998; font-size: 20px; }
+
+  /* Architecture Layers */
+  .layer { margin-bottom: 24px; border-radius: 16px; overflow: hidden; }
+  .layer-header { padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  .layer-header .icon { font-size: 24px; }
+  .layer-header .label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.6; }
+  .layer-header .title { font-size: 18px; font-weight: 700; }
+  .layer-header .title-cn { font-size: 13px; color: #7b8ab8; margin-left: 8px; }
+  .layer-body { padding: 0 24px 24px; }
+
+  /* Layer colors */
+  .layer-app { background: linear-gradient(180deg, #0f1d2e, #0d1825); border: 1px solid #1e3a5f; }
+  .layer-app .layer-header .title { color: #60a5fa; }
+
+  .layer-backend { background: linear-gradient(180deg, #1a1525, #14101f); border: 1px solid #3b2d5e; }
+  .layer-backend .layer-header .title { color: #a78bfa; }
+
+  .layer-runtime { background: linear-gradient(180deg, #0f2018, #0b1a12); border: 1px solid #1e5a3a; }
+  .layer-runtime .layer-header .title { color: #4ade80; }
+
+  /* Cards grid */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 16px; }
+  .card-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card-title .badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .badge-core { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .badge-ext { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .card-desc { font-size: 12px; line-height: 1.6; color: #7b8ab8; }
+  .card-list { list-style: none; margin-top: 8px; }
+  .card-list li { font-size: 12px; color: #8b9bc0; padding: 3px 0; padding-left: 16px; position: relative; }
+  .card-list li::before { content: "›"; position: absolute; left: 0; color: #4a6fa5; font-weight: bold; }
+
+  /* Connector arrows between layers */
+  .connector { display: flex; justify-content: center; padding: 8px 0; }
+  .connector-line { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .connector-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .connector-bar { width: 2px; height: 16px; }
+  .conn-blue .connector-dot { background: #3b82f6; }
+  .conn-blue .connector-bar { background: linear-gradient(180deg, #3b82f6, #7c3aed); }
+  .conn-purple .connector-dot { background: #7c3aed; }
+  .conn-purple .connector-bar { background: linear-gradient(180deg, #7c3aed, #22c55e); }
+
+  /* Data flow labels */
+  .connector-labels { display: flex; justify-content: center; gap: 40px; padding: 4px 0; }
+  .conn-label { font-size: 10px; color: #5a6a8a; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+  .conn-label .arrow { font-size: 12px; }
+
+  /* Bottom section */
+  .infra-bar { margin-top: 32px; background: linear-gradient(135deg, #111827, #0f172a); border: 1px solid #1f2937; border-radius: 12px; padding: 20px 24px; }
+  .infra-bar h3 { font-size: 14px; font-weight: 700; color: #6b7b9b; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .infra-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .infra-tag { font-size: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 6px 14px; color: #8899bb; }
+
+  /* Key metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 32px; }
+  .metric { text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 16px; }
+  .metric-value { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .metric-label { font-size: 11px; color: #5a6a8a; margin-top: 4px; }
+
+  /* Model showcase */
+  .models-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .model-chip { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+  .model-premium { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+  .model-value { background: rgba(74,222,128,0.1); color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+  .model-cn { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+
+  /* Section label */
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #3b5998; margin-bottom: 16px; text-align: center; }
+
+  @media (max-width: 600px) {
+    .cards { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>[X]Claw</h1>
+  <div class="subtitle">OpenClaw as a Service — System Architecture v1.0</div>
+
+  <!-- User Flow -->
+  <div class="section-label">User Journey 用户链路</div>
+  <div class="user-flow">
+    <div class="flow-step">📱 Download App</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">👤 Sign Up</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">🤖 Pick Model</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">💬 Start Chatting</div>
+  </div>
+
+  <!-- LAYER 1: APP -->
+  <div class="layer layer-app">
+    <div class="layer-header">
+      <div class="icon">📱</div>
+      <div>
+        <div class="label">Layer 1</div>
+        <div class="title">App 层 <span class="title-cn">— 用户看到的一切</span></div>
+      </div>
+    </div>
+    <div class="layer-body">
+      <div class="cards">
+        <div class="card">
+          <div class="card-title">💬 内置聊天 <span class="badge badge-core">CORE</span></div>
+          <div class="card-desc">App 自带聊天界面，下载即用，零配置。支持文字/图片/文件/语音，富交互卡片。</div>
+          <ul class="card-list">
+            <li>主聊天通道，不依赖第三方 IM</li>
+            <li>支持多 Agent 会话切换</li>
+            <li>任务进度、状态实时展示</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">⚙️ 控制面板 <span class="badge badge-core">CORE</span></div>
+          <div class="card-desc">Agent 管理中心：状态监控、模型切换、用量统计、技能管理。</div>
+          <ul class="card-list">
+            <li>龙虾状态：在线 / 离线 / 繁忙</li>
+            <li>Token 用量 & 费用面板</li>
+            <li>一键切换 AI 模型</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🔌 扩展通道 <span class="badge badge-ext">扩展</span></div>
+          <div class="card-desc">可选连接外部 IM，让龙虾同时活在多个平台。</div>
+          <ul class="card-list">
+            <li>Telegram / WhatsApp / Discord</li>
+            <li>WeChat / Feishu / DingTalk</li>
+            <li>可视化配置，无需代码</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🛒 技能商店 <span class="badge badge-ext">扩展</span></div>
+          <div class="card-desc">兼容 ClawHub 生态，一键安装社区 Skills，也可上传自建技能。</div>
+          <ul class="card-list">
+            <li>浏览 / 搜索 / 安装 Skills</li>
+            <li>兼容 ClawHub 5000+ 社区技能</li>
+            <li>用户自建技能上传分享</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connector -->
+  <div class="connector">
+    <div class="connector-line conn-blue">
+      <div class="connector-dot"></div>
+      <div class="connector-bar"></div>
+      <div class="connector-dot"></div>
+    </div>
+  </div>
+  <div class="connector-labels">
+    <div class="conn-label"><span class="arrow">↕</span> WebSocket 实时通信</div>
+    <div class="conn-label"><span class="arrow">↕</span> REST API</div>
+  </div>
+
+  <!-- LAYER 2: BACKEND -->
+  <div class="layer layer-backend">
+    <div class="layer-header">
+      <div class="icon">⚡</div>
+      <div>
+        <div class="label">Layer 2</div>
+        <div class="title">后端服务层 <span class="title-cn">— 调度中枢</span></div>
+      </div>
+    </div>
+    <div class="layer-body">
+      <div class="cards">
+        <div class="card">
+          <div class="card-title">👥 用户系统</div>
+          <div class="card-desc">注册/登录、订阅管理、权限控制</div>
+          <ul class="card-list">
+            <li>OAuth / 邮箱 / 手机号登录</li>
+            <li>订阅计费（Stripe / 支付宝 / 微信）</li>
+            <li>多档定价 & 用量限额</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🧠 模型路由</div>
+          <div class="card-desc">统一 API 网关，对接 10+ 模型供应商，用户自选模型。</div>
+          <div class="models-row">
+            <span class="model-chip model-premium">Claude</span>
+            <span class="model-chip model-premium">GPT-4o/5</span>
+            <span class="model-chip model-premium">Gemini</span>
+            <span class="model-chip model-value">DeepSeek</span>
+            <span class="model-chip model-cn">Qwen</span>
+            <span class="model-chip model-cn">Doubao</span>
+            <span class="model-chip model-cn">GLM</span>
+            <span class="model-chip model-value">MiniMax</span>
+            <span class="model-chip model-value">Mistral</span>
+          </div>
+          <ul class="card-list" style="margin-top:10px">
+            <li>批量采购 API，打包进订阅</li>
+            <li>用户无需自己申请 API Key</li>
+            <li>智能路由：简单任务→便宜模型</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🐳 容器编排</div>
+          <div class="card-desc">管理每个用户的 OpenClaw 实例生命周期。</div>
+          <ul class="card-list">
+            <li>注册 → 自动创建隔离容器</li>
+            <li>健康检查 & 自动重启</li>
+            <li>资源限额（CPU / 内存 / 存储）</li>
+            <li>OpenClaw 版本自动更新</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 数据层</div>
+          <div class="card-desc">用户数据、对话历史、计费记录持久化存储。</div>
+          <ul class="card-list">
+            <li>PostgreSQL — 用户 / 订阅 / 计费</li>
+            <li>Redis — 会话缓存 / 限流</li>
+            <li>OSS — 文件 / 记忆 / Agent 工作区</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connector -->
+  <div class="connector">
+    <div class="connector-line conn-purple">
+      <div class="connector-dot"></div>
+      <div class="connector-bar"></div>
+      <div class="connector-dot"></div>
+    </div>
+  </div>
+  <div class="connector-labels">
+    <div class="conn-label"><span class="arrow">↕</span> Docker API / gRPC</div>
+    <div class="conn-label"><span class="arrow">↕</span> Agent 指令流</div>
+  </div>
+
+  <!-- LAYER 3: RUNTIME -->
+  <div class="layer layer-runtime">
+    <div class="layer-header">
+      <div class="icon">🦞</div>
+      <div>
+        <div class="label">Layer 3</div>
+        <div class="title">OpenClaw 运行时 <span class="title-cn">— 龙虾住的地方</span></div>
+      </div>
+    </div>
+    <div class="layer-body">
+      <div class="cards">
+        <div class="card">
+          <div class="card-title">📦 用户容器</div>
+          <div class="card-desc">每个用户一个独立的 OpenClaw 实例，Docker 容器隔离运行。</div>
+          <ul class="card-list">
+            <li>独立工作区 & 文件系统</li>
+            <li>持久化记忆 (MEMORY.md)</li>
+            <li>每日会话摘要自动生成</li>
+            <li>Heartbeat 心跳保活机制</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🛠️ 工具引擎</div>
+          <div class="card-desc">OpenClaw 内置工具 + ClawHub 技能执行环境。</div>
+          <ul class="card-list">
+            <li>浏览器操控 (Playwright)</li>
+            <li>Shell 命令执行</li>
+            <li>文件读写 / 邮件 / 日历</li>
+            <li>ClawHub Skills 运行沙箱</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🔒 安全层</div>
+          <div class="card-desc">容器级隔离，确保用户间零数据泄露。</div>
+          <ul class="card-list">
+            <li>每容器独立网络命名空间</li>
+            <li>CPU / 内存 / 磁盘 cgroup 限额</li>
+            <li>文件权限沙箱 (OpenClaw plugin)</li>
+            <li>定期安全扫描 & 日志审计</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🔄 同步管理</div>
+          <div class="card-desc">与 OpenClaw 上游保持同步，自动获取新功能。</div>
+          <ul class="card-list">
+            <li>Fork 管理，&lt;24h 同步上游</li>
+            <li>自动化测试 → 灰度发布</li>
+            <li>用户无感升级（热更新）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Infrastructure Bar -->
+  <div class="infra-bar">
+    <h3>🏗️ Infrastructure 基础设施</h3>
+    <div class="infra-tags">
+      <div class="infra-tag">Alibaba Cloud ECS</div>
+      <div class="infra-tag">Docker / K8s</div>
+      <div class="infra-tag">Nginx 反代</div>
+      <div class="infra-tag">Cloudflare CDN</div>
+      <div class="infra-tag">PostgreSQL</div>
+      <div class="infra-tag">Redis</div>
+      <div class="infra-tag">OSS 对象存储</div>
+      <div class="infra-tag">Grafana 监控</div>
+      <div class="infra-tag">Sentry 错误追踪</div>
+      <div class="infra-tag">GitHub Actions CI/CD</div>
+    </div>
+  </div>
+
+  <!-- Key Metrics -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-value">&lt;2min</div>
+      <div class="metric-label">注册到开聊</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">10+</div>
+      <div class="metric-label">可选 AI 模型</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">24/7</div>
+      <div class="metric-label">龙虾永远在线</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">0</div>
+      <div class="metric-label">代码 / API Key 配置</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
