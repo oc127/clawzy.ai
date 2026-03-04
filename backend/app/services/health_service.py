@@ -9,10 +9,12 @@
 
 import asyncio
 import logging
+import shutil
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 
+import docker
 import httpx
 from sqlalchemy import text
 
@@ -125,12 +127,71 @@ async def check_agent_container(container_id: str, ws_port: int) -> HealthCheckR
         return HealthCheckResult(f"agent:{container_id[:12]}", HealthStatus.UNHEALTHY, latency, str(e))
 
 
+async def check_disk_space() -> HealthCheckResult:
+    """磁盘空间探针：>80% DEGRADED，>90% UNHEALTHY。"""
+    start = time.time()
+    try:
+        total, used, free = shutil.disk_usage("/")
+        percent_used = (used / total) * 100
+        latency = (time.time() - start) * 1000
+
+        if percent_used > 90:
+            return HealthCheckResult("disk", HealthStatus.UNHEALTHY, latency,
+                                     f"Disk {percent_used:.0f}% full ({free // (1024**3)}GB free)")
+        if percent_used > 80:
+            return HealthCheckResult("disk", HealthStatus.DEGRADED, latency,
+                                     f"Disk {percent_used:.0f}% full ({free // (1024**3)}GB free)")
+        return HealthCheckResult("disk", HealthStatus.HEALTHY, latency,
+                                 f"Disk {percent_used:.0f}% used ({free // (1024**3)}GB free)")
+    except Exception as e:
+        latency = (time.time() - start) * 1000
+        return HealthCheckResult("disk", HealthStatus.UNHEALTHY, latency, str(e))
+
+
+async def check_docker_daemon() -> HealthCheckResult:
+    """Docker 守护进程探针：测试 Docker daemon 是否响应。"""
+    start = time.time()
+    try:
+        client = docker.from_env()
+        client.ping()
+        latency = (time.time() - start) * 1000
+        return HealthCheckResult("docker", HealthStatus.HEALTHY, latency)
+    except Exception as e:
+        latency = (time.time() - start) * 1000
+        return HealthCheckResult("docker", HealthStatus.UNHEALTHY, latency, str(e))
+
+
+async def check_celery_heartbeat() -> HealthCheckResult:
+    """Celery 看门狗：检查 Beat 是否仍在运行（通过 Redis 心跳 key）。"""
+    start = time.time()
+    try:
+        r = await get_redis()
+        last_beat = await r.get("clawzy:celery:heartbeat")
+        latency = (time.time() - start) * 1000
+
+        if last_beat is None:
+            return HealthCheckResult("celery", HealthStatus.DEGRADED, latency,
+                                     "No heartbeat recorded (Celery may not have started)")
+        elapsed = time.time() - float(last_beat)
+        if elapsed > 600:  # 10 分钟没心跳
+            return HealthCheckResult("celery", HealthStatus.UNHEALTHY, latency,
+                                     f"Last heartbeat {elapsed:.0f}s ago")
+        return HealthCheckResult("celery", HealthStatus.HEALTHY, latency,
+                                 f"Last heartbeat {elapsed:.0f}s ago")
+    except Exception as e:
+        latency = (time.time() - start) * 1000
+        return HealthCheckResult("celery", HealthStatus.UNHEALTHY, latency, str(e))
+
+
 async def run_all_health_checks() -> list[HealthCheckResult]:
     """并行跑所有基础设施健康检查。"""
     results = await asyncio.gather(
         check_database(),
         check_redis(),
         check_litellm(),
+        check_disk_space(),
+        check_docker_daemon(),
+        check_celery_heartbeat(),
         return_exceptions=True,
     )
 

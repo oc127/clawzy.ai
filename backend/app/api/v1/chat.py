@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -72,7 +73,12 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 
     try:
         while True:
-            raw = await websocket.receive_text()
+            try:
+                raw = await asyncio.wait_for(websocket.receive_text(), timeout=300)
+            except asyncio.TimeoutError:
+                logger.info("WebSocket idle timeout: user=%s agent=%s", user_id, agent_id)
+                await websocket.close(code=1000, reason="Idle timeout")
+                return
             try:
                 data = json.loads(raw)
             except json.JSONDecodeError:

@@ -36,8 +36,11 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    mem_limit: "512m"
+    cpus: "0.5"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -102,12 +105,58 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "127.0.0.1:8000:8000"
+    mem_limit: "2g"
+    cpus: "1.5"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker — 执行健康检查、容器管理等后台任务
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    build: ./backend
+    container_name: clawzy-celery-worker
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker -l info -c 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://clawzy:${POSTGRES_PASSWORD}@postgres:5432/clawzy
+      REDIS_URL: redis://redis:6379/0
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: "1g"
+    cpus: "0.5"
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat — 定时调度（健康检查、僵尸清理）
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    build: ./backend
+    container_name: clawzy-celery-beat
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat -l info
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://clawzy:${POSTGRES_PASSWORD}@postgres:5432/clawzy
+      REDIS_URL: redis://redis:6379/0
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+    mem_limit: "256m"
+    cpus: "0.25"
 
   # ---------------------------------------------------------------------------
   # OpenClaw Gateway — default AI assistant engine (PoC / demo)

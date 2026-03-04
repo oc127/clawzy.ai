@@ -1,3 +1,6 @@
+import asyncio
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,6 +9,8 @@ from app.config import settings
 from app.core.logging_config import setup_logging
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+
+logger = logging.getLogger(__name__)
 
 # 初始化结构化日志
 setup_logging(json_format=not settings.debug)
@@ -33,6 +38,33 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+
+@app.on_event("startup")
+async def startup_checks():
+    """验证关键依赖可用，不可用则启动失败（Docker 会自动重启）。"""
+    from app.services.health_service import check_database, check_redis, HealthStatus
+
+    db_result = await check_database()
+    if db_result.status == HealthStatus.UNHEALTHY:
+        logger.critical("PostgreSQL unavailable at startup: %s", db_result.details)
+        raise RuntimeError(f"Database not available: {db_result.details}")
+
+    redis_result = await check_redis()
+    if redis_result.status == HealthStatus.UNHEALTHY:
+        logger.critical("Redis unavailable at startup: %s", redis_result.details)
+        raise RuntimeError(f"Redis not available: {redis_result.details}")
+
+    logger.info("Startup checks passed (DB: %.0fms, Redis: %.0fms)",
+                db_result.latency_ms, redis_result.latency_ms)
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    """优雅关机：等待 in-flight 请求完成。"""
+    logger.info("Shutting down gracefully, waiting for in-flight requests...")
+    await asyncio.sleep(5)
+    logger.info("Shutdown complete")
 
 
 @app.get("/health")

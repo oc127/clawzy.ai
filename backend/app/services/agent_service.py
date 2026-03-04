@@ -67,12 +67,16 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
 
 
 async def allocate_port(db: AsyncSession) -> int:
-    """Find the next available WS port."""
+    """Find the next available WS port (with row lock to prevent race conditions)."""
+    from sqlalchemy import text
+
+    # Use FOR UPDATE to lock the row and prevent concurrent allocation
     result = await db.execute(
         select(Agent.ws_port)
         .where(Agent.ws_port.isnot(None))
         .order_by(Agent.ws_port.desc())
         .limit(1)
+        .with_for_update()
     )
     last_port = result.scalar_one_or_none()
     next_port = (last_port + 1) if last_port else settings.openclaw_port_start

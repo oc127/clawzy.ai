@@ -124,6 +124,13 @@ def infrastructure_health_check():
     """每 5 分钟：深度探测所有基础设施，存结果到 Redis，异常时告警。"""
     from app.services.health_service import run_all_health_checks, HealthStatus
 
+    # Celery 心跳：写入当前时间戳，供 /health/deep 检查 Celery 是否存活
+    import time
+    try:
+        _redis.set("clawzy:celery:heartbeat", str(time.time()), ex=900)
+    except Exception:
+        logger.warning("Failed to write Celery heartbeat to Redis")
+
     loop = asyncio.new_event_loop()
     try:
         results = loop.run_until_complete(run_all_health_checks())
