@@ -23,6 +23,7 @@ from app.models.agent import Agent
 from app.models.chat import Conversation, Message, MessageRole
 from app.services.credits_service import deduct_credits, InsufficientCreditsError
 from app.services.fallback_service import get_fallback_reply
+from app.i18n import t, DEFAULT_LOCALE
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +103,10 @@ async def _send_fallback_reply(
     db: AsyncSession,
     conversation_id: str,
     error_type: str,
+    locale: str = DEFAULT_LOCALE,
 ):
     """当所有模型都不可用时，发送友好的 fallback 回复（不扣积分）。"""
-    reply = get_fallback_reply(error_type)
+    reply = get_fallback_reply(error_type, locale=locale)
 
     await save_message(
         db, conversation_id, MessageRole.assistant, reply,
@@ -241,6 +243,7 @@ async def stream_chat_completion(
     agent: Agent,
     conversation_id: str,
     user_content: str,
+    locale: str = DEFAULT_LOCALE,
 ):
     """
     流式聊天 + 自动修复：
@@ -285,7 +288,7 @@ async def stream_chat_completion(
 
     # 全部失败 → 客服回复
     if actual_model_used is None:
-        async for event in _send_fallback_reply(db, conversation_id, "model_error"):
+        async for event in _send_fallback_reply(db, conversation_id, "model_error", locale=locale):
             yield event
         return
 
@@ -295,7 +298,7 @@ async def stream_chat_completion(
     # 如果用了备用模型，告诉用户
     used_fallback = actual_model_used != agent.model_name
     if used_fallback:
-        notice = "\n\n_[临时使用了备用模型回复，你的主模型稍后恢复]_"
+        notice = "\n\n" + t("chat.backupModelNotice", locale)
         yield json.dumps({"type": "stream", "content": notice})
         full_content += notice
         yield json.dumps({"type": "model_switched", "content": actual_model_used, "is_fallback": True})
@@ -314,11 +317,12 @@ async def stream_chat_completion(
         )
     except InsufficientCreditsError:
         credits_used = 0
+        credits_msg = get_fallback_reply("insufficient_credits", locale=locale)
         yield json.dumps({
             "type": "stream",
-            "content": "\n\n---\n" + get_fallback_reply("insufficient_credits"),
+            "content": "\n\n---\n" + credits_msg,
         })
-        full_content += "\n\n---\n" + get_fallback_reply("insufficient_credits")
+        full_content += "\n\n---\n" + credits_msg
 
     # 保存 assistant 消息
     await save_message(

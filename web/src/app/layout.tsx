@@ -1,18 +1,24 @@
-import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Clawzy — 你的 AI 龙虾",
-  description: "下载即用的 AI 助手，无需配置，开箱即聊",
-};
+export async function generateMetadata() {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="zh">
+    <html lang={locale}>
       <body className="antialiased">{children}</body>
     </html>
   );

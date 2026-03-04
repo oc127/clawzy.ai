@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from app.config import settings
+from app.i18n import t, DEFAULT_LOCALE
 
 logger = logging.getLogger(__name__)
 
@@ -37,27 +38,27 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
         return False
 
 
-def send_password_reset_email(to: str, token: str) -> bool:
+def send_password_reset_email(to: str, token: str, locale: str = DEFAULT_LOCALE) -> bool:
     url = f"{settings.app_url}/reset-password?token={token}"
     html = f"""
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2>重置密码</h2>
-        <p>你请求了重置密码。点击下面的链接设置新密码：</p>
-        <p><a href="{url}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;">重置密码</a></p>
-        <p style="color:#999;font-size:13px;">链接 30 分钟内有效。如果不是你操作，请忽略此邮件。</p>
+        <h2>{t("email.resetTitle", locale)}</h2>
+        <p>{t("email.resetBody", locale)}</p>
+        <p><a href="{url}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;">{t("email.resetButton", locale)}</a></p>
+        <p style="color:#999;font-size:13px;">{t("email.resetExpiry", locale)}</p>
     </div>
     """
-    return send_email(to, "Clawzy.ai — 重置密码", html)
+    return send_email(to, t("email.resetSubject", locale), html)
 
 
-def send_verification_email(to: str, token: str) -> bool:
+def send_verification_email(to: str, token: str, locale: str = DEFAULT_LOCALE) -> bool:
     url = f"{settings.app_url}/verify-email?token={token}"
     html = f"""
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2>验证邮箱</h2>
-        <p>点击下面的链接验证你的邮箱：</p>
-        <p><a href="{url}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;">验证邮箱</a></p>
-        <p style="color:#999;font-size:13px;">链接 24 小时内有效。</p>
+        <h2>{t("email.verifyTitle", locale)}</h2>
+        <p>{t("email.verifyBody", locale)}</p>
+        <p><a href="{url}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;">{t("email.verifyButton", locale)}</a></p>
+        <p style="color:#999;font-size:13px;">{t("email.verifyExpiry", locale)}</p>
     </div>
     """
-    return send_email(to, "Clawzy.ai — 验证邮箱", html)
+    return send_email(to, t("email.verifySubject", locale), html)

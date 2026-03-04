@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.core.redis import get_redis
+from app.i18n import t, parse_locale
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -42,9 +43,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             request_count = results[2]
 
             if request_count > self.rpm:
+                locale = parse_locale(
+                    request.headers.get("accept-language"),
+                    request.cookies.get("locale"),
+                )
                 return JSONResponse(
                     status_code=429,
-                    content={"detail": "请求太频繁了，请稍后再试"},
+                    content={"detail": t("rateLimit.tooManyRequests", locale)},
                     headers={"Retry-After": "60"},
                 )
         except Exception:

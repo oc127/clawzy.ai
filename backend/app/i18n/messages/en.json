@@ -1,0 +1,54 @@
+{
+  "fallback": {
+    "modelUnavailable": [
+      "Sorry, my brain is a bit foggy right now 🤯 Engineers are on it, just a moment!",
+      "Oops, my thinking cap fell off 😅 Don't worry, I'll be back soon! Take a short break~",
+      "My apologies! I'm a bit slow right now 🦞💤 The system is working on it, please try again shortly",
+      "My brain is recharging ⚡ Give me a few minutes, I'll be back at full power!"
+    ],
+    "agentDown": [
+      "I just took a quick nap 😴 Waking up now, please wait a moment...",
+      "I'm feeling a bit under the weather 🤒 Engineers are helping me recover, almost there!",
+      "I'm rebooting 🔄 Please wait about 30 seconds, I'll be right back!"
+    ],
+    "networkError": [
+      "Signal seems a bit weak 📡 I'm trying to reconnect, please hold on~",
+      "The network sneezed 🤧 I'm reconnecting, try sending again in a moment?"
+    ],
+    "noCredits": [
+      "You've run out of energy ⚡ Top up and we can keep chatting!",
+      "Energy is low 😢 Upgrade your plan or add energy to continue?"
+    ],
+    "rateLimited": [
+      "You're typing too fast 😆 Let me catch my breath, try again shortly~",
+      "Slow down, slow down 🦞 Even lobsters need to breathe! Wait a few seconds~"
+    ],
+    "modelSwitched": [
+      "Just switched to a backup brain to think 🧠 Here's the answer!",
+      "I used my backup brain to help 🤔 Here's what I got~"
+    ],
+    "reconnected": [
+      "I'm back! Got disconnected for a moment, all good now 🦞✨",
+      "Reconnected! Where were we? Let's continue 😊",
+      "Network is back! I'm still here, what would you like to chat about?"
+    ]
+  },
+  "rateLimit": {
+    "tooManyRequests": "Too many requests, please try again later"
+  },
+  "chat": {
+    "backupModelNotice": "_[Temporarily using a backup model, your primary model will recover shortly]_"
+  },
+  "email": {
+    "resetSubject": "Clawzy.ai — Reset Password",
+    "resetTitle": "Reset Password",
+    "resetBody": "You requested a password reset. Click the link below to set a new password:",
+    "resetButton": "Reset Password",
+    "resetExpiry": "This link expires in 30 minutes. If you didn't request this, please ignore this email.",
+    "verifySubject": "Clawzy.ai — Verify Email",
+    "verifyTitle": "Verify Email",
+    "verifyBody": "Click the link below to verify your email:",
+    "verifyButton": "Verify Email",
+    "verifyExpiry": "This link expires in 24 hours."
+  }
+}

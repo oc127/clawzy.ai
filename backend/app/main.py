@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import settings
 from app.core.logging_config import setup_logging
+from app.i18n import parse_locale
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 
@@ -32,6 +33,18 @@ app = FastAPI(
 )
 
 # --- 中间件（后添加的先执行） ---
+
+@app.middleware("http")
+async def locale_middleware(request, call_next):
+    """Parse locale from cookie / Accept-Language and store in request.state."""
+    locale = parse_locale(
+        request.headers.get("accept-language"),
+        request.cookies.get("locale"),
+    )
+    request.state.locale = locale
+    response = await call_next(request)
+    return response
+
 app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(

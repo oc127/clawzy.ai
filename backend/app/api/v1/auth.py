@@ -1,7 +1,7 @@
 import secrets
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.core.security import (
     decode_token, create_access_token, create_refresh_token,
     hash_password, verify_password,
 )
+from app.i18n import DEFAULT_LOCALE
 from app.schemas.auth import (
     RegisterRequest, LoginRequest, TokenResponse, RefreshRequest,
     ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
@@ -24,7 +25,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    locale = getattr(request.state, "locale", DEFAULT_LOCALE)
     try:
         user, access, refresh = await register_user(db, body.email, body.password, body.name)
     except AuthError as e:
@@ -36,7 +38,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         r = await get_redis()
         await r.set(f"clawzy:email_verify:{token}", user.id, ex=86400)  # 24h
         from app.core.email import send_verification_email
-        send_verification_email(user.email, token)
+        send_verification_email(user.email, token, locale=locale)
     except Exception:
         logger.warning("Failed to send verification email to %s", user.email)
 
@@ -65,8 +67,9 @@ async def refresh(body: RefreshRequest):
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(body: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Send password reset email. Always returns 200 (to prevent email enumeration)."""
+    locale = getattr(request.state, "locale", DEFAULT_LOCALE)
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
@@ -75,7 +78,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
         r = await get_redis()
         await r.set(f"clawzy:pwd_reset:{token}", user.id, ex=1800)  # 30 min
         from app.core.email import send_password_reset_email
-        send_password_reset_email(user.email, token)
+        send_password_reset_email(user.email, token, locale=locale)
 
     return {"message": "If the email exists, a reset link has been sent"}
 
@@ -126,8 +129,9 @@ async def verify_email(body: VerifyEmailRequest, db: AsyncSession = Depends(get_
 
 
 @router.post("/resend-verification")
-async def resend_verification(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def resend_verification(body: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Resend verification email."""
+    locale = getattr(request.state, "locale", DEFAULT_LOCALE)
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
@@ -136,6 +140,6 @@ async def resend_verification(body: ForgotPasswordRequest, db: AsyncSession = De
         r = await get_redis()
         await r.set(f"clawzy:email_verify:{token}", user.id, ex=86400)
         from app.core.email import send_verification_email
-        send_verification_email(user.email, token)
+        send_verification_email(user.email, token, locale=locale)
 
     return {"message": "If the email exists and is not verified, a verification link has been sent"}

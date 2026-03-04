@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db, async_session
 from app.core.security import decode_token
 from app.deps import get_current_user
+from app.i18n import parse_locale
 from app.models.user import User
 from app.models.chat import Conversation, Message
 from app.schemas.chat import ConversationResponse, MessageResponse
@@ -71,6 +72,12 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 
     await websocket.accept()
 
+    # Parse locale from query params or headers
+    locale = parse_locale(
+        websocket.headers.get("accept-language"),
+        websocket.query_params.get("locale"),
+    )
+
     try:
         while True:
             try:
@@ -125,7 +132,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                     conv_id = conv.id
 
                     async for event in stream_chat_completion(
-                        db, user_id, agent, conv_id, content
+                        db, user_id, agent, conv_id, content, locale=locale
                     ):
                         await websocket.send_text(event)
 
