@@ -51,6 +51,17 @@ class Settings(BaseSettings):
     alert_cooldown_seconds: int = 300
     metrics_retention_hours: int = 24
 
+    # --- Email (SMTP) ---
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@clawzy.ai"
+    app_url: str = "https://clawzy.ai"
+
+    # --- Sentry ---
+    sentry_dsn: str = ""
+
     # --- Admin ---
     admin_api_key: str = ""
 

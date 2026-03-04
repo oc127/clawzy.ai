@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 # 初始化结构化日志
 setup_logging(json_format=not settings.debug)
 
+# Sentry error tracking
+if settings.sentry_dsn:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        traces_sample_rate=0.1,
+        environment="production" if not settings.debug else "development",
+    )
+
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
