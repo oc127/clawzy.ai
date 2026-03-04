@@ -13,7 +13,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: restrict to clawzy.ai in production
+    allow_origins=[
+        "https://clawzy.ai",
+        "https://www.clawzy.ai",
+        "http://localhost:3000",  # 本地开发
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

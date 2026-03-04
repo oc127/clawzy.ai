@@ -41,7 +41,10 @@ async def deduct_credits(
     """Deduct credits from user balance. Returns credits used."""
     credits_used = calculate_credits(model_name, tokens_input, tokens_output)
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    # 行锁：防止并发扣费导致余额扣成负数 (风险 D-1)
+    result = await db.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise ValueError("User not found")
