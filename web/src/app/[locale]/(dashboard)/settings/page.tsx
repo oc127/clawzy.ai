@@ -5,17 +5,18 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
 import { updateMe, changePassword } from "@/lib/api";
 
+const inputClass =
+  "w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-foreground placeholder-muted text-sm focus:outline-none focus:border-accent transition-colors";
+
 export default function SettingsPage() {
   const { user, logout, refetch } = useAuth();
   const t = useTranslations("settings");
   const tc = useTranslations("common");
 
-  // Edit name
   const [name, setName] = useState("");
   const [nameLoading, setNameLoading] = useState(false);
   const [nameMsg, setNameMsg] = useState("");
 
-  // Change password
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -68,23 +69,20 @@ export default function SettingsPage() {
     }
   }
 
-  const inputClass =
-    "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
-
   return (
-    <div className="p-8 max-w-2xl space-y-8">
-      <h1 className="text-2xl font-bold text-white">{t("title")}</h1>
+    <div className="p-10 max-w-xl space-y-8">
+      <h1 className="text-xl font-semibold text-foreground tracking-tight">{t("title")}</h1>
 
       {/* Profile */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-white">{t("profile")}</h2>
+      <div className="border border-border rounded-lg p-5 space-y-4">
+        <h2 className="text-sm font-medium text-foreground">{t("profile")}</h2>
         <div>
-          <label className="text-sm text-gray-500">{t("emailLabel")}</label>
-          <p className="text-white">{user?.email}</p>
+          <label className="text-xs text-muted">{t("emailLabel")}</label>
+          <p className="text-sm text-foreground mt-0.5">{user?.email}</p>
         </div>
         <form onSubmit={handleNameSave} className="space-y-3">
           <div>
-            <label className="text-sm text-gray-500">{t("nameLabel")}</label>
+            <label className="text-xs text-muted">{t("nameLabel")}</label>
             <input
               type="text"
               placeholder={user?.name || ""}
@@ -97,26 +95,26 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={nameLoading || !name.trim()}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white text-sm font-semibold rounded-lg transition"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white text-xs font-medium rounded-md transition-colors"
             >
               {nameLoading ? tc("saving") : tc("save")}
             </button>
-            {nameMsg && <span className="text-sm text-green-400">{nameMsg}</span>}
+            {nameMsg && <span className="text-xs text-green-400">{nameMsg}</span>}
           </div>
         </form>
       </div>
 
       {/* Change Password */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-white">{t("changePassword")}</h2>
+      <div className="border border-border rounded-lg p-5 space-y-4">
+        <h2 className="text-sm font-medium text-foreground">{t("changePassword")}</h2>
         <form onSubmit={handlePasswordChange} className="space-y-3">
           {pwError && (
-            <div className="bg-red-900/30 border border-red-700 text-red-300 rounded-lg p-3 text-sm">
+            <div className="border border-red-500/30 text-red-400 rounded-md px-3 py-2 text-xs">
               {pwError}
             </div>
           )}
           {pwMsg && (
-            <div className="bg-green-900/30 border border-green-700 text-green-300 rounded-lg p-3 text-sm">
+            <div className="border border-green-500/30 text-green-400 rounded-md px-3 py-2 text-xs">
               {pwMsg}
             </div>
           )}
@@ -149,7 +147,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={pwLoading}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white text-sm font-semibold rounded-lg transition"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white text-xs font-medium rounded-md transition-colors"
           >
             {pwLoading ? t("changing") : t("changePasswordBtn")}
           </button>
@@ -159,7 +157,7 @@ export default function SettingsPage() {
       {/* Logout */}
       <button
         onClick={logout}
-        className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition"
+        className="text-sm text-muted hover:text-red-400 transition-colors"
       >
         {tc("logoutFull")}
       </button>

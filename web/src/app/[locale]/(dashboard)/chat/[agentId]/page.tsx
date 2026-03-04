@@ -30,7 +30,6 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Load conversation history on mount
   useEffect(() => {
     if (!agentId) return;
     listConversations(agentId)
@@ -48,9 +47,7 @@ export default function ChatPage() {
           scrollToBottom();
         }
       })
-      .catch(() => {
-        // No history — that's fine
-      });
+      .catch(() => {});
   }, [agentId, scrollToBottom]);
 
   useEffect(() => {
@@ -138,61 +135,52 @@ export default function ChatPage() {
     scrollToBottom();
   }
 
-  const statusLabel = {
-    connected: t("connected"),
-    connecting: t("connecting"),
-    disconnected: t("disconnected"),
+  const statusDot = {
+    connected: "bg-green-500",
+    connecting: "bg-yellow-500 animate-pulse",
+    disconnected: "bg-red-500",
   }[connStatus];
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🦞</span>
-          <div>
-            <h2 className="text-white font-semibold">{t("myLobster")}</h2>
-            <p className="text-xs text-gray-500">{statusLabel}</p>
-          </div>
+      <div className="flex items-center justify-between px-6 py-3.5 border-b border-border">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-2 h-2 rounded-full ${statusDot}`} />
+          <h2 className="text-sm font-medium text-foreground">{t("myLobster")}</h2>
         </div>
         {balance !== null && (
-          <span className="text-sm text-gray-500">⚡ {balance} {tc("energy")}</span>
+          <span className="text-xs text-muted">{balance} {tc("energy")}</span>
         )}
       </div>
 
-      {connStatus === "connecting" && (
-        <div className="bg-yellow-900/30 border-b border-yellow-700 px-6 py-2 text-sm text-yellow-300 text-center">
-          {t("reconnecting")}
-        </div>
-      )}
       {connStatus === "disconnected" && (
-        <div className="bg-red-900/30 border-b border-red-700 px-6 py-2 text-sm text-red-300 text-center">
-          {t("disconnectedMsg")}{" "}
-          <button
-            onClick={() => window.location.reload()}
-            className="underline hover:text-red-200"
-          >
-            {t("clickRefresh")}
-          </button>
+        <div className="px-6 py-2 border-b border-border text-center">
+          <span className="text-xs text-muted">
+            {t("disconnectedMsg")}{" "}
+            <button
+              onClick={() => window.location.reload()}
+              className="text-accent hover:text-accent-hover transition-colors"
+            >
+              {t("clickRefresh")}
+            </button>
+          </span>
         </div>
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">🦞</div>
-            <p className="text-gray-500">{t("emptyPrompt")}</p>
+          <div className="text-center pt-32">
+            <p className="text-sm text-muted">{t("emptyPrompt")}</p>
           </div>
         )}
 
         {messages.map((msg, i) => {
           if (msg.role === "system") {
             return (
-              <div key={i} className="text-center">
-                <span className="text-xs text-gray-600 bg-gray-900 px-3 py-1 rounded-full">
-                  {msg.content}
-                </span>
+              <div key={i} className="text-center py-1">
+                <span className="text-xs text-muted">{msg.content}</span>
               </div>
             );
           }
@@ -203,10 +191,10 @@ export default function ChatPage() {
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+                className={`max-w-[65%] rounded-xl px-4 py-2.5 ${
                   msg.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-100"
+                    ? "bg-accent text-white"
+                    : "bg-surface text-foreground"
                 }`}
               >
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -220,20 +208,20 @@ export default function ChatPage() {
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} className="px-6 py-4 border-t border-gray-800">
-        <div className="flex gap-3">
+      <form onSubmit={sendMessage} className="px-6 py-4 border-t border-border">
+        <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={connStatus === "connected" ? t("inputPlaceholder") : t("inputConnecting")}
             disabled={connStatus !== "connected"}
-            className="flex-1 px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-foreground placeholder-muted text-sm focus:outline-none focus:border-accent disabled:opacity-40 transition-colors"
           />
           <button
             type="submit"
             disabled={connStatus !== "connected" || streaming || !input.trim()}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white font-semibold rounded-xl transition"
+            className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted text-white text-sm font-medium rounded-lg transition-colors"
           >
             {tc("send")}
           </button>

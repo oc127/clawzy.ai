@@ -34,24 +34,24 @@ function VerifyEmailContent() {
   }, [token, t]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
-      <div className="w-full max-w-md space-y-6 text-center">
-        <h1 className="text-4xl font-bold text-white">🦞</h1>
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm space-y-6 text-center">
+        <h1 className="text-base font-semibold text-foreground tracking-tight">Clawzy</h1>
 
         {status === "loading" && (
           <>
-            <h2 className="text-2xl font-bold text-white">{t("verifying")}</h2>
-            <p className="text-gray-400">{t("verifyingDesc")}</p>
+            <h2 className="text-xl font-semibold text-foreground">{t("verifying")}</h2>
+            <p className="text-sm text-muted">{t("verifyingDesc")}</p>
           </>
         )}
 
         {status === "success" && (
           <>
-            <h2 className="text-2xl font-bold text-green-400">{t("verifySuccessTitle")}</h2>
-            <p className="text-gray-400">{message}</p>
+            <h2 className="text-xl font-semibold text-green-400">{t("verifySuccessTitle")}</h2>
+            <p className="text-sm text-muted">{message}</p>
             <Link
               href="/"
-              className="inline-block mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
+              className="inline-block px-5 py-2.5 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg transition-colors"
             >
               {t("goToDashboard")}
             </Link>
@@ -60,9 +60,9 @@ function VerifyEmailContent() {
 
         {status === "error" && (
           <>
-            <h2 className="text-2xl font-bold text-red-400">{t("verifyFailTitle")}</h2>
-            <p className="text-gray-400">{message}</p>
-            <Link href="/login" className="inline-block text-blue-400 hover:underline text-sm mt-4">
+            <h2 className="text-xl font-semibold text-red-400">{t("verifyFailTitle")}</h2>
+            <p className="text-sm text-muted">{message}</p>
+            <Link href="/login" className="inline-block text-sm text-accent hover:text-accent-hover transition-colors">
               {tc("backToLogin")}
             </Link>
           </>

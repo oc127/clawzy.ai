@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { listAgents, deleteAgent, startAgent, stopAgent, type Agent } from "@/lib/api";
 
-const STATUS_COLORS: Record<string, string> = {
-  running: "text-green-400",
-  stopped: "text-gray-400",
-  creating: "text-yellow-400",
-  error: "text-red-400",
+const STATUS_DOT: Record<string, string> = {
+  running: "bg-green-500",
+  stopped: "bg-neutral-500",
+  creating: "bg-yellow-500 animate-pulse",
+  error: "bg-red-500",
 };
 
 export default function AgentsPage() {
@@ -68,18 +68,18 @@ export default function AgentsPage() {
     setAgents((prev) => prev.filter((a) => a.id !== id));
   }
 
-  if (loading) return <div className="p-8 text-gray-400">{tc("loading")}</div>;
+  if (loading) return <div className="p-10 text-sm text-muted">{tc("loading")}</div>;
 
   return (
-    <div className="p-8 max-w-4xl">
-      <h1 className="text-2xl font-bold text-white mb-8">{t("title")}</h1>
+    <div className="p-10 max-w-3xl">
+      <h1 className="text-xl font-semibold text-foreground tracking-tight mb-8">{t("title")}</h1>
 
       {agents.length === 0 ? (
-        <p className="text-gray-500">{t("noLobster")}</p>
+        <p className="text-sm text-muted">{t("noLobster")}</p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {agents.map((agent) => {
-            const color = STATUS_COLORS[agent.status] || STATUS_COLORS.stopped;
+            const dot = STATUS_DOT[agent.status] || STATUS_DOT.stopped;
             const label = statusLabels[agent.status] || statusLabels.stopped;
             const isLoading = actionLoading === agent.id;
             const isRunning = agent.status === "running";
@@ -88,34 +88,27 @@ export default function AgentsPage() {
             return (
               <div
                 key={agent.id}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-6"
+                className="border border-border rounded-lg px-5 py-4"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="text-3xl relative">
-                      {isRunning && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                      )}
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${dot}`} />
                     <div>
-                      <h3 className="text-lg font-semibold text-white">
-                        {agent.name}
-                      </h3>
-                      <p className="text-sm text-gray-500">
+                      <h3 className="text-sm font-medium text-foreground">{agent.name}</h3>
+                      <p className="text-xs text-muted mt-0.5">
                         {t("brainLabel", { brain: brainLabels[agent.model_name] || agent.model_name })}
-                      </p>
-                      <p className={`text-sm ${color}`}>
+                        {" · "}
                         {label}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {canStart && (
                       <button
                         onClick={() => handleStart(agent.id)}
                         disabled={isLoading}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition"
+                        className="px-3 py-1.5 text-xs font-medium text-foreground border border-border rounded-md hover:bg-surface disabled:opacity-40 transition-colors"
                       >
                         {isLoading ? t("starting") : t("start")}
                       </button>
@@ -124,14 +117,14 @@ export default function AgentsPage() {
                       <button
                         onClick={() => handleStop(agent.id)}
                         disabled={isLoading}
-                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition"
+                        className="px-3 py-1.5 text-xs font-medium text-foreground border border-border rounded-md hover:bg-surface disabled:opacity-40 transition-colors"
                       >
                         {isLoading ? t("stopping") : t("stop")}
                       </button>
                     )}
                     <button
                       onClick={() => handleDelete(agent.id)}
-                      className="text-sm text-red-400 hover:text-red-300"
+                      className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
                     >
                       {tc("delete")}
                     </button>

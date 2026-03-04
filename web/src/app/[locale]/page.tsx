@@ -8,23 +8,21 @@ export default function LandingPage() {
   const t = useTranslations("landing");
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-6 max-w-6xl mx-auto">
-        <div className="text-xl font-bold flex items-center gap-2">
-          🦞 Clawzy
-        </div>
-        <div className="flex items-center gap-4">
+      <nav className="flex items-center justify-between px-8 py-5 max-w-5xl mx-auto">
+        <span className="text-base font-semibold tracking-tight">Clawzy</span>
+        <div className="flex items-center gap-5">
           <LanguageSwitcher />
           <Link
             href="/login"
-            className="px-5 py-2 text-sm text-gray-300 hover:text-white transition"
+            className="text-sm text-muted hover:text-foreground transition-colors"
           >
             {t("login")}
           </Link>
           <Link
             href="/register"
-            className="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition"
+            className="px-4 py-1.5 text-sm bg-accent hover:bg-accent-hover text-white rounded-md font-medium transition-colors"
           >
             {t("freeRegister")}
           </Link>
@@ -32,49 +30,34 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <main className="max-w-4xl mx-auto px-8 pt-20 pb-32 text-center">
-        <div className="text-7xl mb-6">🦞</div>
-        <h1 className="text-5xl font-bold leading-tight mb-6">
+      <main className="max-w-3xl mx-auto px-8 pt-28 pb-36 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight mb-5">
           {t("heroTitle")}
           <br />
-          <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            {t("heroHighlight")}
-          </span>
+          <span className="text-accent">{t("heroHighlight")}</span>
         </h1>
-        <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
+        <p className="text-lg text-muted max-w-xl mx-auto mb-10 leading-relaxed">
           {t("heroDesc")}
         </p>
         <Link
           href="/register"
-          className="inline-block px-8 py-4 bg-blue-600 hover:bg-blue-700 text-lg font-semibold rounded-xl transition"
+          className="inline-block px-7 py-3 bg-accent hover:bg-accent-hover text-white font-medium rounded-lg transition-colors"
         >
           {t("cta")}
         </Link>
-        <p className="text-sm text-gray-600 mt-4">{t("ctaSubtext")}</p>
+        <p className="text-xs text-muted mt-4">{t("ctaSubtext")}</p>
 
         {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 text-left">
-          <FeatureCard
-            icon="⚡"
-            title={t("feature1Title")}
-            desc={t("feature1Desc")}
-          />
-          <FeatureCard
-            icon="🧠"
-            title={t("feature2Title")}
-            desc={t("feature2Desc")}
-          />
-          <FeatureCard
-            icon="🔒"
-            title={t("feature3Title")}
-            desc={t("feature3Desc")}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-28 text-left">
+          <FeatureCard title={t("feature1Title")} desc={t("feature1Desc")} />
+          <FeatureCard title={t("feature2Title")} desc={t("feature2Desc")} />
+          <FeatureCard title={t("feature3Title")} desc={t("feature3Desc")} />
         </div>
 
-        {/* Pricing preview */}
-        <div className="mt-24">
-          <h2 className="text-3xl font-bold mb-8">{t("pricingTitle")}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Pricing */}
+        <div className="mt-28">
+          <h2 className="text-2xl font-semibold tracking-tight mb-8">{t("pricingTitle")}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <PriceCard
               name={t("planFree")}
               price={t("priceFree")}
@@ -96,27 +79,18 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 py-8 text-center text-sm text-gray-600">
-        Clawzy.ai — OpenClaw as a Service
+      <footer className="border-t border-border py-8 text-center text-xs text-muted">
+        Clawzy.ai
       </footer>
     </div>
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  desc,
-}: {
-  icon: string;
-  title: string;
-  desc: string;
-}) {
+function FeatureCard({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-      <div className="text-3xl mb-3">{icon}</div>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-      <p className="text-sm text-gray-400 leading-relaxed">{desc}</p>
+    <div className="border border-border rounded-lg p-5 hover:border-muted/30 transition-colors">
+      <h3 className="text-sm font-medium text-foreground mb-2">{title}</h3>
+      <p className="text-sm text-muted leading-relaxed">{desc}</p>
     </div>
   );
 }
@@ -134,19 +108,17 @@ function PriceCard({
 }) {
   return (
     <div
-      className={`rounded-xl p-6 ${
+      className={`rounded-lg p-5 ${
         highlight
-          ? "bg-blue-600/10 border-2 border-blue-500"
-          : "bg-gray-900 border border-gray-800"
+          ? "border border-accent/40 bg-accent/5"
+          : "border border-border"
       }`}
     >
-      <h3 className="text-lg font-bold text-white">{name}</h3>
-      <p className="text-3xl font-bold text-white mt-2">{price}</p>
-      <ul className="mt-4 space-y-2">
+      <h3 className="text-sm font-medium text-foreground">{name}</h3>
+      <p className="text-2xl font-semibold text-foreground mt-2">{price}</p>
+      <ul className="mt-4 space-y-1.5">
         {features.map((f) => (
-          <li key={f} className="text-sm text-gray-400">
-            {f}
-          </li>
+          <li key={f} className="text-sm text-muted">{f}</li>
         ))}
       </ul>
     </div>

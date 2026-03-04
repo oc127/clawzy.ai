@@ -12,7 +12,6 @@ interface Plan {
   max_agents: number;
 }
 
-// Plan ID → Stripe Price ID mapping
 const PLAN_PRICE_IDS: Record<string, string> = {
   starter: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER || "price_starter_monthly",
   pro: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || "price_pro_monthly",
@@ -52,28 +51,24 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl">
-      <h1 className="text-2xl font-bold text-white mb-8">{t("title")}</h1>
+    <div className="p-10 max-w-3xl">
+      <h1 className="text-xl font-semibold text-foreground tracking-tight mb-8">{t("title")}</h1>
 
       {credits && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
-          <div className="flex items-center justify-between">
+        <div className="border border-border rounded-lg p-6 mb-8">
+          <div className="flex items-baseline justify-between">
             <div>
-              <p className="text-gray-500 text-sm">{t("currentEnergy")}</p>
-              <p className="text-4xl font-bold text-white mt-1">
-                {credits.balance}
-              </p>
+              <p className="text-xs text-muted uppercase tracking-wide">{t("currentEnergy")}</p>
+              <p className="text-3xl font-semibold text-foreground mt-1">{credits.balance}</p>
             </div>
             <div className="text-right">
-              <p className="text-gray-500 text-sm">{t("usedThisMonth")}</p>
-              <p className="text-2xl font-semibold text-gray-300 mt-1">
-                {credits.used_this_period}
-              </p>
+              <p className="text-xs text-muted uppercase tracking-wide">{t("usedThisMonth")}</p>
+              <p className="text-xl font-medium text-muted mt-1">{credits.used_this_period}</p>
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
-              {t("currentPlan")} <span className="text-white font-medium">{planNames[credits.plan] || credits.plan}</span>
+          <div className="mt-5 pt-4 border-t border-border flex items-center justify-between">
+            <p className="text-sm text-muted">
+              {t("currentPlan")} <span className="text-foreground font-medium">{planNames[credits.plan] || credits.plan}</span>
             </p>
             {credits.plan !== "free" && (
               <button
@@ -85,7 +80,7 @@ export default function BillingPage() {
                     alert(t("portalFailed"));
                   }
                 }}
-                className="text-sm text-blue-400 hover:text-blue-300"
+                className="text-xs text-accent hover:text-accent-hover transition-colors"
               >
                 {t("manageSubscription")}
               </button>
@@ -94,8 +89,8 @@ export default function BillingPage() {
         </div>
       )}
 
-      <h2 className="text-lg font-semibold text-white mb-4">{t("choosePlan")}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <h2 className="text-sm font-medium text-foreground mb-4">{t("choosePlan")}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {plans.map((plan) => {
           const isCurrent = credits?.plan === plan.id;
           const isUpgrading = upgrading === plan.id;
@@ -103,34 +98,34 @@ export default function BillingPage() {
           return (
             <div
               key={plan.id}
-              className={`bg-gray-900 border rounded-xl p-6 ${
-                isCurrent ? "border-blue-500" : "border-gray-800"
+              className={`border rounded-lg p-5 ${
+                isCurrent ? "border-accent/40 bg-accent/5" : "border-border"
               }`}
             >
-              <h3 className="text-lg font-bold text-white">
+              <h3 className="text-sm font-medium text-foreground">
                 {planNames[plan.id] || plan.name}
               </h3>
-              <p className="text-3xl font-bold text-white mt-2">
+              <p className="text-2xl font-semibold text-foreground mt-2">
                 ${plan.price_monthly}
-                <span className="text-sm text-gray-500 font-normal">{t("perMonth")}</span>
+                <span className="text-xs text-muted font-normal ml-1">{t("perMonth")}</span>
               </p>
-              <ul className="mt-4 space-y-2 text-sm text-gray-400">
+              <ul className="mt-3 space-y-1 text-xs text-muted">
                 <li>{t("creditsPerMonth", { count: plan.credits_included.toLocaleString() })}</li>
                 <li>{t("maxLobsters", { count: plan.max_agents })}</li>
               </ul>
               {isCurrent ? (
-                <div className="mt-4 py-2 text-center text-sm text-blue-400 border border-blue-500 rounded-lg">
+                <div className="mt-4 py-1.5 text-center text-xs text-accent border border-accent/30 rounded-md">
                   {t("currentPlanBadge")}
                 </div>
               ) : plan.price_monthly === 0 ? (
-                <div className="mt-4 py-2 text-center text-sm text-gray-500 border border-gray-700 rounded-lg">
+                <div className="mt-4 py-1.5 text-center text-xs text-muted border border-border rounded-md">
                   {t("freePlan")}
                 </div>
               ) : (
                 <button
                   onClick={() => handleUpgrade(plan.id)}
                   disabled={isUpgrading}
-                  className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition"
+                  className="mt-4 w-full py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white text-xs font-medium rounded-md transition-colors"
                 >
                   {isUpgrading ? t("redirecting") : t("upgrade")}
                 </button>

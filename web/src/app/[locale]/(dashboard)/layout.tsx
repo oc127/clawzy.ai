@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations("dashboard");
   const tc = useTranslations("common");
 
@@ -25,8 +26,8 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-gray-400 text-lg">{t("lobsterWaking")}</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted text-sm">{t("lobsterWaking")}</p>
       </div>
     );
   }
@@ -34,32 +35,32 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-950 flex">
+    <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
-        <div className="p-6">
-          <Link href="/" className="text-xl font-bold text-white flex items-center gap-2">
-            🦞 Clawzy
+      <aside className="w-56 border-r border-border flex flex-col">
+        <div className="px-5 py-6">
+          <Link href="/" className="text-base font-semibold text-foreground tracking-tight">
+            Clawzy
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
-          <NavLink href="/" label={t("myLobsters")} />
-          <NavLink href="/agents" label={t("manageLobsters")} />
-          <NavLink href="/billing" label={t("energyAndPlans")} />
-          <NavLink href="/settings" label={tc("settings")} />
+        <nav className="flex-1 px-3 space-y-0.5">
+          <NavLink href="/" label={t("myLobsters")} active={pathname === "/"} />
+          <NavLink href="/agents" label={t("manageLobsters")} active={pathname === "/agents"} />
+          <NavLink href="/billing" label={t("energyAndPlans")} active={pathname === "/billing"} />
+          <NavLink href="/settings" label={tc("settings")} active={pathname === "/settings"} />
         </nav>
 
-        <div className="px-4 py-3 border-t border-gray-800">
-          <LanguageSwitcher className="w-full mb-3" />
+        <div className="px-4 py-4 border-t border-border space-y-3">
+          <LanguageSwitcher className="w-full" />
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white">{user.name}</p>
-              <p className="text-xs text-gray-500">{t("energyAvailable", { balance: user.credit_balance })}</p>
+              <p className="text-sm text-foreground">{user.name}</p>
+              <p className="text-xs text-muted">{t("energyAvailable", { balance: user.credit_balance })}</p>
             </div>
             <button
               onClick={logout}
-              className="text-xs text-gray-500 hover:text-gray-300"
+              className="text-xs text-muted hover:text-foreground transition-colors"
             >
               {tc("logout")}
             </button>
@@ -73,11 +74,15 @@ export default function DashboardLayout({
   );
 }
 
-function NavLink({ href, label }: { href: string; label: string }) {
+function NavLink({ href, label, active }: { href: string; label: string; active?: boolean }) {
   return (
     <Link
       href={href}
-      className="block px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition text-sm"
+      className={`block px-3 py-2 rounded-md text-sm transition-colors ${
+        active
+          ? "text-foreground bg-surface"
+          : "text-muted hover:text-foreground hover:bg-surface"
+      }`}
     >
       {label}
     </Link>

@@ -6,6 +6,9 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { register } from "@/lib/api";
 
+const inputClass =
+  "w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-foreground placeholder-muted text-sm focus:outline-none focus:border-accent transition-colors";
+
 export default function RegisterPage() {
   const router = useRouter();
   const t = useTranslations("auth");
@@ -33,17 +36,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-white">🦞</h1>
-          <h2 className="mt-4 text-2xl font-bold text-white">{t("createLobster")}</h2>
-          <p className="mt-2 text-gray-400">{t("registerBonus")}</p>
+          <h1 className="text-base font-semibold text-foreground tracking-tight">Clawzy</h1>
+          <h2 className="mt-6 text-xl font-semibold text-foreground">{t("createLobster")}</h2>
+          <p className="mt-1.5 text-sm text-muted">{t("registerBonus")}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           {error && (
-            <div className="bg-red-900/30 border border-red-700 text-red-300 rounded-lg p-3 text-sm">
+            <div className="border border-red-500/30 text-red-400 rounded-lg px-3 py-2.5 text-sm">
               {error}
             </div>
           )}
@@ -54,7 +57,7 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={inputClass}
           />
           <input
             type="email"
@@ -62,7 +65,7 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={inputClass}
           />
           <input
             type="password"
@@ -71,21 +74,21 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={inputClass}
           />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white font-semibold rounded-lg transition"
+            className="w-full py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
           >
             {loading ? t("creating") : tc("register")}
           </button>
         </form>
 
-        <p className="text-center text-gray-500 text-sm">
+        <p className="text-center text-muted text-sm">
           {t("hasAccount")}{" "}
-          <Link href="/login" className="text-blue-400 hover:underline">
+          <Link href="/login" className="text-accent hover:text-accent-hover transition-colors">
             {tc("login")}
           </Link>
         </p>

@@ -30,10 +30,10 @@ export default function LanguageSwitcher({ className }: { className?: string }) 
       value={locale}
       onChange={(e) => handleChange(e.target.value)}
       disabled={isPending}
-      className={`bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer ${className || ""}`}
+      className={`bg-transparent border border-border text-muted text-xs rounded-md px-2 py-1.5 focus:outline-none cursor-pointer hover:text-foreground transition-colors ${className || ""}`}
     >
       {LOCALES.map((loc) => (
-        <option key={loc} value={loc}>
+        <option key={loc} value={loc} className="bg-surface text-foreground">
           {LOCALE_LABELS[loc]}
         </option>
       ))}
