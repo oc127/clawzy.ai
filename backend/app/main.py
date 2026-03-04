@@ -58,6 +58,11 @@ async def startup_checks():
     logger.info("Startup checks passed (DB: %.0fms, Redis: %.0fms)",
                 db_result.latency_ms, redis_result.latency_ms)
 
+    # Start Telegram bot polling in background (if configured)
+    if settings.telegram_bot_token:
+        from app.integrations.telegram_bot import start_polling
+        asyncio.create_task(start_polling())
+
 
 @app.on_event("shutdown")
 async def shutdown():

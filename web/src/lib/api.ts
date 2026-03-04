@@ -80,6 +80,21 @@ export async function deleteAgent(id: string) {
   return request<void>(`/agents/${id}`, { method: "DELETE" });
 }
 
+export async function startAgent(id: string) {
+  return request<Agent>(`/agents/${id}/start`, { method: "POST" });
+}
+
+export async function stopAgent(id: string) {
+  return request<Agent>(`/agents/${id}/stop`, { method: "POST" });
+}
+
+export async function createCheckoutSession(priceId: string) {
+  return request<{ url: string }>(
+    `/billing/checkout?price_id=${encodeURIComponent(priceId)}`,
+    { method: "POST" }
+  );
+}
+
 // --- Models ---
 export interface ModelInfo {
   id: string;

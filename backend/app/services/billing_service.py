@@ -14,12 +14,11 @@ logger = logging.getLogger(__name__)
 
 stripe.api_key = settings.stripe_secret_key
 
-# Stripe Price ID → Plan 映射 (需要在 Stripe Dashboard 创建对应的 Price)
+# Stripe Price ID → Plan 映射 (从 .env 读取实际 Price ID)
 PRICE_TO_PLAN = {
-    # 这些 ID 需替换为实际的 Stripe Price ID
-    "price_starter_monthly": PlanType.starter,
-    "price_pro_monthly": PlanType.pro,
-    "price_business_monthly": PlanType.business,
+    settings.stripe_price_starter: PlanType.starter,
+    settings.stripe_price_pro: PlanType.pro,
+    settings.stripe_price_business: PlanType.business,
 }
 
 PLAN_CREDITS = {

@@ -119,3 +119,14 @@ async def health_history():
     if data:
         return {"results": json.loads(data)}
     return {"results": []}
+
+
+@router.post("/ops/chat", dependencies=[Depends(verify_admin_key)])
+async def ops_agent_chat(request: dict):
+    """与运维 Agent 对话。发送消息，Agent 会自动调用工具分析和执行。"""
+    from app.services.ops_chat_service import ops_chat
+    message = request.get("message", "")
+    if not message:
+        raise HTTPException(status_code=400, detail="message required")
+    reply = await ops_chat(message)
+    return {"reply": reply}

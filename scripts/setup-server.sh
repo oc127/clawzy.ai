@@ -141,10 +141,20 @@ check_service() {
 }
 
 check_service "LiteLLM"  "http://127.0.0.1:4000/health/liveliness"
+check_service "Backend"  "http://127.0.0.1:8000/health"
 check_service "OpenClaw"  "http://127.0.0.1:18789/health"
 
 # ---------------------------------------------------------------------------
-# 8. Print summary
+# 8. Setup automated backups (cron)
+# ---------------------------------------------------------------------------
+log "Setting up automated database backups..."
+CRON_JOB="0 */6 * * * ${DEPLOY_DIR}/scripts/backup-db.sh >> /var/log/clawzy-backup.log 2>&1"
+(crontab -l 2>/dev/null | grep -v "backup-db.sh"; echo "$CRON_JOB") | crontab -
+mkdir -p /var/backups/clawzy
+ok "Database backup scheduled every 6 hours"
+
+# ---------------------------------------------------------------------------
+# 9. Print summary
 # ---------------------------------------------------------------------------
 echo ""
 echo "============================================="

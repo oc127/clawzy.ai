@@ -1,10 +1,10 @@
-import json
 import logging
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
 from app.models.subscription import Subscription, PlanType
 
@@ -110,5 +110,68 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
 
 
 async def delete_agent(db: AsyncSession, agent: Agent) -> None:
+    # Stop and remove container if exists
+    if agent.container_id:
+        try:
+            docker_manager.remove_container(agent.container_id, agent.id)
+        except Exception:
+            logger.warning("Failed to remove container for agent %s", agent.id)
     await db.delete(agent)
     await db.commit()
+
+
+class AgentStartError(Exception):
+    pass
+
+
+async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Start an agent's container. Creates one if it doesn't exist yet."""
+    if agent.status == AgentStatus.running and agent.container_id:
+        status = docker_manager.get_container_status(agent.container_id)
+        if status == "running":
+            return agent  # Already running
+
+    if not agent.ws_port:
+        agent.ws_port = await allocate_port(db)
+
+    try:
+        if agent.container_id:
+            # Container exists but stopped — restart it
+            docker_manager.start_container(agent.container_id)
+        else:
+            # Create a new container
+            container_id = docker_manager.create_agent_container(
+                agent_id=agent.id,
+                gateway_token=settings.litellm_master_key,
+                litellm_key=settings.litellm_master_key,
+                model_name=agent.model_name,
+                ws_port=agent.ws_port,
+            )
+            agent.container_id = container_id
+
+        agent.status = AgentStatus.running
+        await db.commit()
+        await db.refresh(agent)
+        logger.info("Agent %s started (container=%s)", agent.id, agent.container_id)
+        return agent
+
+    except Exception as e:
+        agent.status = AgentStatus.error
+        await db.commit()
+        logger.exception("Failed to start agent %s", agent.id)
+        raise AgentStartError(f"Failed to start agent: {e}") from e
+
+
+async def stop_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Stop an agent's container."""
+    if agent.container_id:
+        try:
+            docker_manager.stop_container(agent.container_id)
+        except Exception:
+            logger.warning("Failed to stop container for agent %s", agent.id)
+
+    agent.status = AgentStatus.stopped
+    await db.commit()
+    await db.refresh(agent)
+    logger.info("Agent %s stopped", agent.id)
+    return agent

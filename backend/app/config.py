@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # --- Stripe ---
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
+    stripe_price_starter: str = "price_starter_monthly"
+    stripe_price_pro: str = "price_pro_monthly"
+    stripe_price_business: str = "price_business_monthly"
 
     # --- OpenClaw ---
     openclaw_image: str = "ghcr.io/openclaw/openclaw:latest"
@@ -50,6 +53,10 @@ class Settings(BaseSettings):
 
     # --- Admin ---
     admin_api_key: str = ""
+
+    # --- Telegram (Ops Agent) ---
+    telegram_bot_token: str = ""
+    telegram_admin_chat_id: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

@@ -162,3 +162,35 @@ def infrastructure_health_check():
             )
 
     _redis.set("clawzy:health:latest", json.dumps(health_data), ex=600)
+
+    # Trigger Ops Agent analysis if any service is unhealthy
+    unhealthy = [r for r in results if r.status == HealthStatus.UNHEALTHY]
+    if unhealthy:
+        event_desc = "\n".join(f"- {r.service}: {r.details}" for r in unhealthy)
+        ops_agent_analyze.delay(event_desc)
+
+
+@celery.task(name="app.workers.agent_tasks.ops_agent_analyze")
+def ops_agent_analyze(event_description: str):
+    """让运维 Agent 分析系统事件并决定行动。"""
+    from app.services.ops_chat_service import ops_chat
+
+    prompt = f"""系统自动检测到以下问题：
+
+{event_description}
+
+请：
+1. 用 check_health 确认当前完整状态
+2. 如果需要，查看相关服务日志
+3. 判断是否需要立即处理
+4. 如果需要重启或其他操作，执行对应工具
+5. 通过 send_notification 向管理员报告你的分析和采取的行动"""
+
+    loop = asyncio.new_event_loop()
+    try:
+        reply = loop.run_until_complete(ops_chat(prompt))
+        logger.info("Ops Agent analysis: %s", reply[:200])
+    except Exception:
+        logger.exception("Ops Agent analysis failed")
+    finally:
+        loop.close()
