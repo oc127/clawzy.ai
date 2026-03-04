@@ -55,6 +55,18 @@ def get_fallback_reply(error_type: str) -> str:
     return random.choice(pool)
 
 
+# 模型切换时的回复
+MODEL_SWITCHED_REPLIES = [
+    "刚换了个大脑思考了一下 🧠 答案来啦！",
+    "我用备用大脑帮你想了想 🤔 结果如下～",
+]
+
+
+def get_model_switched_message() -> str:
+    """当自动切换到备用模型时的友好通知。"""
+    return random.choice(MODEL_SWITCHED_REPLIES)
+
+
 def get_reconnecting_message() -> str:
     """WebSocket 断线后重连时发给用户的第一条消息。"""
     return random.choice([

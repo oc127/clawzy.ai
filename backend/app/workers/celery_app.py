@@ -28,9 +28,14 @@ celery.conf.beat_schedule = {
         "task": "app.workers.agent_tasks.cleanup_zombie_containers",
         "schedule": crontab(hour=3, minute=0),
     },
-    # 每月 1 号重置订阅用户积分
-    "monthly-credit-reset": {
-        "task": "app.workers.billing_tasks.reset_subscription_credits",
+    # 每 5 分钟深度检查基础设施健康
+    "infrastructure-health-check": {
+        "task": "app.workers.agent_tasks.infrastructure_health_check",
+        "schedule": 300.0,
+    },
+    # 每月 1 号累加订阅积分（不重置，余额累计）
+    "monthly-credit-add": {
+        "task": "app.workers.billing_tasks.add_monthly_subscription_credits",
         "schedule": crontab(day_of_month=1, hour=0, minute=5),
     },
 }

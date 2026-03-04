@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, users, agents, models, billing, chat
+from app.api.v1 import auth, users, agents, models, billing, chat, admin
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -10,3 +10,4 @@ api_router.include_router(agents.router)
 api_router.include_router(models.router)
 api_router.include_router(billing.router)
 api_router.include_router(chat.router)
+api_router.include_router(admin.router)

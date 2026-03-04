@@ -17,7 +17,7 @@ sync_db_url = settings.database_url.replace("+asyncpg", "+psycopg2").replace(
 )
 sync_engine = create_engine(sync_db_url)
 
-# 每档套餐每月赠送的积分
+# 每档套餐每月赠送的积分（累加到现有余额，不重置）
 PLAN_CREDITS = {
     "starter": 3000,
     "pro": 8000,
@@ -25,9 +25,9 @@ PLAN_CREDITS = {
 }
 
 
-@celery.task(name="app.workers.billing_tasks.reset_subscription_credits")
-def reset_subscription_credits():
-    """每月 1 号重置付费用户的积分余额。"""
+@celery.task(name="app.workers.billing_tasks.add_monthly_subscription_credits")
+def add_monthly_subscription_credits():
+    """每月 1 号给付费用户累加积分（不重置，上月剩余自动累计）。"""
     with Session(sync_engine) as db:
         subs = db.execute(
             select(Subscription).where(Subscription.status == SubStatus.active)
@@ -56,6 +56,6 @@ def reset_subscription_credits():
             db.commit()
 
             logger.info(
-                "Reset credits for user %s: +%d (plan=%s, new_balance=%d)",
+                "Added monthly credits for user %s: +%d (plan=%s, new_balance=%d)",
                 user.id, credits_to_add, sub.plan.value, user.credit_balance,
             )

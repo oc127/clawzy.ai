@@ -35,6 +35,22 @@ class Settings(BaseSettings):
     # --- Credits ---
     signup_bonus_credits: int = 500
 
+    # --- Self-Healing ---
+    cb_failure_threshold: int = 5
+    cb_recovery_timeout: int = 60
+    cb_window_seconds: int = 300
+    retry_max_attempts: int = 2
+    retry_backoff_base: float = 1.0
+
+    # --- Monitoring & Alerting ---
+    alert_webhook_url: str = ""
+    alert_error_rate_threshold: float = 0.3
+    alert_cooldown_seconds: int = 300
+    metrics_retention_hours: int = 24
+
+    # --- Admin ---
+    admin_api_key: str = ""
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

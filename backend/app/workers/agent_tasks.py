@@ -1,7 +1,10 @@
-"""容器健康巡检 + 僵尸容器清理"""
+"""容器健康巡检 + 僵尸清理 + 基础设施深度检查 + 重启循环检测"""
+import asyncio
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 
+import redis as sync_redis
 from sqlalchemy import select, create_engine
 from sqlalchemy.orm import Session
 
@@ -18,10 +21,22 @@ sync_db_url = settings.database_url.replace("+asyncpg", "+psycopg2").replace(
 )
 sync_engine = create_engine(sync_db_url)
 
+# 同步 Redis（Celery 环境）
+_redis = sync_redis.from_url(settings.redis_url)
+
+
+def _send_alert_sync(title: str, message: str, severity: str = "warning") -> None:
+    """同步发送告警（Celery 环境用）。"""
+    try:
+        from app.core.alerting import send_alert_sync
+        send_alert_sync(title, message, severity)
+    except Exception:
+        logger.exception("Failed to send alert: %s", title)
+
 
 @celery.task(name="app.workers.agent_tasks.check_all_agents")
 def check_all_agents():
-    """每 60 秒巡检所有 status='running' 的 Agent，确认容器还活着。"""
+    """每 60 秒巡检所有 running Agent，带深度探测和重启循环检测。"""
     with Session(sync_engine) as db:
         agents = db.execute(
             select(Agent).where(Agent.status == AgentStatus.running)
@@ -34,6 +49,25 @@ def check_all_agents():
             status = docker_manager.get_container_status(agent.container_id)
 
             if status is None or status == "exited":
+                # 重启循环检测：10 分钟内重启 >3 次 → 标记 error + 告警
+                restart_key = f"clawzy:restart_count:{agent.id}"
+                restart_count = _redis.incr(restart_key)
+                _redis.expire(restart_key, 600)  # 10 分钟窗口
+
+                if restart_count > 3:
+                    logger.error(
+                        "Agent %s restart loop (%d restarts in 10min), marking as error",
+                        agent.id, restart_count,
+                    )
+                    agent.status = AgentStatus.error
+                    db.commit()
+                    _send_alert_sync(
+                        f"RESTART LOOP: Agent {agent.id}",
+                        f"Container restarted {restart_count} times in 10 minutes. Marked as error.",
+                        "critical",
+                    )
+                    continue
+
                 logger.warning(
                     "Agent %s container %s is down (status=%s), restarting...",
                     agent.id, agent.container_id, status,
@@ -53,7 +87,7 @@ def check_all_agents():
 
 @celery.task(name="app.workers.agent_tasks.cleanup_zombie_containers")
 def cleanup_zombie_containers():
-    """清理长期不活跃的容器：Free 用户 7 天停止，30 天删除。"""
+    """清理长期不活跃的容器：7 天停止，30 天删除。"""
     now = datetime.now(timezone.utc)
 
     with Session(sync_engine) as db:
@@ -65,18 +99,16 @@ def cleanup_zombie_containers():
 
             inactive_days = (now - agent.last_active_at).days
 
-            # 超过 30 天不活跃 → 删除容器
             if inactive_days >= 30 and agent.container_id:
                 logger.info(
                     "Removing zombie container for agent %s (inactive %d days)",
                     agent.id, inactive_days,
                 )
-                docker_manager.remove_container(agent.container_id)
+                docker_manager.remove_container(agent.container_id, agent.id)
                 agent.container_id = None
                 agent.status = AgentStatus.stopped
                 db.commit()
 
-            # 超过 7 天不活跃 → 停止容器
             elif inactive_days >= 7 and agent.status == AgentStatus.running and agent.container_id:
                 logger.info(
                     "Stopping idle container for agent %s (inactive %d days)",
@@ -85,3 +117,41 @@ def cleanup_zombie_containers():
                 docker_manager.stop_container(agent.container_id)
                 agent.status = AgentStatus.stopped
                 db.commit()
+
+
+@celery.task(name="app.workers.agent_tasks.infrastructure_health_check")
+def infrastructure_health_check():
+    """每 5 分钟：深度探测所有基础设施，存结果到 Redis，异常时告警。"""
+    from app.services.health_service import run_all_health_checks, HealthStatus
+
+    loop = asyncio.new_event_loop()
+    try:
+        results = loop.run_until_complete(run_all_health_checks())
+    finally:
+        loop.close()
+
+    health_data = []
+    for result in results:
+        entry = {
+            "service": result.service,
+            "status": result.status.value,
+            "latency_ms": round(result.latency_ms, 1),
+            "details": result.details,
+            "checked_at": result.checked_at,
+        }
+        health_data.append(entry)
+
+        if result.status == HealthStatus.UNHEALTHY:
+            _send_alert_sync(
+                f"UNHEALTHY: {result.service}",
+                f"Service {result.service} is unhealthy: {result.details}",
+                "critical",
+            )
+        elif result.status == HealthStatus.DEGRADED:
+            _send_alert_sync(
+                f"DEGRADED: {result.service}",
+                f"Service {result.service} is degraded: {result.details}",
+                "warning",
+            )
+
+    _redis.set("clawzy:health:latest", json.dumps(health_data), ex=600)
