@@ -25,6 +25,12 @@ export interface ChatSocket {
   close: () => void;
 }
 
+function getLocaleFromCookie(): string {
+  if (typeof document === "undefined") return "zh";
+  const match = document.cookie.match(/(?:^|;\s*)locale=([^;]*)/);
+  return match ? match[1] : "zh";
+}
+
 export function createChatSocket(
   agentId: string,
   onMessage: (msg: ChatMessage) => void,
@@ -38,21 +44,14 @@ export function createChatSocket(
 
   function connect() {
     const token = localStorage.getItem("token") || "";
+    const locale = getLocaleFromCookie();
     onStatusChange?.("connecting");
 
-    ws = new WebSocket(`${WS_BASE}/ws/chat/${agentId}?token=${token}`);
+    ws = new WebSocket(`${WS_BASE}/ws/chat/${agentId}?token=${token}&locale=${locale}`);
 
     ws.onopen = () => {
       reconnectAttempts = 0;
       onStatusChange?.("connected");
-
-      // 如果是重连，通知用户
-      if (reconnectAttempts === 0 && reconnectTimer !== null) {
-        onMessage({
-          type: "reconnected",
-          content: "重新连上了！我们继续聊吧 🦞",
-        });
-      }
 
       // 心跳保活：每 30 秒发一个 ping
       pingInterval = setInterval(() => {
@@ -94,22 +93,10 @@ export function createChatSocket(
         reconnectAttempts++;
         onStatusChange?.("connecting");
 
-        // 通知用户正在重连
-        onMessage({
-          type: "agent_status",
-          status: "reconnecting",
-          content: `连接断开了，正在重连 (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`,
-        });
-
         reconnectTimer = setTimeout(connect, delay);
       } else {
         // 彻底失败
         onStatusChange?.("disconnected");
-        onMessage({
-          type: "error",
-          code: "connection_lost",
-          content: "龙虾暂时联系不上了 😢 请刷新页面重试",
-        });
       }
     };
 
