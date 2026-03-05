@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 
@@ -8,16 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db, async_session
 from app.core.security import decode_token
+from app.core.ws_relay import connect_to_container, relay
 from app.deps import get_current_user
 from app.i18n import parse_locale
+from app.models.agent import AgentStatus
 from app.models.user import User
 from app.models.chat import Conversation, Message
 from app.schemas.chat import ConversationResponse, MessageResponse
-from app.services.agent_service import get_agent
-from app.services.chat_service import (
-    get_or_create_conversation,
-    stream_chat_completion,
-)
+from app.services.agent_service import get_agent, start_agent
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,26 +23,27 @@ router = APIRouter(tags=["chat"])
 
 
 # --------------------------------------------------------------------------- #
-#  WebSocket — real-time chat
+#  WebSocket — real-time chat (via OpenClaw container relay)
 # --------------------------------------------------------------------------- #
 
 @router.websocket("/ws/chat/{agent_id}")
 async def ws_chat(websocket: WebSocket, agent_id: str):
     """
-    WebSocket chat endpoint.
+    WebSocket chat endpoint — 认证后直连 OpenClaw 容器。
 
     Connection: ws://host/api/v1/ws/chat/{agent_id}?token=<JWT>
 
     Client sends:
       {"type": "message", "content": "hello", "conversation_id": "optional-uuid"}
       {"type": "switch_model", "model": "claude-sonnet"}
+      {"type": "ping"}
 
-    Server sends:
+    Server sends (from OpenClaw container, with credits/persistence injected):
       {"type": "stream", "content": "..."}
       {"type": "done", "usage": {...}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
-    # Authenticate via query param token
+    # --- 1. JWT 认证 ---
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=4001, reason="Missing token")
@@ -57,7 +56,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 
     user_id = payload["sub"]
 
-    # Verify agent ownership
+    # --- 2. 验证用户和 Agent 所有权 ---
     async with async_session() as db:
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -70,90 +69,78 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
             await websocket.close(code=4004, reason="Agent not found")
             return
 
-    await websocket.accept()
+        # --- 3. 自动唤醒龙虾（启动容器）---
+        if agent.status != AgentStatus.running or not agent.container_id:
+            try:
+                await websocket.accept()
+                await websocket.send_text(json.dumps({
+                    "type": "status",
+                    "message": "agent_starting",
+                }))
+                agent = await start_agent(db, agent)
+            except Exception as e:
+                logger.exception("Failed to start agent %s", agent_id)
+                # 如果还没 accept，先 accept 再发错误
+                try:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "code": "agent_start_failed",
+                        "message": str(e),
+                    }))
+                except Exception:
+                    pass
+                await websocket.close(code=4003, reason="Agent start failed")
+                return
+            accepted = True
+        else:
+            accepted = False
 
-    # Parse locale from query params or headers
+        if not accepted:
+            await websocket.accept()
+
+        # --- 4. 连接到 OpenClaw 容器 ---
+        gateway_token = agent.gateway_token or settings.litellm_master_key
+        try:
+            container_ws = await connect_to_container(agent.ws_port, gateway_token)
+        except ConnectionError as e:
+            logger.error("Cannot reach OpenClaw container: %s", e)
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "code": "container_unreachable",
+                "message": "Cannot connect to agent container",
+            }))
+            await websocket.close(code=4003, reason="Container unreachable")
+            return
+
+    # Parse locale
     locale = parse_locale(
         websocket.headers.get("accept-language"),
         websocket.query_params.get("locale"),
     )
 
+    # --- 5. 开始双向中继：浏览器 ↔ 龙虾 ---
     try:
-        while True:
-            try:
-                raw = await asyncio.wait_for(websocket.receive_text(), timeout=300)
-            except asyncio.TimeoutError:
-                logger.info("WebSocket idle timeout: user=%s agent=%s", user_id, agent_id)
-                await websocket.close(code=1000, reason="Idle timeout")
-                return
-            try:
-                data = json.loads(raw)
-            except json.JSONDecodeError:
-                await websocket.send_text(json.dumps({
-                    "type": "error",
-                    "code": "invalid_json",
-                    "message": "Invalid JSON",
-                }))
-                continue
+        async with async_session() as db:
+            # Re-fetch agent in this session so it's attached
+            agent = await get_agent(db, agent_id, user_id)
+            conversation_id = websocket.query_params.get("conversation_id")
 
-            msg_type = data.get("type")
-
-            if msg_type == "message":
-                content = data.get("content", "").strip()
-                if not content:
-                    continue
-
-                conversation_id = data.get("conversation_id")
-
-                async with async_session() as db:
-                    # Re-fetch agent to get latest model_name
-                    agent = await get_agent(db, agent_id, user_id)
-                    if agent is None:
-                        await websocket.send_text(json.dumps({
-                            "type": "error",
-                            "code": "agent_not_found",
-                            "message": "Agent no longer exists",
-                        }))
-                        break
-
-                    # Check credits
-                    result = await db.execute(select(User).where(User.id == user_id))
-                    user = result.scalar_one()
-                    if user.credit_balance <= 0:
-                        await websocket.send_text(json.dumps({
-                            "type": "error",
-                            "code": "insufficient_credits",
-                            "message": "No credits remaining",
-                        }))
-                        continue
-
-                    conv = await get_or_create_conversation(db, agent_id, conversation_id)
-                    await db.commit()
-                    conv_id = conv.id
-
-                    async for event in stream_chat_completion(
-                        db, user_id, agent, conv_id, content, locale=locale
-                    ):
-                        await websocket.send_text(event)
-
-            elif msg_type == "switch_model":
-                new_model = data.get("model", "").strip()
-                if new_model:
-                    async with async_session() as db:
-                        agent = await get_agent(db, agent_id, user_id)
-                        if agent:
-                            agent.model_name = new_model
-                            await db.commit()
-                            await websocket.send_text(json.dumps({
-                                "type": "model_switched",
-                                "model": new_model,
-                            }))
-
-            elif msg_type == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
-
+            await relay(
+                client_ws=websocket,
+                container_ws=container_ws,
+                db=db,
+                user_id=user_id,
+                agent=agent,
+                conversation_id=conversation_id,
+                locale=locale,
+            )
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: user=%s agent=%s", user_id, agent_id)
+    finally:
+        try:
+            await container_ws.close()
+        except Exception:
+            pass
 
 
 # --------------------------------------------------------------------------- #

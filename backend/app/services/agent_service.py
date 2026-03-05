@@ -1,4 +1,5 @@
 import logging
+import secrets
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,6 +60,7 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
         model_name=model_name,
         status=AgentStatus.stopped,
         ws_port=ws_port,
+        gateway_token=secrets.token_urlsafe(32),
     )
     db.add(agent)
     await db.commit()
@@ -135,6 +137,10 @@ async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
         agent.ws_port = await allocate_port(db)
 
     try:
+        # 确保 agent 有独立的 gateway token
+        if not agent.gateway_token:
+            agent.gateway_token = secrets.token_urlsafe(32)
+
         if agent.container_id:
             # Container exists but stopped — restart it
             docker_manager.start_container(agent.container_id)
@@ -142,7 +148,7 @@ async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
             # Create a new container
             container_id = docker_manager.create_agent_container(
                 agent_id=agent.id,
-                gateway_token=settings.litellm_master_key,
+                gateway_token=agent.gateway_token,
                 litellm_key=settings.litellm_master_key,
                 model_name=agent.model_name,
                 ws_port=agent.ws_port,

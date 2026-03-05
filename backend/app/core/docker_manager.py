@@ -1,11 +1,17 @@
 """Docker 容器管理 — 每用户独立网络隔离"""
 
 import logging
+import os
 
 import docker
 from docker.errors import NotFound, APIError
 
 from app.config import settings
+
+# openclaw.json 的宿主机绝对路径（挂载到每个 agent 容器中）
+_OPENCLAW_CONFIG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "openclaw", "openclaw.json")
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +83,14 @@ class DockerManager:
         # 创建独立网络
         network_name = self._get_or_create_agent_network(agent_id)
 
+        # 构建 volume 挂载：将 openclaw.json 只读挂载到容器
+        volumes = {}
+        if os.path.isfile(_OPENCLAW_CONFIG_PATH):
+            volumes[_OPENCLAW_CONFIG_PATH] = {
+                "bind": "/home/node/.openclaw/openclaw.json",
+                "mode": "ro",
+            }
+
         container = self.client.containers.run(
             image=settings.openclaw_image,
             name=f"clawzy-agent-{agent_id}",
@@ -84,10 +98,12 @@ class DockerManager:
             restart_policy={"Name": "unless-stopped"},
             environment={
                 "OPENCLAW_GATEWAY_TOKEN": gateway_token,
+                "OPENCLAW_ALLOW_INSECURE_PRIVATE_WS": "true",
             },
             ports={
                 "18789/tcp": ("127.0.0.1", ws_port),
             },
+            volumes=volumes,
 
             # --- 资源限制 ---
             mem_limit="512m",
@@ -110,6 +126,18 @@ class DockerManager:
                 "clawzy.managed": "true",
             },
         )
+
+        # 额外连接到 compose 主网络，使容器能访问 clawzy-litellm
+        try:
+            compose_net = self.client.networks.get(settings.openclaw_network)
+            compose_net.connect(container)
+            logger.info("Connected container to compose network: %s", settings.openclaw_network)
+        except (NotFound, APIError) as e:
+            logger.warning(
+                "Could not connect container to compose network '%s': %s",
+                settings.openclaw_network, e,
+            )
+
         logger.info(
             "Created container %s for agent %s on network %s",
             container.short_id, agent_id, network_name,
