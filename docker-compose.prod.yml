@@ -26,6 +26,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -49,6 +51,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -85,6 +89,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -140,6 +146,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -169,6 +177,8 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -194,6 +204,8 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -226,6 +238,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -252,6 +266,8 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+    networks:
+      - clawzy-network
     deploy:
       resources:
         limits:
@@ -261,3 +277,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  clawzy-network:
+    name: clawzy-network
+    driver: bridge
