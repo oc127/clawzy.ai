@@ -112,10 +112,10 @@ fi
 # ---------------------------------------------------------------------------
 log "Pulling Docker images..."
 cd "$DEPLOY_DIR"
-docker compose pull
+docker compose -f docker-compose.prod.yml pull
 
 log "Starting services..."
-docker compose up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # ---------------------------------------------------------------------------
 # 7. Health check
@@ -160,13 +160,15 @@ echo ""
 echo "============================================="
 echo " Clawzy.ai — Deployment Summary"
 echo "============================================="
+echo " Nginx:          http://80 / https://443"
+echo " Backend API:    http://127.0.0.1:8000"
+echo " Frontend:       http://127.0.0.1:3000"
 echo " LiteLLM Proxy:  http://127.0.0.1:4000"
-echo " LiteLLM UI:     http://127.0.0.1:4000/ui"
-echo " OpenClaw GW:    ws://127.0.0.1:18789"
-echo " OpenClaw Bridge: http://127.0.0.1:18790"
 echo ""
 echo " Next steps:"
-echo "   1. Edit .env with your API keys"
-echo "   2. docker compose restart"
-echo "   3. Test: curl http://127.0.0.1:4000/v1/models"
+echo "   1. Edit .env with your API keys (DEEPSEEK/DASHSCOPE)"
+echo "   2. docker compose -f docker-compose.prod.yml restart"
+echo "   3. Setup SSL cert at /etc/ssl/clawzy/{cert,key}.pem"
+echo "   4. Point DNS (clawzy.ai) to this server"
+echo "   5. Test: bash scripts/smoke-test.sh"
 echo "============================================="

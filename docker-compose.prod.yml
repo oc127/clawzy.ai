@@ -258,6 +258,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/ssl/clawzy:/etc/ssl/clawzy:ro
     ports:
       - "80:80"
       - "443:443"

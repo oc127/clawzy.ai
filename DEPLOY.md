@@ -1,7 +1,7 @@
-# Clawzy.ai — PoC 部署指南
+# Clawzy.ai — 部署指南
 
 > 目标：阿里云新加坡 ECS (4C8G Ubuntu 22.04)
-> 架构：OpenClaw + LiteLLM Proxy + PostgreSQL，Docker Compose 编排
+> 架构：Nginx + Next.js + FastAPI + OpenClaw + LiteLLM + PostgreSQL + Redis
 > 模型：DeepSeek (V3 Chat / R1 Reasoner) + Qwen (Max / Plus / Turbo)
 
 ---
@@ -9,54 +9,55 @@
 ## 架构图
 
 ```
-┌─────────────────────────────────────────────────┐
-│               Alibaba Cloud ECS                 │
-│               4C8G Singapore                    │
-│                                                 │
-│  ┌───────────────┐     ┌─────────────────────┐  │
-│  │  OpenClaw GW  │────▶│   LiteLLM Proxy     │  │
-│  │  :18789/18790 │     │   :4000             │  │
-│  └───────────────┘     │                     │  │
-│                        │  ┌───────┐ ┌──────┐ │  │
-│                        │  │DeepSk │ │ Qwen │ │  │
-│                        │  │ API   │ │DashSc│ │  │
-│                        │  └───────┘ └──────┘ │  │
-│                        └──────────┬──────────┘  │
-│                                   │             │
-│                        ┌──────────▼──────────┐  │
-│                        │   PostgreSQL 16     │  │
-│                        │   :5432             │  │
-│                        └─────────────────────┘  │
-└─────────────────────────────────────────────────┘
+                    Internet
+                       │
+                       ▼
+              ┌────────────────┐
+              │   Nginx :80/443│  ← SSL termination
+              └───────┬────────┘
+           ┌──────────┼──────────┐
+           ▼          ▼          ▼
+     ┌──────────┐ ┌────────┐ ┌────────────┐
+     │ Next.js  │ │FastAPI │ │ WebSocket  │
+     │ :3000    │ │ :8000  │ │ /ws/chat/* │
+     └──────────┘ └───┬────┘ └─────┬──────┘
+                      │            │
+              ┌───────┴────┐  ┌────▼──────────┐
+              │ PostgreSQL │  │ OpenClaw      │
+              │ :5432      │  │ Containers    │
+              ├────────────┤  │ (per user)    │
+              │ Redis      │  └────┬──────────┘
+              │ :6379      │       │
+              └────────────┘  ┌────▼──────────┐
+                              │ LiteLLM Proxy │
+                              │ :4000         │
+                              │ ├─ DeepSeek   │
+                              │ ├─ Qwen       │
+                              │ └─ (扩展...)   │
+                              └───────────────┘
 ```
 
 ---
 
 ## Step 0: 准备工作
 
-在开始之前，确保你有：
-
 | 项目 | 获取方式 |
 |------|----------|
 | 阿里云 ECS 实例 | 控制台创建，选新加坡区，4C8G，Ubuntu 22.04 |
 | SSH 密钥/密码 | 创建 ECS 时设置 |
+| 域名 (clawzy.ai) | DNS A 记录指向 ECS 公网 IP |
+| SSL 证书 | Let's Encrypt 或 Cloudflare Origin Certificate |
 | DeepSeek API Key | [platform.deepseek.com](https://platform.deepseek.com/api_keys) |
 | DashScope API Key (Qwen) | [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com/) |
+| Stripe 账号 (可选) | 用于付费订阅功能 |
 
 ---
 
 ## Step 1: SSH 登录服务器
 
 ```bash
-# 替换为你的 ECS 公网 IP
 ssh root@<YOUR_ECS_IP>
 
-# 如果用密钥文件
-ssh -i ~/.ssh/your-key.pem root@<YOUR_ECS_IP>
-```
-
-首次登录建议：
-```bash
 # 创建非 root 用户（推荐）
 adduser clawzy
 usermod -aG sudo clawzy
@@ -65,56 +66,7 @@ su - clawzy
 
 ---
 
-## Step 2: 安装 Docker
-
-```bash
-# 更新系统
-sudo apt-get update && sudo apt-get upgrade -y
-
-# 安装依赖
-sudo apt-get install -y ca-certificates curl gnupg lsb-release git jq
-
-# 添加 Docker 官方 GPG key
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-# 添加 Docker 仓库
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-  https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-# 安装 Docker
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io \
-  docker-buildx-plugin docker-compose-plugin
-
-# 将当前用户加入 docker 组（免 sudo）
-sudo usermod -aG docker $USER
-newgrp docker
-
-# 验证
-docker --version
-docker compose version
-```
-
-> **国内镜像加速**：如果从新加坡拉 Docker Hub 慢，可配置阿里云镜像加速器：
-> ```bash
-> sudo mkdir -p /etc/docker
-> sudo tee /etc/docker/daemon.json <<EOF
-> {
->   "registry-mirrors": ["https://<your-id>.mirror.aliyuncs.com"]
-> }
-> EOF
-> sudo systemctl restart docker
-> ```
-
----
-
-## Step 3: 克隆项目 & 配置
+## Step 2: 一键初始化
 
 ```bash
 # 克隆项目
@@ -123,93 +75,133 @@ sudo mkdir -p clawzy && sudo chown $USER:$USER clawzy
 git clone <YOUR_REPO_URL> clawzy
 cd clawzy
 
-# 从模板创建 .env
-cp .env.example .env
-chmod 600 .env
+# 运行初始化脚本（安装 Docker、防火墙、生成密钥）
+bash scripts/setup-server.sh
 ```
 
-编辑 `.env`，填入你的 API Key：
+这个脚本会自动：
+- 安装 Docker + Docker Compose
+- 配置 UFW 防火墙（只开 22/80/443）
+- 从 `.env.example` 生成 `.env` 并自动生成随机密钥
+- 拉取镜像并启动所有服务
+- 配置数据库备份 cron（每 6 小时）
+
+---
+
+## Step 3: 填写 API Key
+
 ```bash
-nano .env
+nano /opt/clawzy/.env
 ```
 
-需要修改的关键项：
+**必填**：
 ```env
-# 自动生成 or 手动设置安全的密码
-POSTGRES_PASSWORD=<生成一个强密码>
-LITELLM_MASTER_KEY=sk-clawzy-<随机字符串>
-LITELLM_SALT_KEY=salt-<随机字符串>
-
-# ⬇️ 这两个必须填你自己的 API Key
 DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxx
 DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxx
-
-# OpenClaw gateway token
-OPENCLAW_GATEWAY_TOKEN=<随机字符串>
+JWT_SECRET=<openssl rand -hex 32 的输出>
 ```
 
-快速生成随机密钥：
+**可选（付费功能）**：
+```env
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PRICE_STARTER=price_xxx
+STRIPE_PRICE_PRO=price_xxx
+STRIPE_PRICE_BUSINESS=price_xxx
+```
+
+**可选（邮件）**：
+```env
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USER=resend
+SMTP_PASSWORD=re_xxx
+SMTP_FROM_EMAIL=noreply@clawzy.ai
+```
+
+修改后重启：
 ```bash
-# 生成各项密钥
-echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
-echo "LITELLM_MASTER_KEY=sk-clawzy-$(openssl rand -hex 16)"
-echo "LITELLM_SALT_KEY=salt-$(openssl rand -hex 16)"
-echo "OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32)"
+docker compose -f docker-compose.prod.yml restart
 ```
 
 ---
 
-## Step 4: 配置防火墙
+## Step 4: 配置 SSL 证书
+
+### 方案 A: Let's Encrypt (推荐)
 
 ```bash
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 22/tcp     # SSH
-sudo ufw allow 80/tcp     # HTTP（后续 Nginx）
-sudo ufw allow 443/tcp    # HTTPS（后续 Nginx）
-sudo ufw enable
+# 安装 certbot
+sudo apt install -y certbot
+
+# 先临时停 Nginx
+docker compose -f docker-compose.prod.yml stop nginx
+
+# 生成证书
+sudo certbot certonly --standalone -d clawzy.ai -d www.clawzy.ai
+
+# 复制到 Nginx 期望的路径
+sudo mkdir -p /etc/ssl/clawzy
+sudo cp /etc/letsencrypt/live/clawzy.ai/fullchain.pem /etc/ssl/clawzy/cert.pem
+sudo cp /etc/letsencrypt/live/clawzy.ai/privkey.pem /etc/ssl/clawzy/key.pem
+
+# 重启 Nginx
+docker compose -f docker-compose.prod.yml start nginx
 ```
 
-> LiteLLM (:4000) 和 OpenClaw (:18789/:18790) 都绑定在 127.0.0.1，不会暴露到公网。
+自动续期：
+```bash
+# 添加 cron
+echo "0 3 * * * certbot renew --pre-hook 'docker compose -f /opt/clawzy/docker-compose.prod.yml stop nginx' --post-hook 'cp /etc/letsencrypt/live/clawzy.ai/fullchain.pem /etc/ssl/clawzy/cert.pem && cp /etc/letsencrypt/live/clawzy.ai/privkey.pem /etc/ssl/clawzy/key.pem && docker compose -f /opt/clawzy/docker-compose.prod.yml start nginx'" | sudo tee -a /etc/crontab
+```
+
+### 方案 B: Cloudflare Origin Certificate
+
+1. Cloudflare Dashboard → SSL/TLS → Origin Server → Create Certificate
+2. 下载 cert.pem 和 key.pem 到 `/etc/ssl/clawzy/`
+3. Cloudflare SSL 模式设为 `Full (strict)`
 
 ---
 
-## Step 5: 启动服务
+## Step 5: 配置 Nginx SSL 挂载
 
-```bash
-cd /opt/clawzy
+生产环境的 Nginx 需要挂载 SSL 证书目录。编辑 `docker-compose.prod.yml`，给 nginx 服务添加证书卷：
 
-# 拉取镜像
-docker compose pull
-
-# 启动所有服务（后台运行）
-docker compose up -d
-
-# 查看日志
-docker compose logs -f
-
-# 查看运行状态
-docker compose ps
+```yaml
+  nginx:
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/ssl/clawzy:/etc/ssl/clawzy:ro    # ← 添加这行
 ```
-
-启动顺序：PostgreSQL → LiteLLM (等 PG healthy) → OpenClaw (等 LiteLLM healthy)
 
 ---
 
-## Step 6: 验证部署
-
-### 6.1 检查服务状态
+## Step 6: 运行数据库迁移
 
 ```bash
-# 所有容器应该是 Up (healthy)
-docker compose ps
-
-# 检查 LiteLLM 健康
-curl http://127.0.0.1:4000/health/liveliness
-# 期望: {"status":"healthy"}
+docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 ```
 
-### 6.2 查看可用模型
+---
+
+## Step 7: 验证部署
+
+```bash
+# 一键验证
+bash scripts/smoke-test.sh
+
+# 或者手动检查
+curl http://127.0.0.1:8000/health              # Backend
+curl http://127.0.0.1:4000/health/liveliness    # LiteLLM
+curl http://127.0.0.1:3000                      # Frontend
+curl -k https://clawzy.ai/health                # 通过 Nginx
+
+# 检查所有容器状态
+docker compose -f docker-compose.prod.yml ps
+```
+
+### 验证模型可用
 
 ```bash
 source .env
@@ -226,48 +218,21 @@ curl -s http://127.0.0.1:4000/v1/models \
 "qwen-turbo"
 ```
 
-### 6.3 测试 DeepSeek 模型
-
-```bash
-curl -s http://127.0.0.1:4000/v1/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "deepseek-chat",
-    "messages": [{"role": "user", "content": "你好，请用一句话介绍你自己。"}],
-    "max_tokens": 100
-  }' | jq '.choices[0].message.content'
-```
-
-### 6.4 测试 Qwen 模型
-
-```bash
-curl -s http://127.0.0.1:4000/v1/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "qwen-turbo",
-    "messages": [{"role": "user", "content": "你好，请用一句话介绍你自己。"}],
-    "max_tokens": 100
-  }' | jq '.choices[0].message.content'
-```
-
-### 6.5 一键 Smoke Test
-
-```bash
-bash scripts/smoke-test.sh
-```
-
 ---
 
-## Step 7: 使用 OpenClaw CLI（可选）
+## 后续部署（更新代码）
 
 ```bash
-# 首次 onboard
-docker compose run --rm openclaw-cli onboard
+cd /opt/clawzy
+bash scripts/deploy.sh
+```
 
-# 启动 CLI 交互
-docker compose --profile cli run --rm openclaw-cli
+这个脚本会自动：拉代码 → 构建镜像 → 启动服务 → 运行迁移 → 冒烟测试
+
+跳过构建或迁移：
+```bash
+bash scripts/deploy.sh --skip-build
+bash scripts/deploy.sh --skip-migrate
 ```
 
 ---
@@ -276,32 +241,34 @@ docker compose --profile cli run --rm openclaw-cli
 
 ```bash
 # 查看日志
-docker compose logs -f litellm          # LiteLLM 日志
-docker compose logs -f openclaw-gateway  # OpenClaw 日志
-docker compose logs -f postgres          # PostgreSQL 日志
+docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f web
+docker compose -f docker-compose.prod.yml logs -f nginx
+docker compose -f docker-compose.prod.yml logs -f litellm
 
 # 重启单个服务
-docker compose restart litellm
+docker compose -f docker-compose.prod.yml restart backend
 
-# 更新镜像并重启
-docker compose pull && docker compose up -d
+# 数据库备份（手动）
+bash scripts/backup-db.sh
 
 # 停止所有服务
-docker compose down
+docker compose -f docker-compose.prod.yml down
 
-# 停止并清除数据（慎用）
-docker compose down -v
+# 停止并清除数据（⚠️ 慎用）
+docker compose -f docker-compose.prod.yml down -v
 ```
 
 ---
 
 ## 安全备忘
 
-- `.env` 文件权限设为 `600`，只有 owner 可读写
-- 所有内部服务端口绑定 `127.0.0.1`，不暴露到公网
-- 后续加 Nginx 反向代理 + Let's Encrypt SSL
-- 定期备份 PostgreSQL 数据
-- LiteLLM `LITELLM_SALT_KEY` 一旦设定不可更改
+- `.env` 权限 `600`，只有 owner 可读写
+- 所有内部端口绑定 `127.0.0.1`，只有 Nginx 暴露 80/443
+- UFW 只开 SSH (22) / HTTP (80) / HTTPS (443)
+- `LITELLM_SALT_KEY` 一旦设定**不可更改**
+- 每 6 小时自动备份 PostgreSQL（setup-server.sh 已配置）
+- Stripe Webhook 通过签名验证，不需要额外鉴权
 
 ---
 
@@ -309,16 +276,22 @@ docker compose down -v
 
 ```
 clawzy.ai/
-├── docker-compose.yml          # 服务编排
+├── docker-compose.yml          # 开发环境编排
+├── docker-compose.prod.yml     # 生产环境编排
 ├── .env.example                # 环境变量模板
 ├── .env                        # 实际配置（不入 git）
-├── .gitignore
-├── DEPLOY.md                   # 本文档
+├── backend/                    # FastAPI 后端
+├── web/                        # Next.js 前端
+├── nginx/                      # Nginx 反向代理配置
+│   ├── nginx.conf
+│   └── conf.d/clawzy.conf
 ├── litellm/
 │   └── config.yaml             # LiteLLM 模型路由配置
 ├── openclaw/
-│   └── openclaw.json           # OpenClaw 模型提供者配置
+│   └── openclaw.json           # OpenClaw 模型配置
 └── scripts/
     ├── setup-server.sh         # 一键服务器初始化
-    └── smoke-test.sh           # 部署验证测试
+    ├── deploy.sh               # 生产部署脚本
+    ├── smoke-test.sh           # 部署验证测试
+    └── backup-db.sh            # 数据库备份
 ```
