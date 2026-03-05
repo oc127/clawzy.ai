@@ -17,6 +17,7 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const statusLabels: Record<string, string> = {
     running: t("statusRunning"),
@@ -44,7 +45,7 @@ export default function AgentsPage() {
       const updated = await startAgent(id);
       setAgents((prev) => prev.map((a) => (a.id === id ? updated : a)));
     } catch (e: any) {
-      alert(e.message || t("startFailed"));
+      setErrorMsg(e.message || t("startFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -56,7 +57,7 @@ export default function AgentsPage() {
       const updated = await stopAgent(id);
       setAgents((prev) => prev.map((a) => (a.id === id ? updated : a)));
     } catch (e: any) {
-      alert(e.message || t("stopFailed"));
+      setErrorMsg(e.message || t("stopFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -73,6 +74,13 @@ export default function AgentsPage() {
   return (
     <div className="p-10 max-w-3xl">
       <h1 className="text-xl font-semibold text-foreground tracking-tight mb-8">{t("title")}</h1>
+
+      {errorMsg && (
+        <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-between">
+          <span className="text-xs text-red-400">{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="text-xs text-red-400 hover:text-red-300 ml-4">×</button>
+        </div>
+      )}
 
       {agents.length === 0 ? (
         <p className="text-sm text-muted">{t("noLobster")}</p>

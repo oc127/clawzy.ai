@@ -88,6 +88,19 @@ export default function ChatPage() {
             ]);
             break;
 
+          case "status":
+            // Backend sends status during container lifecycle (agent_starting, etc.)
+            if (msg.message === "agent_starting") {
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "system") {
+                  return [...prev.slice(0, -1), { role: "system", content: t("lobsterWaking") }];
+                }
+                return [...prev, { role: "system", content: t("lobsterWaking") }];
+              });
+            }
+            break;
+
           case "agent_status":
             if (msg.status === "reconnecting") {
               setMessages((prev) => {

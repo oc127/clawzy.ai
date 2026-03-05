@@ -23,6 +23,7 @@ export default function BillingPage() {
   const [credits, setCredits] = useState<CreditsInfo | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const planNames: Record<string, string> = {
     free: t("planFree"),
@@ -45,7 +46,7 @@ export default function BillingPage() {
       const { url } = await createCheckoutSession(priceId);
       window.location.href = url;
     } catch (e: any) {
-      alert(e.message || t("checkoutFailed"));
+      setErrorMsg(e.message || t("checkoutFailed"));
       setUpgrading(null);
     }
   }
@@ -53,6 +54,13 @@ export default function BillingPage() {
   return (
     <div className="p-10 max-w-3xl">
       <h1 className="text-xl font-semibold text-foreground tracking-tight mb-8">{t("title")}</h1>
+
+      {errorMsg && (
+        <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-between">
+          <span className="text-xs text-red-400">{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="text-xs text-red-400 hover:text-red-300 ml-4">×</button>
+        </div>
+      )}
 
       {credits && (
         <div className="border border-border rounded-lg p-6 mb-8">
@@ -77,7 +85,7 @@ export default function BillingPage() {
                     const { url } = await createPortalSession();
                     window.location.href = url;
                   } catch {
-                    alert(t("portalFailed"));
+                    setErrorMsg(t("portalFailed"));
                   }
                 }}
                 className="text-xs text-accent hover:text-accent-hover transition-colors"

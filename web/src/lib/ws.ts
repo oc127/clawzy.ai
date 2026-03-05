@@ -11,8 +11,9 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 const BASE_DELAY_MS = 1000;
 
 export interface ChatMessage {
-  type: "message" | "stream" | "done" | "error" | "agent_status" | "model_switched" | "pong" | "reconnected";
+  type: "message" | "stream" | "done" | "error" | "status" | "agent_status" | "model_switched" | "pong" | "reconnected";
   content?: string;
+  message?: string;
   usage?: { credits: number; balance: number | null };
   code?: string;
   status?: string;

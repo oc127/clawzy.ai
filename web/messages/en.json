@@ -99,6 +99,7 @@
     "lobsterWaking": "🦞 Lobster is waking up...",
     "myLobsters": "My Lobsters",
     "manageLobsters": "Manage Lobsters",
+    "availableBrains": "Available Brains",
     "energyAndPlans": "Energy & Plans",
     "energyAvailable": "⚡ {balance} energy",
     "hello": "Hello, {name} 👋",
@@ -148,7 +149,8 @@
     "inputPlaceholder": "Talk to your lobster...",
     "inputConnecting": "Lobster is connecting...",
     "errorFallback": "Your lobster had a little hiccup, try again later 🦞",
-    "reconnected": "I'm back! 🦞"
+    "reconnected": "I'm back! 🦞",
+    "lobsterWaking": "🦞 Lobster is waking up..."
   },
   "billing": {
     "title": "Energy & Plans",
@@ -170,6 +172,13 @@
     "planStarter": "Lobster",
     "planPro": "Big Lobster",
     "planBusiness": "Super Lobster"
+  },
+  "models": {
+    "title": "Available Brains",
+    "description": "Browse all brain models your lobster can use",
+    "noModels": "No models available",
+    "inputCost": "Input: {cost}/1K",
+    "outputCost": "Output: {cost}/1K"
   },
   "settings": {
     "title": "Settings",

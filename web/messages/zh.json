@@ -99,6 +99,7 @@
     "lobsterWaking": "🦞 龙虾正在醒来...",
     "myLobsters": "我的龙虾",
     "manageLobsters": "管理龙虾",
+    "availableBrains": "可用大脑",
     "energyAndPlans": "能量 & 套餐",
     "energyAvailable": "⚡ {balance} 能量",
     "hello": "你好，{name} 👋",
@@ -148,7 +149,8 @@
     "inputPlaceholder": "对龙虾说...",
     "inputConnecting": "龙虾正在连接中...",
     "errorFallback": "龙虾遇到了点小问题，稍后再试试吧 🦞",
-    "reconnected": "我回来了 🦞"
+    "reconnected": "我回来了 🦞",
+    "lobsterWaking": "🦞 龙虾正在苏醒..."
   },
   "billing": {
     "title": "能量 & 套餐",
@@ -170,6 +172,13 @@
     "planStarter": "小龙虾",
     "planPro": "大龙虾",
     "planBusiness": "超级龙虾"
+  },
+  "models": {
+    "title": "可用大脑",
+    "description": "浏览龙虾可以使用的所有大脑模型",
+    "noModels": "暂无可用模型",
+    "inputCost": "输入: {cost}/千",
+    "outputCost": "输出: {cost}/千"
   },
   "settings": {
     "title": "设置",
