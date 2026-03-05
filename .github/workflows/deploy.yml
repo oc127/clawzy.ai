@@ -21,10 +21,14 @@ jobs:
           script: |
             cd /opt/clawzy
             git pull origin main
-            docker compose pull
-            docker compose build backend
-            docker compose build web 2>/dev/null || true
-            docker compose up -d
-            sleep 10
-            curl -sf http://127.0.0.1:8000/health || echo "WARNING: Backend health check failed"
+            docker compose -f docker-compose.prod.yml build --parallel
+            docker compose -f docker-compose.prod.yml up -d
+            echo "Waiting for backend..."
+            for i in $(seq 1 30); do
+              curl -sf http://127.0.0.1:8000/health > /dev/null 2>&1 && break
+              [ "$i" = "30" ] && { echo "ERROR: Backend health check failed"; docker compose -f docker-compose.prod.yml logs backend --tail=30; exit 1; }
+              sleep 1
+            done
+            echo "Running migrations..."
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
             echo "Deploy complete at $(date)"

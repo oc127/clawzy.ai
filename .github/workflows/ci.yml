@@ -50,6 +50,25 @@ jobs:
       - name: Build
         run: npm run build --prefix web
 
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan Python dependencies
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements.txt
+      - name: Scan npm dependencies
+        run: npm audit --prefix web --audit-level=high || true
+      - name: Check for secrets in code
+        run: |
+          pip install detect-secrets
+          detect-secrets scan --baseline .secrets.baseline || detect-secrets scan
+
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -62,4 +81,4 @@ jobs:
       - name: Build frontend image
         run: docker build -t clawzy-web ./web
       - name: Verify compose config
-        run: docker compose config --quiet
+        run: docker compose -f docker-compose.prod.yml config --quiet

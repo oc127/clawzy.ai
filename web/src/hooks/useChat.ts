@@ -46,7 +46,7 @@ export function useChat({ agentId, onStatus }: UseChatOptions) {
           );
         }
       })
-      .catch(() => {});
+      .catch((e: unknown) => console.error("Failed to load chat history:", e));
   }, [agentId]);
 
   // WebSocket connection

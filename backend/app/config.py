@@ -1,3 +1,5 @@
+import warnings
+
 from pydantic_settings import BaseSettings
 
 
@@ -71,5 +73,18 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
+    def validate_secrets(self) -> None:
+        if self.jwt_secret == "change-me-jwt-secret":
+            raise RuntimeError(
+                "JWT_SECRET is still the default placeholder. "
+                "Generate a real secret: openssl rand -hex 32"
+            )
+        if self.litellm_master_key == "sk-clawzy-change-me":
+            warnings.warn(
+                "LITELLM_MASTER_KEY is still the default placeholder",
+                stacklevel=2,
+            )
+
 
 settings = Settings()
+settings.validate_secrets()

@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const statusLabels: Record<string, string> = {
     running: t("statusRunning"),
@@ -40,8 +41,8 @@ export default function DashboardPage() {
     try {
       const agent = await createAgent("My Lobster", "deepseek-chat");
       setAgents((prev) => [agent, ...prev]);
-    } catch {
-      // ignore
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : "Failed to create lobster");
     } finally {
       setCreating(false);
     }
@@ -53,6 +54,12 @@ export default function DashboardPage() {
 
   return (
     <div className="p-10 max-w-3xl">
+      {errorMsg && (
+        <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-between">
+          <span className="text-xs text-red-400">{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="text-xs text-red-400 hover:text-red-300 ml-4">×</button>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-xl font-semibold text-foreground tracking-tight">

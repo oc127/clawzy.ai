@@ -148,7 +148,8 @@
     "inputPlaceholder": "랍스터에게 말하기...",
     "inputConnecting": "랍스터 연결 중...",
     "errorFallback": "랍스터가 잠깐 문제가 생겼어요, 나중에 다시 시도해 주세요 🦞",
-    "reconnected": "돌아왔어요! 🦞"
+    "reconnected": "돌아왔어요! 🦞",
+    "lobsterWaking": "🦞 랍스터가 깨어나고 있어요..."
   },
   "billing": {
     "title": "에너지 & 플랜",
@@ -170,6 +171,13 @@
     "planStarter": "랍스터",
     "planPro": "빅 랍스터",
     "planBusiness": "슈퍼 랍스터"
+  },
+  "models": {
+    "title": "사용 가능한 브레인",
+    "description": "랍스터가 사용할 수 있는 모든 브레인 모델 보기",
+    "noModels": "사용 가능한 모델이 없습니다",
+    "inputCost": "입력: {cost}/1K",
+    "outputCost": "출력: {cost}/1K"
   },
   "settings": {
     "title": "설정",

@@ -15,11 +15,12 @@ export default function ModelsPage() {
   const tc = useTranslations("common");
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     listModels()
       .then((data) => setModels(data.models || []))
-      .catch(() => {})
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load models"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -34,7 +35,13 @@ export default function ModelsPage() {
       </h1>
       <p className="text-sm text-muted mb-8">{t("description")}</p>
 
-      {models.length === 0 ? (
+      {error && (
+        <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <span className="text-xs text-red-400">{error}</span>
+        </div>
+      )}
+
+      {models.length === 0 && !error ? (
         <p className="text-sm text-muted">{t("noModels")}</p>
       ) : (
         <div className="space-y-3">

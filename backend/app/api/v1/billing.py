@@ -59,6 +59,11 @@ async def list_plans():
     return PLANS
 
 
+def _require_stripe():
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Billing is not configured")
+
+
 @router.post("/checkout")
 async def create_checkout(
     price_id: str,
@@ -66,6 +71,7 @@ async def create_checkout(
     db: AsyncSession = Depends(get_db),
 ):
     """创建 Stripe Checkout Session，返回支付页面 URL。"""
+    _require_stripe()
     url = await billing_service.create_checkout_session(db, user, price_id)
     return {"url": url}
 
@@ -73,6 +79,7 @@ async def create_checkout(
 @router.post("/portal")
 async def create_portal(user: User = Depends(get_current_user)):
     """创建 Stripe Customer Portal，用户管理订阅。"""
+    _require_stripe()
     if not user.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No active subscription")
     url = await billing_service.create_portal_session(user)

@@ -26,6 +26,19 @@ fi
 SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
 echo "[$(date)] Backup created: ${BACKUP_FILE} (${SIZE})"
 
+# 上传到阿里云 OSS（如果 ossutil 已安装且配置了 bucket）
+OSS_BUCKET="${OSS_BUCKET:-}"
+if [ -n "$OSS_BUCKET" ] && command -v ossutil64 &> /dev/null; then
+    echo "[$(date)] Uploading to OSS: ${OSS_BUCKET}"
+    if ossutil64 cp "$BACKUP_FILE" "oss://${OSS_BUCKET}/backups/clawzy_${TIMESTAMP}.sql.gz" --force; then
+        echo "[$(date)] OSS upload complete."
+    else
+        echo "[$(date)] WARNING: OSS upload failed, local backup is still available."
+    fi
+elif [ -n "$OSS_BUCKET" ]; then
+    echo "[$(date)] WARNING: OSS_BUCKET set but ossutil64 not found. Install: https://help.aliyun.com/document_detail/120075.html"
+fi
+
 # 清理过期备份
 DELETED=$(find "$BACKUP_DIR" -name "clawzy_*.sql.gz" -mtime "+${RETENTION_DAYS}" -delete -print | wc -l)
 echo "[$(date)] Cleaned up ${DELETED} backups older than ${RETENTION_DAYS} days"

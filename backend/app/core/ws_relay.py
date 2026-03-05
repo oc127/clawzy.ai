@@ -9,8 +9,10 @@
 """
 
 import asyncio
+import collections
 import json
 import logging
+import time
 from datetime import datetime, timezone
 
 import websockets
@@ -33,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 CONTAINER_CONNECT_TIMEOUT = 15  # 秒，等待容器就绪
 CONTAINER_CONNECT_RETRY_INTERVAL = 1.0
+WS_MSG_RATE_LIMIT = 30  # 每用户每分钟最大消息数
+WS_RATE_WINDOW = 60  # 滑动窗口（秒）
 
 
 async def connect_to_container(
@@ -90,10 +94,25 @@ async def relay(
     async def client_to_container():
         """浏览器 → 容器：拦截 message 存 DB，ping 本地处理，其余转发。"""
         nonlocal conv_id
+        msg_timestamps: collections.deque[float] = collections.deque()
 
         try:
             while True:
                 raw = await asyncio.wait_for(client_ws.receive_text(), timeout=300)
+
+                # 消息级限流：滑动窗口
+                now = time.monotonic()
+                while msg_timestamps and now - msg_timestamps[0] > WS_RATE_WINDOW:
+                    msg_timestamps.popleft()
+                if len(msg_timestamps) >= WS_MSG_RATE_LIMIT:
+                    await client_ws.send_text(json.dumps({
+                        "type": "error",
+                        "code": "rate_limited",
+                        "message": "Too many messages, please slow down",
+                    }))
+                    continue
+                msg_timestamps.append(now)
+
                 try:
                     data = json.loads(raw)
                 except json.JSONDecodeError:

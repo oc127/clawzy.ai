@@ -44,8 +44,8 @@ export default function AgentsPage() {
     try {
       const updated = await startAgent(id);
       setAgents((prev) => prev.map((a) => (a.id === id ? updated : a)));
-    } catch (e: any) {
-      setErrorMsg(e.message || t("startFailed"));
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : t("startFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -56,8 +56,8 @@ export default function AgentsPage() {
     try {
       const updated = await stopAgent(id);
       setAgents((prev) => prev.map((a) => (a.id === id ? updated : a)));
-    } catch (e: any) {
-      setErrorMsg(e.message || t("stopFailed"));
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : t("stopFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -65,8 +65,12 @@ export default function AgentsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("confirmDelete"))) return;
-    await deleteAgent(id);
-    setAgents((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await deleteAgent(id);
+      setAgents((prev) => prev.filter((a) => a.id !== id));
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : "Delete failed");
+    }
   }
 
   if (loading) return <div className="p-10 text-sm text-muted">{tc("loading")}</div>;

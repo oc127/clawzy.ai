@@ -95,6 +95,11 @@ if [ ! -f "$DEPLOY_DIR/.env" ]; then
     sed -i "s/salt-clawzy-change-me/$SALT_KEY/" "$DEPLOY_DIR/.env"
     sed -i "s/change-me-openclaw-gateway-token/$GW_TOKEN/" "$DEPLOY_DIR/.env"
 
+    JWT_SEC=$(openssl rand -hex 32)
+    ADMIN_KEY=$(openssl rand -hex 16)
+    sed -i "s/change-me-jwt-secret/$JWT_SEC/" "$DEPLOY_DIR/.env"
+    sed -i "s/^ADMIN_API_KEY=$/ADMIN_API_KEY=$ADMIN_KEY/" "$DEPLOY_DIR/.env"
+
     warn "Auto-generated secrets in .env"
     warn "You MUST edit $DEPLOY_DIR/.env to add:"
     warn "  - DEEPSEEK_API_KEY"

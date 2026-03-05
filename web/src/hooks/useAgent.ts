@@ -13,11 +13,12 @@ import {
 export function useAgents() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     listAgents()
       .then(setAgents)
-      .catch(() => {})
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load agents"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -44,5 +45,5 @@ export function useAgents() {
     return updated;
   }, []);
 
-  return { agents, loading, createAgent, deleteAgent, startAgent, stopAgent };
+  return { agents, loading, error, createAgent, deleteAgent, startAgent, stopAgent };
 }

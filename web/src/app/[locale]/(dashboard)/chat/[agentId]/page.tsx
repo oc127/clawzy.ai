@@ -47,7 +47,7 @@ export default function ChatPage() {
           scrollToBottom();
         }
       })
-      .catch(() => {});
+      .catch((e: unknown) => console.error("Failed to load chat history:", e));
   }, [agentId, scrollToBottom]);
 
   useEffect(() => {
