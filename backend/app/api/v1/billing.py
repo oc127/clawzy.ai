@@ -113,6 +113,10 @@ async def stripe_webhook(
         await billing_service.handle_subscription_updated(db, data)
     elif event_type == "customer.subscription.deleted":
         await billing_service.handle_subscription_deleted(db, data)
+    elif event_type == "invoice.payment_failed":
+        await billing_service.handle_invoice_payment_failed(db, data)
+    elif event_type == "invoice.paid":
+        await billing_service.handle_invoice_paid(db, data)
     else:
         logger.debug("Unhandled Stripe event: %s", event_type)
 
