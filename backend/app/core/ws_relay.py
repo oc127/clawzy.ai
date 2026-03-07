@@ -39,6 +39,7 @@ CONTAINER_CONNECT_TIMEOUT = 15  # 秒，等待容器就绪
 CONTAINER_CONNECT_RETRY_INTERVAL = 1.0
 WS_MSG_RATE_LIMIT = 30  # 每用户每分钟最大消息数
 WS_RATE_WINDOW = 60  # 滑动窗口（秒）
+MAX_RELAY_RECONNECTS = 2  # 中继断开后最大自动重连次数
 
 
 async def connect_to_container(
@@ -277,22 +278,89 @@ async def relay(
 
         except ConnectionClosed:
             logger.info("Container WebSocket closed: agent=%s", agent.id)
+            raise  # Propagate to outer loop for reconnection
 
-    # 并行运行两个方向的转发
-    client_task = asyncio.create_task(client_to_container())
-    container_task = asyncio.create_task(container_to_client())
+    # 带自动重连的中继循环
+    reconnect_count = 0
 
-    try:
-        done, pending = await asyncio.wait(
+    while True:
+        client_task = asyncio.create_task(client_to_container())
+        container_task = asyncio.create_task(container_to_client())
+
+        done_tasks, pending = await asyncio.wait(
             [client_task, container_task],
             return_when=asyncio.FIRST_COMPLETED,
         )
-        # 取消另一个方向
         for task in pending:
             task.cancel()
-    finally:
-        # 确保容器连接关闭
+
+        # Check if container side died (not client side)
+        container_died = container_task in done_tasks
+        client_died = client_task in done_tasks
+
+        if client_died or not container_died:
+            # Client disconnected or both done — normal exit
+            break
+
+        if reconnect_count >= MAX_RELAY_RECONNECTS:
+            break
+
+        reconnect_count += 1
+        logger.warning(
+            "Container WebSocket dropped during relay (agent=%s), "
+            "attempting reconnect %d/%d",
+            agent.id, reconnect_count, MAX_RELAY_RECONNECTS,
+        )
+
+        # Notify client
+        try:
+            await client_ws.send_text(json.dumps({
+                "type": "agent_status",
+                "status": "reconnecting",
+                "content": "Agent connection lost, reconnecting...",
+            }))
+        except Exception:
+            break  # Client also gone
+
+        # Close old container ws
         try:
             await container_ws.close()
         except Exception:
             pass
+
+        # Exponential backoff: 1s, 2s
+        await asyncio.sleep(1.0 * reconnect_count)
+
+        # Attempt to reconnect to container
+        try:
+            from app.config import settings as _settings
+            gateway_token = agent.gateway_token or _settings.litellm_master_key
+            container_ws = await connect_to_container(
+                agent.ws_port, gateway_token,
+            )
+
+            await client_ws.send_text(json.dumps({
+                "type": "reconnected",
+                "content": "Connection restored",
+            }))
+            logger.info("Reconnected to container for agent=%s", agent.id)
+            continue  # Restart relay loop
+        except ConnectionError:
+            logger.error(
+                "Failed to reconnect to container for agent=%s", agent.id,
+            )
+            try:
+                await client_ws.send_text(json.dumps({
+                    "type": "error",
+                    "code": "container_unreachable",
+                    "message": "Cannot reconnect to agent container",
+                }))
+            except Exception:
+                pass
+            break
+
+    # 确保容器连接关闭
+    try:
+        await container_ws.close()
+    except Exception:
+        pass

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createChatSocket, type ChatMessage, type ChatSocket } from "@/lib/ws";
-import { listConversations, listMessages } from "@/lib/api";
+import { listConversations, listMessages, type ConversationInfo } from "@/lib/api";
 
 export interface Message {
   role: "user" | "assistant" | "system";
@@ -13,17 +13,21 @@ export type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
 interface UseChatOptions {
   agentId: string;
+  initialModel?: string;
   onStatus?: (msg: ChatMessage) => void;
   errorFallback?: string;
   reconnectedText?: string;
 }
 
-export function useChat({ agentId, onStatus, errorFallback, reconnectedText }: UseChatOptions) {
+export function useChat({ agentId, initialModel, onStatus, errorFallback, reconnectedText }: UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [connStatus, setConnStatus] = useState<ConnectionStatus>("connecting");
   const [balance, setBalance] = useState<number | null>(null);
+  const [currentModel, setCurrentModel] = useState(initialModel || "deepseek-chat");
+  const [conversations, setConversations] = useState<ConversationInfo[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const socketRef = useRef<ChatSocket | null>(null);
   const streamBufferRef = useRef("");
 
@@ -36,7 +40,9 @@ export function useChat({ agentId, onStatus, errorFallback, reconnectedText }: U
     if (!agentId) return;
     listConversations(agentId)
       .then((convs) => {
+        setConversations(convs);
         if (convs.length > 0) {
+          setCurrentConversationId(convs[0].id);
           return listMessages(convs[0].id, 50);
         }
         return [];
@@ -79,6 +85,13 @@ export function useChat({ agentId, onStatus, errorFallback, reconnectedText }: U
             if (msg.usage?.balance != null) {
               setBalance(msg.usage.balance);
             }
+            // Track conversation_id from backend and refresh list
+            if (msg.conversation_id) {
+              setCurrentConversationId(msg.conversation_id);
+              listConversations(agentId)
+                .then(setConversations)
+                .catch(() => {});
+            }
             break;
 
           case "error":
@@ -92,6 +105,12 @@ export function useChat({ agentId, onStatus, errorFallback, reconnectedText }: U
 
           case "status":
             onStatus?.(msg);
+            break;
+
+          case "model_switched":
+            if (msg.model) {
+              setCurrentModel(msg.model);
+            }
             break;
 
           case "agent_status":
@@ -152,6 +171,34 @@ export function useChat({ agentId, onStatus, errorFallback, reconnectedText }: U
     setMessages((prev) => prev.filter((m) => m.role !== "system"));
   }, []);
 
+  const switchModel = useCallback(
+    (model: string) => {
+      if (!socketRef.current || connStatus !== "connected") return;
+      socketRef.current.send({ type: "switch_model", model });
+    },
+    [connStatus],
+  );
+
+  const switchConversation = useCallback(
+    async (conversationId: string) => {
+      try {
+        const msgs = await listMessages(conversationId, 50);
+        setMessages(
+          msgs.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
+        );
+        setCurrentConversationId(conversationId);
+      } catch (e: unknown) {
+        console.error("Failed to load conversation:", e);
+      }
+    },
+    [],
+  );
+
+  const startNewConversation = useCallback(() => {
+    setMessages([]);
+    setCurrentConversationId(null);
+  }, []);
+
   return {
     messages,
     input,
@@ -159,8 +206,14 @@ export function useChat({ agentId, onStatus, errorFallback, reconnectedText }: U
     streaming,
     connStatus,
     balance,
+    currentModel,
+    conversations,
+    currentConversationId,
     sendMessage,
     addSystemMessage,
     clearSystemMessages,
+    switchModel,
+    switchConversation,
+    startNewConversation,
   };
 }

@@ -168,7 +168,11 @@
     "milestone5": "第 5 次对话",
     "milestone10": "第 10 次对话",
     "milestone25": "第 25 次对话",
-    "milestone50": "第 50 次对话"
+    "milestone50": "第 50 次对话",
+    "switchModel": "切换模型",
+    "conversations": "对话记录",
+    "newConversation": "新对话",
+    "noConversations": "暂无对话记录"
   },
   "billing": {
     "title": "能量 & 套餐",

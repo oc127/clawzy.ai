@@ -17,6 +17,7 @@ export interface ChatMessage {
   usage?: { credits: number; balance: number | null };
   code?: string;
   status?: string;
+  model?: string;
   is_fallback?: boolean;
   conversation_id?: string;
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useChat, type Message } from "@/hooks/useChat";
 import { useRhythm } from "@/hooks/useRhythm";
+import { listModels, type ModelInfo } from "@/lib/api";
 import type { ChatMessage } from "@/lib/ws";
 import MessageBubble from "@/components/chat/MessageBubble";
 import MessageInput from "@/components/chat/MessageInput";
@@ -17,6 +18,12 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const addSystemMessageRef = useRef<(content: string) => void>(() => {});
   const prevBalanceRef = useRef<number | null>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [showConversations, setShowConversations] = useState(false);
+
+  useEffect(() => {
+    listModels().then(setModels).catch(() => {});
+  }, []);
 
   const { greeting, onAssistantReply } = useRhythm({
     greetings: {
@@ -53,8 +60,14 @@ export default function ChatPage() {
     streaming,
     connStatus,
     balance,
+    currentModel,
+    conversations,
+    currentConversationId,
     sendMessage,
     addSystemMessage,
+    switchModel,
+    switchConversation,
+    startNewConversation,
   } = useChat({
     agentId,
     onStatus: handleStatus,
@@ -98,13 +111,74 @@ export default function ChatPage() {
     disconnected: "bg-red-500",
   }[connStatus];
 
+  function handleModelChange(model: string) {
+    switchModel(model);
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex h-screen bg-background">
+      {/* Conversation sidebar */}
+      {showConversations && (
+        <div className="w-64 border-r border-border flex flex-col bg-surface/50">
+          <div className="px-4 py-3.5 border-b border-border flex items-center justify-between">
+            <span className="text-xs font-medium text-muted uppercase tracking-wider">{t("conversations")}</span>
+            <button
+              onClick={() => { startNewConversation(); setShowConversations(false); }}
+              className="text-xs text-accent hover:text-accent-hover transition-colors"
+            >
+              + {t("newConversation")}
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {conversations.length === 0 ? (
+              <p className="px-4 py-6 text-xs text-muted text-center">{t("noConversations")}</p>
+            ) : (
+              conversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  onClick={() => { switchConversation(conv.id); setShowConversations(false); }}
+                  className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-surface-hover transition-colors ${
+                    conv.id === currentConversationId ? "bg-surface-hover" : ""
+                  }`}
+                >
+                  <p className="text-sm text-foreground truncate">{conv.title || t("newConversation")}</p>
+                  <p className="text-[10px] text-muted mt-0.5">
+                    {new Date(conv.updated_at).toLocaleDateString()}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col flex-1 min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-border">
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setShowConversations((v) => !v)}
+            className="text-muted hover:text-foreground transition-colors"
+            title={t("conversations")}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M2 4h12M2 8h12M2 12h12" />
+            </svg>
+          </button>
           <div className={`w-2 h-2 rounded-full ${statusDot}`} />
           <h2 className="text-sm font-medium text-foreground">{t("myLobster")}</h2>
+          {models.length > 1 && (
+            <select
+              value={currentModel}
+              onChange={(e) => handleModelChange(e.target.value)}
+              disabled={connStatus !== "connected" || streaming}
+              className="ml-2 px-2 py-1 bg-surface border border-border rounded text-xs text-muted focus:outline-none focus:border-accent disabled:opacity-40 transition-colors"
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          )}
         </div>
         {balance !== null && <CreditsBadge balance={balance} label={tc("energy")} pulse={balanceChanged} />}
       </div>
@@ -164,6 +238,7 @@ export default function ChatPage() {
         placeholder={connStatus === "connected" ? t("inputPlaceholder") : t("inputConnecting")}
         sendLabel={tc("send")}
       />
+      </div>
     </div>
   );
 }

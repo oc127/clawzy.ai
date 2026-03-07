@@ -70,7 +70,19 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
             return
 
         # --- 3. 自动唤醒龙虾（启动容器）---
-        if agent.status != AgentStatus.running or not agent.container_id:
+        # Verify container is actually alive, not just DB status
+        needs_start = agent.status != AgentStatus.running or not agent.container_id
+        if not needs_start and agent.container_id:
+            from app.core.docker_manager import docker_manager
+            actual_status = docker_manager.get_container_status(agent.container_id)
+            if actual_status != "running":
+                logger.warning(
+                    "Agent %s DB says running but container is %s, restarting",
+                    agent_id, actual_status,
+                )
+                needs_start = True
+
+        if needs_start:
             try:
                 await websocket.accept()
                 await websocket.send_text(json.dumps({

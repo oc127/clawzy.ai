@@ -34,9 +34,38 @@ def _send_alert_sync(title: str, message: str, severity: str = "warning") -> Non
         logger.exception("Failed to send alert: %s", title)
 
 
+def _recreate_container_sync(db: Session, agent: Agent) -> bool:
+    """Remove the broken container and create a fresh one. Returns True on success."""
+    try:
+        if agent.container_id:
+            docker_manager.remove_container(agent.container_id, agent.id)
+
+        from app.config import settings as _settings
+        import secrets as _secrets
+
+        if not agent.gateway_token:
+            agent.gateway_token = _secrets.token_urlsafe(32)
+
+        container_id = docker_manager.create_agent_container(
+            agent_id=agent.id,
+            gateway_token=agent.gateway_token,
+            litellm_key=_settings.litellm_master_key,
+            model_name=agent.model_name,
+            ws_port=agent.ws_port,
+        )
+        agent.container_id = container_id
+        agent.status = AgentStatus.running
+        db.commit()
+        logger.info("Agent %s container recreated successfully (new=%s)", agent.id, container_id[:12])
+        return True
+    except Exception:
+        logger.exception("Failed to recreate container for agent %s", agent.id)
+        return False
+
+
 @celery.task(name="app.workers.agent_tasks.check_all_agents")
 def check_all_agents():
-    """每 60 秒巡检所有 running Agent，带深度探测和重启循环检测。"""
+    """每 60 秒巡检所有 running Agent，带深度探测、重启循环检测和自动重建。"""
     with Session(sync_engine) as db:
         agents = db.execute(
             select(Agent).where(Agent.status == AgentStatus.running)
@@ -49,12 +78,13 @@ def check_all_agents():
             status = docker_manager.get_container_status(agent.container_id)
 
             if status is None or status == "exited":
-                # 重启循环检测：10 分钟内重启 >3 次 → 标记 error + 告警
+                # 重启循环检测：10 分钟内重启 >3 次
                 restart_key = f"clawzy:restart_count:{agent.id}"
                 restart_count = _redis.incr(restart_key)
                 _redis.expire(restart_key, 600)  # 10 分钟窗口
 
-                if restart_count > 3:
+                if restart_count > 5:
+                    # 超过 5 次：彻底标记为 error
                     logger.error(
                         "Agent %s restart loop (%d restarts in 10min), marking as error",
                         agent.id, restart_count,
@@ -68,17 +98,38 @@ def check_all_agents():
                     )
                     continue
 
+                if restart_count > 3:
+                    # 3-5 次：尝试重建容器（旧容器可能已损坏）
+                    logger.warning(
+                        "Agent %s failed %d restarts, attempting container recreation",
+                        agent.id, restart_count,
+                    )
+                    if _recreate_container_sync(db, agent):
+                        _send_alert_sync(
+                            f"RECREATED: Agent {agent.id}",
+                            f"Container recreated after {restart_count} restart failures.",
+                            "warning",
+                        )
+                    else:
+                        agent.status = AgentStatus.error
+                        db.commit()
+                        _send_alert_sync(
+                            f"RECREATION FAILED: Agent {agent.id}",
+                            f"Container recreation failed after {restart_count} restart attempts.",
+                            "critical",
+                        )
+                    continue
+
                 logger.warning(
-                    "Agent %s container %s is down (status=%s), restarting...",
-                    agent.id, agent.container_id, status,
+                    "Agent %s container %s is down (status=%s), restarting (attempt %d)...",
+                    agent.id, agent.container_id, status, restart_count,
                 )
                 try:
                     docker_manager.start_container(agent.container_id)
                     logger.info("Agent %s container restarted", agent.id)
                 except Exception:
-                    logger.exception("Failed to restart agent %s, marking as error", agent.id)
-                    agent.status = AgentStatus.error
-                    db.commit()
+                    logger.exception("Failed to restart agent %s", agent.id)
+                    # Don't immediately mark error — let retry loop handle escalation
 
             elif status == "running":
                 agent.last_active_at = datetime.now(timezone.utc)

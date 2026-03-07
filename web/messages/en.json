@@ -168,7 +168,11 @@
     "milestone5": "5 exchanges",
     "milestone10": "10 exchanges",
     "milestone25": "25 exchanges",
-    "milestone50": "50 exchanges"
+    "milestone50": "50 exchanges",
+    "switchModel": "Switch model",
+    "conversations": "Conversations",
+    "newConversation": "New conversation",
+    "noConversations": "No conversations yet"
   },
   "billing": {
     "title": "Energy & Plans",
