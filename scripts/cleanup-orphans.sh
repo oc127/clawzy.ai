@@ -19,7 +19,7 @@ DB_NAME="${DB_NAME:-clawzy}"
 DB_USER="${DB_USER:-clawzy}"
 
 echo "=== Clawzy Orphan Cleanup — $(date -Iseconds) ==="
-echo "Mode: $( $FORCE && echo 'FORCE (will remove)' || echo 'DRY-RUN (report only)' )"
+echo "Mode: $( [[ "$FORCE" == true ]] && echo 'FORCE (will remove)' || echo 'DRY-RUN (report only)' )"
 echo
 
 # 1. 获取 Docker 中所有 clawzy.managed 容器的 agent_id

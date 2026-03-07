@@ -12,7 +12,9 @@ LITELLM_URL="${LITELLM_URL:-http://127.0.0.1:4000}"
 
 # Load .env if present
 if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+  set -a
+  source .env
+  set +a
 fi
 
 MASTER_KEY="${LITELLM_MASTER_KEY:-}"

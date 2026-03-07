@@ -96,7 +96,7 @@ done
 # --- 6. Run migrations ---
 if [ "$SKIP_MIGRATE" = false ]; then
   log "Running database migrations..."
-  docker compose -f "$COMPOSE_FILE" exec backend alembic upgrade head
+  docker compose -f "$COMPOSE_FILE" exec -T backend alembic upgrade head
 else
   warn "Skipping migrations (--skip-migrate)"
 fi

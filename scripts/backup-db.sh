@@ -15,7 +15,11 @@ mkdir -p "$BACKUP_DIR"
 echo "[$(date)] Starting backup..."
 
 # 备份 + 压缩
-docker exec clawzy-postgres pg_dump -U clawzy clawzy | gzip > "$BACKUP_FILE"
+if ! docker exec clawzy-postgres pg_dump -U clawzy clawzy | gzip > "$BACKUP_FILE"; then
+    echo "[$(date)] ERROR: pg_dump failed"
+    rm -f "$BACKUP_FILE"
+    exit 1
+fi
 
 # 验证备份文件
 if ! gzip -t "$BACKUP_FILE" 2>/dev/null; then
