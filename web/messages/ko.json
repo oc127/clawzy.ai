@@ -152,7 +152,10 @@
     "inputConnecting": "랍스터 연결 중...",
     "errorFallback": "랍스터가 잠깐 문제가 생겼어요, 나중에 다시 시도해 주세요 🦞",
     "reconnected": "돌아왔어요! 🦞",
-    "lobsterWaking": "🦞 랍스터가 깨어나고 있어요..."
+    "lobsterWaking": "🦞 랍스터가 깨어나고 있어요...",
+    "prompt1": "재미있는 사실 하나 알려줘",
+    "prompt2": "이메일 작성 도와줘",
+    "prompt3": "어려운 걸 쉽게 설명해줘"
   },
   "billing": {
     "title": "에너지 & 플랜",

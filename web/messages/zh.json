@@ -153,7 +153,10 @@
     "inputConnecting": "龙虾正在连接中...",
     "errorFallback": "龙虾遇到了点小问题，稍后再试试吧 🦞",
     "reconnected": "我回来了 🦞",
-    "lobsterWaking": "🦞 龙虾正在苏醒..."
+    "lobsterWaking": "🦞 龙虾正在苏醒...",
+    "prompt1": "告诉我一个冷知识",
+    "prompt2": "帮我写一封邮件",
+    "prompt3": "用简单的话解释一件复杂的事"
   },
   "billing": {
     "title": "能量 & 套餐",

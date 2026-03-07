@@ -43,7 +43,11 @@ export default function DashboardPage() {
   async function handleCreateAgent() {
     setCreating(true);
     try {
-      await createAgent("My Lobster", selectedModel);
+      const agent = await createAgent("My Lobster", selectedModel);
+      if (agent?.id) {
+        router.push(`/chat/${agent.id}`);
+        return;
+      }
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : "Failed to create lobster");
     } finally {
@@ -52,7 +56,29 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return <div className="p-10 text-sm text-muted">{tc("loading")}</div>;
+    return (
+      <div className="p-10 max-w-3xl">
+        <div className="animate-pulse space-y-6">
+          <div className="space-y-2">
+            <div className="h-5 w-40 bg-surface-hover rounded" />
+            <div className="h-3 w-24 bg-surface-hover rounded" />
+          </div>
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="border border-border rounded-lg px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-surface-hover" />
+                  <div className="space-y-1.5">
+                    <div className="h-3.5 w-28 bg-surface-hover rounded" />
+                    <div className="h-2.5 w-36 bg-surface-hover rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const createSection = (

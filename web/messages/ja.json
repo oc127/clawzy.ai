@@ -152,7 +152,10 @@
     "inputConnecting": "ロブスターが接続中...",
     "errorFallback": "ロブスターがちょっと調子悪いみたい、また後で試してね 🦞",
     "reconnected": "戻ってきたよ！🦞",
-    "lobsterWaking": "🦞 ロブスターが起きています..."
+    "lobsterWaking": "🦞 ロブスターが起きています...",
+    "prompt1": "面白い雑学を教えて",
+    "prompt2": "メールを書くのを手伝って",
+    "prompt3": "難しいことを簡単に説明して"
   },
   "billing": {
     "title": "エネルギー＆プラン",

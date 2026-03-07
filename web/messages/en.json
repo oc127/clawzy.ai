@@ -153,7 +153,10 @@
     "inputConnecting": "Lobster is connecting...",
     "errorFallback": "Your lobster had a little hiccup, try again later 🦞",
     "reconnected": "I'm back! 🦞",
-    "lobsterWaking": "🦞 Lobster is waking up..."
+    "lobsterWaking": "🦞 Lobster is waking up...",
+    "prompt1": "Tell me a fun fact",
+    "prompt2": "Help me write an email",
+    "prompt3": "Explain something complex simply"
   },
   "billing": {
     "title": "Energy & Plans",
