@@ -49,7 +49,10 @@
     "featureStarterAllBrains": "所有大脑可选",
     "featureProCredits": "8,000 能量/月",
     "featurePro3Lobsters": "3 只龙虾",
-    "featureProSupport": "优先支持"
+    "featureProSupport": "优先支持",
+    "recommended": "推荐",
+    "getStartedFree": "免费开始",
+    "choosePlan": "选择此套餐"
   },
   "auth": {
     "email": "邮箱",

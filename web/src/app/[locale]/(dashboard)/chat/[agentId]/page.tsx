@@ -87,7 +87,10 @@ export default function ChatPage() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center pt-32">
+          <div className="text-center pt-28">
+            <div className="animate-breathe mb-4">
+              <span className="text-4xl">🦞</span>
+            </div>
             <p className="text-sm text-muted">{t("emptyPrompt")}</p>
           </div>
         )}

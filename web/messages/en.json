@@ -49,7 +49,10 @@
     "featureStarterAllBrains": "All brains available",
     "featureProCredits": "8,000 energy/mo",
     "featurePro3Lobsters": "3 lobsters",
-    "featureProSupport": "Priority support"
+    "featureProSupport": "Priority support",
+    "recommended": "Recommended",
+    "getStartedFree": "Get started free",
+    "choosePlan": "Choose this plan"
   },
   "auth": {
     "email": "Email",

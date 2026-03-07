@@ -105,7 +105,16 @@ export default function DashboardPage() {
       </div>
 
       {agents.length === 0 ? (
-        <div className="text-center py-24">
+        <div className="text-center py-20">
+          {/* Breathing lobster silhouette */}
+          <div className="animate-breathe mb-6">
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="mx-auto opacity-40">
+              <path d="M32 8c-4 0-8 2-10 6-3 0-6 2-7 5s0 6 2 8c-2 3-3 6-2 9 1 4 4 6 8 7 1 3 4 6 9 6s8-3 9-6c4-1 7-3 8-7 1-3 0-6-2-9 2-2 3-5 2-8s-4-5-7-5c-2-4-6-6-10-6z" fill="currentColor" className="text-accent/30"/>
+              <circle cx="26" cy="24" r="2" fill="currentColor" className="text-accent/50"/>
+              <circle cx="38" cy="24" r="2" fill="currentColor" className="text-accent/50"/>
+              <path d="M14 20c-4-2-8-1-10 1M50 20c4-2 8-1 10 1M14 22c-5-1-9 1-10 4M50 22c5-1 9 1 10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-accent/20"/>
+            </svg>
+          </div>
           <h2 className="text-lg font-medium text-foreground mb-2">
             {t("noLobsterYet")}
           </h2>
@@ -115,7 +124,7 @@ export default function DashboardPage() {
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="px-3 py-3 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent transition-colors"
+                className="px-3 py-3 bg-surface border border-border rounded-lg text-foreground text-sm transition-colors"
               >
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -127,7 +136,7 @@ export default function DashboardPage() {
             <button
               onClick={handleCreateAgent}
               disabled={creating}
-              className="px-6 py-3 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white font-medium rounded-lg transition-colors"
+              className="px-6 py-3 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white font-medium rounded-lg transition-all duration-300 hover:shadow-[0_0_20px_rgba(79,110,247,0.2)]"
             >
               {creating ? t("hatchingLobster") : t("createFirstLobster")}
             </button>

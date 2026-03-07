@@ -29,53 +29,72 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <main className="max-w-3xl mx-auto px-8 pt-28 pb-36 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight mb-5">
-          {t("heroTitle")}
-          <br />
-          <span className="text-accent">{t("heroHighlight")}</span>
-        </h1>
-        <p className="text-lg text-muted max-w-xl mx-auto mb-10 leading-relaxed">
-          {t("heroDesc")}
-        </p>
-        <Link
-          href="/register"
-          className="inline-block px-7 py-3 bg-accent hover:bg-accent-hover text-white font-medium rounded-lg transition-colors"
-        >
-          {t("cta")}
-        </Link>
-        <p className="text-xs text-muted mt-4">{t("ctaSubtext")}</p>
+      {/* Hero — generous vertical space, clear hierarchy */}
+      <main className="max-w-3xl mx-auto px-8">
+        <section className="pt-32 pb-40 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight mb-5">
+            {t("heroTitle")}
+            <br />
+            <span className="bg-gradient-to-r from-accent to-purple-400 bg-clip-text text-transparent">
+              {t("heroHighlight")}
+            </span>
+          </h1>
+          <p className="text-lg text-muted max-w-xl mx-auto mb-10 leading-relaxed">
+            {t("heroDesc")}
+          </p>
+          <Link
+            href="/register"
+            className="inline-block px-7 py-3 bg-accent hover:bg-accent-hover text-white font-medium rounded-lg transition-all duration-300 hover:shadow-[0_0_24px_rgba(79,110,247,0.25)]"
+          >
+            {t("cta")}
+          </Link>
+          <p className="text-xs text-muted mt-4">{t("ctaSubtext")}</p>
+        </section>
 
-        {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-28 text-left">
-          <FeatureCard title={t("feature1Title")} desc={t("feature1Desc")} />
-          <FeatureCard title={t("feature2Title")} desc={t("feature2Desc")} />
-          <FeatureCard title={t("feature3Title")} desc={t("feature3Desc")} />
-        </div>
+        {/* Divider — subtle gradient line */}
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        {/* Pricing */}
-        <div className="mt-28">
-          <h2 className="text-2xl font-semibold tracking-tight mb-8">{t("pricingTitle")}</h2>
+        {/* Features — tighter to pricing (same decision flow) */}
+        <section className="py-24">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
+            <FeatureCard title={t("feature1Title")} desc={t("feature1Desc")} />
+            <FeatureCard title={t("feature2Title")} desc={t("feature2Desc")} />
+            <FeatureCard title={t("feature3Title")} desc={t("feature3Desc")} />
+          </div>
+        </section>
+
+        {/* Divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+        {/* Pricing — closer to features, part of the same narrative */}
+        <section className="py-24 text-center">
+          <h2 className="text-2xl font-semibold tracking-tight mb-10">{t("pricingTitle")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <PriceCard
               name={t("planFree")}
               price={t("priceFree")}
               features={[t("featureFreeCredits"), t("featureFree1Lobster")]}
+              ctaLabel={t("getStartedFree")}
+              ctaHref="/register"
             />
             <PriceCard
               name={t("planStarter")}
               price={t("priceStarter")}
               features={[t("featureStarterCredits"), t("featureStarter1Lobster"), t("featureStarterAllBrains")]}
               highlight
+              badge={t("recommended")}
+              ctaLabel={t("choosePlan")}
+              ctaHref="/register"
             />
             <PriceCard
               name={t("planPro")}
               price={t("pricePro")}
               features={[t("featureProCredits"), t("featurePro3Lobsters"), t("featureProSupport")]}
+              ctaLabel={t("choosePlan")}
+              ctaHref="/register"
             />
           </div>
-        </div>
+        </section>
       </main>
 
       {/* Footer */}
@@ -88,8 +107,8 @@ export default function LandingPage() {
 
 function FeatureCard({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="border border-border rounded-lg p-5 hover:border-muted/30 transition-colors">
-      <h3 className="text-sm font-medium text-foreground mb-2">{title}</h3>
+    <div className="group border border-border rounded-xl p-6 hover:border-accent/20 hover:bg-surface/40 transition-all duration-300">
+      <h3 className="text-sm font-medium text-foreground mb-2.5">{title}</h3>
       <p className="text-sm text-muted leading-relaxed">{desc}</p>
     </div>
   );
@@ -100,27 +119,51 @@ function PriceCard({
   price,
   features,
   highlight,
+  badge,
+  ctaLabel,
+  ctaHref,
 }: {
   name: string;
   price: string;
   features: string[];
   highlight?: boolean;
+  badge?: string;
+  ctaLabel: string;
+  ctaHref: string;
 }) {
   return (
     <div
-      className={`rounded-lg p-5 ${
+      className={`relative rounded-xl p-6 text-left transition-all duration-300 ${
         highlight
-          ? "border border-accent/40 bg-accent/5"
-          : "border border-border"
+          ? "border-2 border-accent/50 bg-accent/[0.03] shadow-[0_0_32px_rgba(79,110,247,0.08)]"
+          : "border border-border hover:border-accent/20"
       }`}
     >
+      {badge && (
+        <span className="absolute -top-2.5 left-5 px-2.5 py-0.5 bg-accent text-white text-[10px] font-medium rounded-full tracking-wide">
+          {badge}
+        </span>
+      )}
       <h3 className="text-sm font-medium text-foreground">{name}</h3>
       <p className="text-2xl font-semibold text-foreground mt-2">{price}</p>
-      <ul className="mt-4 space-y-1.5">
+      <ul className="mt-4 space-y-2">
         {features.map((f) => (
-          <li key={f} className="text-sm text-muted">{f}</li>
+          <li key={f} className="text-sm text-muted flex items-start gap-2">
+            <span className="text-accent/60 mt-0.5">&#8226;</span>
+            {f}
+          </li>
         ))}
       </ul>
+      <Link
+        href={ctaHref}
+        className={`block mt-6 py-2 text-center text-sm font-medium rounded-lg transition-all duration-200 ${
+          highlight
+            ? "bg-accent hover:bg-accent-hover text-white hover:shadow-[0_0_16px_rgba(79,110,247,0.2)]"
+            : "border border-border text-foreground hover:bg-surface hover:border-accent/30"
+        }`}
+      >
+        {ctaLabel}
+      </Link>
     </div>
   );
 }

@@ -49,7 +49,10 @@
     "featureStarterAllBrains": "全ブレイン利用可能",
     "featureProCredits": "8,000 エネルギー/月",
     "featurePro3Lobsters": "ロブスター3匹",
-    "featureProSupport": "優先サポート"
+    "featureProSupport": "優先サポート",
+    "recommended": "おすすめ",
+    "getStartedFree": "無料で始める",
+    "choosePlan": "このプランを選ぶ"
   },
   "auth": {
     "email": "メールアドレス",

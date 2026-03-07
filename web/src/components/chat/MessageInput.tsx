@@ -35,12 +35,12 @@ export default function MessageInput({
           onChange={(e) => setInput(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-foreground placeholder-muted text-sm focus:outline-none focus:border-accent disabled:opacity-40 transition-colors"
+          className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-xl text-foreground placeholder-muted text-sm disabled:opacity-40 transition-all duration-200"
         />
         <button
           type="submit"
           disabled={disabled || streaming || !input.trim()}
-          className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted text-white text-sm font-medium rounded-xl transition-all duration-200 hover:shadow-[0_0_12px_rgba(79,110,247,0.2)]"
         >
           {sendLabel}
         </button>

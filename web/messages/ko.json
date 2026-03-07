@@ -49,7 +49,10 @@
     "featureStarterAllBrains": "모든 브레인 사용 가능",
     "featureProCredits": "8,000 에너지/월",
     "featurePro3Lobsters": "랍스터 3마리",
-    "featureProSupport": "우선 지원"
+    "featureProSupport": "우선 지원",
+    "recommended": "추천",
+    "getStartedFree": "무료로 시작하기",
+    "choosePlan": "이 플랜 선택"
   },
   "auth": {
     "email": "이메일",

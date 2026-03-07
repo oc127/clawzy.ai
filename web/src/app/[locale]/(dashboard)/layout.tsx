@@ -79,12 +79,15 @@ function NavLink({ href, label, active }: { href: string; label: string; active?
   return (
     <Link
       href={href}
-      className={`block px-3 py-2 rounded-md text-sm transition-colors ${
+      className={`relative block px-3 py-2 rounded-md text-sm transition-all duration-200 ${
         active
-          ? "text-foreground bg-surface"
-          : "text-muted hover:text-foreground hover:bg-surface"
+          ? "text-foreground bg-surface font-medium"
+          : "text-muted hover:text-foreground hover:bg-surface/60"
       }`}
     >
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-accent rounded-r-full" />
+      )}
       {label}
     </Link>
   );
