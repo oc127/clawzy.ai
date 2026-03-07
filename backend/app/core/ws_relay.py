@@ -3,9 +3,10 @@
 后端只做三件事：
 1. JWT 认证（在 chat.py 完成）
 2. 消息持久化（拦截 user/assistant 消息存 DB）
-3. 积分扣除（拦截 done 事件扣积分）
+3. 积分扣除（拦截 done 事件，通过 Redis 去重扣积分）
 
-其余帧原样转发，让龙虾（OpenClaw）干活。
+扣费优先级：LiteLLM callback（精确）> ws_relay（兜底）。
+两者通过 Redis SETNX 去重，保证同一 call_id 只扣一次。
 """
 
 import asyncio
@@ -28,6 +29,7 @@ from app.services.chat_service import (
     save_message,
 )
 from app.services.credits_service import deduct_credits, InsufficientCreditsError
+from app.api.v1.usage_callback import try_dedup_charge
 from app.services.fallback_service import get_fallback_reply
 from app.i18n import DEFAULT_LOCALE
 
@@ -210,16 +212,30 @@ async def relay(
                         tokens_in = usage.get("tokens_input") or usage.get("prompt_tokens", 0)
                         tokens_out = usage.get("tokens_output") or usage.get("completion_tokens", 0)
                         model_used = usage.get("model", agent.model_name)
+                        call_id = (
+                            usage.get("call_id")
+                            or usage.get("litellm_call_id")
+                            or data.get("call_id", "")
+                        )
 
-                        # 扣积分
+                        # 去重扣积分：如果 LiteLLM callback 已扣过则跳过
                         credits_used = 0
-                        try:
-                            credits_used = await deduct_credits(
-                                db, user_id, model_used,
+                        if call_id:
+                            result_charge = await try_dedup_charge(
+                                call_id, user_id, model_used,
                                 tokens_in, tokens_out, agent.id,
                             )
-                        except InsufficientCreditsError:
-                            pass
+                            if result_charge is not None:
+                                credits_used = result_charge
+                        else:
+                            # 无 call_id 降级到直接扣费
+                            try:
+                                credits_used = await deduct_credits(
+                                    db, user_id, model_used,
+                                    tokens_in, tokens_out, agent.id,
+                                )
+                            except InsufficientCreditsError:
+                                pass
 
                         await save_message(
                             db, conv_id, MessageRole.assistant, assistant_buffer,

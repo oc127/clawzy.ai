@@ -656,18 +656,40 @@ Backend (FastAPI)
 - Gemini Flash, Pro (Google AI)
 - Llama, Mistral (via Groq/Together)
 
-### 7.4 Usage Callback
+### 7.4 Usage Callback ✅
 
-LiteLLM 支持自定义 callback，在每次请求完成后回调后端记录用量：
+LiteLLM `success_callback` 在每次模型请求完成后回调后端，报告精确 token 用量：
 
 ```yaml
-# litellm/config.yaml 添加
+# litellm/config.yaml（已配置）
 litellm_settings:
   success_callback: ["custom_callback_api"]
-  custom_callback_api_url: "http://clawzy-backend:8000/internal/usage-callback"
+  custom_callback_api_url: "http://clawzy-backend:8000/api/v1/internal/usage-callback"
 ```
 
-后端 `/internal/usage-callback` 接收用量数据后执行积分扣费。
+**双通道去重计费架构**（风险 D-2 解决方案）：
+
+```
+LiteLLM Proxy                          Backend
+     │                                    │
+     │  success_callback POST              │
+     │  {call_id, model, usage, metadata}  │
+     │ ──────────────────────────────────▶  │
+     │                                    │  Redis SETNX clawzy:usage:dedup:{call_id}
+     │                                    │  如果设置成功 → deduct_credits()
+     │                                    │  如果已存在 → skip（ws_relay 已扣过）
+     │                                    │
+OpenClaw Container ──── done event ────▶ ws_relay
+                                          │  提取 call_id
+                                          │  Redis SETNX 尝试
+                                          │  成功 → deduct_credits()
+                                          │  失败 → skip（callback 已扣过）
+```
+
+- **主通道**：LiteLLM callback → `/internal/usage-callback`（精确 token 数）
+- **兜底通道**：ws_relay 拦截 `done` 事件（容器报告的 token 数）
+- **去重机制**：Redis `SETNX` 按 `call_id` 保证同一请求只扣一次
+- **TTL**：去重 key 24 小时后自动清理
 
 ---
 
@@ -960,8 +982,8 @@ services:
 
 | # | 风险 | 严重度 | 概率 | 影响 | 应对策略 |
 |---|------|--------|------|------|----------|
-| D-1 | **积分扣费竞态条件** — 并发请求同时扣费，余额可能扣成负数 | 🔴 高 | 中 | 平台亏钱 | 使用 PostgreSQL `SELECT ... FOR UPDATE` 行锁，或 Redis 原子操作做余额扣减 |
-| D-2 | **LiteLLM usage callback 丢失** — callback 请求失败导致用了模型但没扣费 | 🔴 高 | 中 | 平台持续亏损 | 双重保障：① LiteLLM callback ② 后端在转发响应时自行统计 token。callback 失败时用后端统计兜底 |
+| D-1 | ~~**积分扣费竞态条件**~~ — ✅ **已解决：`SELECT FOR UPDATE` 行锁** | 🟢 已解决 | — | — | **已实现**：`credits_service.deduct_credits()` 使用 `SELECT ... FOR UPDATE` 行锁防止并发扣成负数 |
+| D-2 | ~~**LiteLLM usage callback 丢失**~~ — ✅ **已实现：双通道去重扣费** | 🟢 已解决 | — | — | **已实现**：LiteLLM `success_callback` → `/internal/usage-callback` 为主通道（精确 token 用量），ws_relay `done` 事件为兜底通道。两者通过 Redis `SETNX` 按 `call_id` 去重，保证只扣一次 |
 | D-3 | **JWT token 泄露** — access token 被截获 | 🟡 中 | 低 | 账户被盗用 | access token 15 分钟过期；refresh token 绑定 IP/设备；敏感操作要求二次验证 |
 | D-4 | **用户对话数据隐私** — 不同地区对 AI 对话数据有不同法规 (GDPR、PDPA 等) | 🟡 中 | — | 法律风险 | 明确隐私政策；提供数据导出/删除功能；新加坡 PDPA 合规先行，后续按目标市场补充 |
 | D-5 | **容器内数据持久化** — 用户记忆 (MEMORY.md) 存在容器 volume，宿主机磁盘损坏则丢失 | 🟡 中 | 低 | 用户记忆丢失 | Volume 数据定期同步到 OSS；关键记忆同时写入 PostgreSQL |
@@ -1014,8 +1036,8 @@ services:
 |--------|----------|------|---------------|
 | ~~**P0**~~ | ~~E-5~~ | ~~OpenClaw License 确认~~ ✅ **已解决 — MIT License，可商用** | ~~**立即**~~ Done |
 | ~~**P0**~~ | ~~I-3~~ | ~~数据库备份~~ ✅ **已解决 — pg_dump 每 6h → OSS + 一键恢复** | ~~**Week 1**~~ Done |
-| **P0** | D-1 | 积分扣费竞态条件 | **Week 2** — 写扣费逻辑时必须处理 |
-| **P0** | D-2 | Usage callback 丢失兜底 | **Week 3** — 聊天链路完成时必须处理 |
+| ~~**P0**~~ | ~~D-1~~ | ~~积分扣费竞态条件~~ ✅ **已解决 — SELECT FOR UPDATE 行锁** | ~~**Week 2**~~ Done |
+| ~~**P0**~~ | ~~D-2~~ | ~~Usage callback 丢失兜底~~ ✅ **已解决 — 双通道 Redis 去重扣费** | ~~**Week 3**~~ Done |
 | **P1** | C-1 | 单机容器密度上限 | **上线后** — 清楚知道天花板在哪，提前规划扩容节点 |
 
 ---

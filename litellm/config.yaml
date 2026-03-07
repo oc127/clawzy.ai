@@ -53,3 +53,6 @@ litellm_settings:
   set_verbose: false
   num_retries: 2
   request_timeout: 120
+  # 用量回调 — 每次请求完成后通知后端精确扣费（风险 D-2 解决方案）
+  success_callback: ["custom_callback_api"]
+  custom_callback_api_url: "http://clawzy-backend:8000/api/v1/internal/usage-callback"
