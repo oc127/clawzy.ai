@@ -45,8 +45,8 @@ export default function BillingPage() {
     try {
       const { url } = await createCheckoutSession(priceId);
       window.location.href = url;
-    } catch (e: any) {
-      setErrorMsg(e.message || t("checkoutFailed"));
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : t("checkoutFailed"));
       setUpgrading(null);
     }
   }

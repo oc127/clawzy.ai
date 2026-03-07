@@ -190,9 +190,10 @@ export default function ChatPage() {
         )}
 
         {messages.map((msg, i) => {
+          const key = `${msg.role}-${i}`;
           if (msg.role === "system") {
             return (
-              <div key={i} className="text-center py-1">
+              <div key={key} className="text-center py-1">
                 <span className="text-xs text-muted">{msg.content}</span>
               </div>
             );
@@ -200,7 +201,7 @@ export default function ChatPage() {
 
           return (
             <div
-              key={i}
+              key={key}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
