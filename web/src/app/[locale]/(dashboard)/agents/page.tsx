@@ -63,7 +63,24 @@ export default function AgentsPage() {
     }
   }
 
-  if (loading) return <div className="p-10 text-sm text-muted">{tc("loading")}</div>;
+  if (loading) return (
+    <div className="p-10 max-w-3xl space-y-2">
+      {[1, 2].map((i) => (
+        <div key={i} className="border border-border rounded-lg px-5 py-4 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-surface-hover" />
+              <div className="space-y-1.5">
+                <div className="h-3.5 w-28 bg-surface-hover rounded" />
+                <div className="h-2.5 w-40 bg-surface-hover rounded" />
+              </div>
+            </div>
+            <div className="h-7 w-16 bg-surface-hover rounded-md" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="p-10 max-w-3xl">
@@ -110,8 +127,9 @@ export default function AgentsPage() {
                       <button
                         onClick={() => handleStart(agent.id)}
                         disabled={isLoading}
-                        className="px-3 py-1.5 text-xs font-medium text-foreground border border-border rounded-md hover:bg-surface disabled:opacity-40 transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-foreground border border-border rounded-md hover:bg-surface disabled:opacity-40 disabled:cursor-wait transition-colors inline-flex items-center gap-1.5"
                       >
+                        {isLoading && <span className="inline-block w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />}
                         {isLoading ? t("starting") : t("start")}
                       </button>
                     )}
@@ -119,8 +137,9 @@ export default function AgentsPage() {
                       <button
                         onClick={() => handleStop(agent.id)}
                         disabled={isLoading}
-                        className="px-3 py-1.5 text-xs font-medium text-foreground border border-border rounded-md hover:bg-surface disabled:opacity-40 transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-foreground border border-border rounded-md hover:bg-surface disabled:opacity-40 disabled:cursor-wait transition-colors inline-flex items-center gap-1.5"
                       >
+                        {isLoading && <span className="inline-block w-3 h-3 border border-current/30 border-t-current rounded-full animate-spin" />}
                         {isLoading ? t("stopping") : t("stop")}
                       </button>
                     )}

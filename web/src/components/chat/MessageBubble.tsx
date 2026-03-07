@@ -1,3 +1,7 @@
+"use client";
+
+import StreamingText from "./StreamingText";
+
 interface MessageBubbleProps {
   role: "user" | "assistant" | "system";
   content: string;
@@ -5,7 +9,7 @@ interface MessageBubbleProps {
   thinkingText?: string;
 }
 
-export default function MessageBubble({ role, content, isStreaming, thinkingText }: MessageBubbleProps) {
+export default function MessageBubble({ role, content, isStreaming }: MessageBubbleProps) {
   if (role === "system") {
     return (
       <div className="text-center py-2">
@@ -25,9 +29,18 @@ export default function MessageBubble({ role, content, isStreaming, thinkingText
             : "bg-surface text-foreground rounded-2xl rounded-bl-md"
         }`}
       >
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">
-          {content || (isStreaming ? thinkingText || "" : "")}
-        </p>
+        {!content && isStreaming ? (
+          <span className="inline-flex items-center gap-1.5 py-0.5">
+            <span className="text-base">🦞</span>
+            <span className="lobster-dot" style={{ animationDelay: "0s" }} />
+            <span className="lobster-dot" style={{ animationDelay: "0.15s" }} />
+            <span className="lobster-dot" style={{ animationDelay: "0.3s" }} />
+          </span>
+        ) : isStreaming && content ? (
+          <StreamingText text={content} />
+        ) : (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
+        )}
       </div>
     </div>
   );

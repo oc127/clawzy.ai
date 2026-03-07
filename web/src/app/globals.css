@@ -75,6 +75,20 @@ input:focus, textarea:focus, select:focus {
   animation: breathe 3s ease-in-out infinite;
 }
 
+/* Lobster thinking dots */
+@keyframes lobster-dots {
+  0%, 80%, 100% { opacity: 0.2; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+.lobster-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--muted);
+  display: inline-block;
+  animation: lobster-dots 1.2s ease-in-out infinite;
+}
+
 /* Custom select styling */
 select {
   appearance: none;

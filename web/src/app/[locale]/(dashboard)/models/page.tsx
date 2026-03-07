@@ -25,7 +25,27 @@ export default function ModelsPage() {
   }, []);
 
   if (loading) {
-    return <div className="p-10 text-sm text-muted">{tc("loading")}</div>;
+    return (
+      <div className="p-10 max-w-3xl space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border border-border rounded-lg px-5 py-4 animate-pulse">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-32 bg-surface-hover rounded" />
+                  <div className="h-4 w-14 bg-surface-hover rounded-full" />
+                </div>
+                <div className="h-2.5 w-20 bg-surface-hover rounded" />
+              </div>
+              <div className="space-y-1">
+                <div className="h-2.5 w-24 bg-surface-hover rounded" />
+                <div className="h-2.5 w-24 bg-surface-hover rounded" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (

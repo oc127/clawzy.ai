@@ -40,9 +40,11 @@ export default function MessageInput({
         <button
           type="submit"
           disabled={disabled || streaming || !input.trim()}
-          className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted text-white text-sm font-medium rounded-xl transition-all duration-200 hover:shadow-[0_0_12px_rgba(79,110,247,0.2)]"
+          className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted text-white text-sm font-medium rounded-xl transition-all duration-200 hover:shadow-[0_0_12px_rgba(79,110,247,0.2)] active:scale-95"
         >
-          {sendLabel}
+          {streaming ? (
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse" />
+          ) : sendLabel}
         </button>
       </div>
     </form>

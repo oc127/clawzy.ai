@@ -133,9 +133,12 @@ export default function BillingPage() {
                 <button
                   onClick={() => handleUpgrade(plan.id)}
                   disabled={isUpgrading}
-                  className="mt-4 w-full py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white text-xs font-medium rounded-md transition-colors"
+                  className="mt-4 w-full py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-wait text-white text-xs font-medium rounded-md transition-colors"
                 >
-                  {isUpgrading ? t("redirecting") : t("upgrade")}
+                  <span className="inline-flex items-center gap-1.5">
+                    {isUpgrading && <span className="inline-block w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />}
+                    {isUpgrading ? t("redirecting") : t("upgrade")}
+                  </span>
                 </button>
               )}
             </div>
