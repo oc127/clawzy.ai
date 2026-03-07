@@ -7,13 +7,13 @@ export async function generateMetadata() {
   return {
     title: t("title"),
     description: t("description"),
-    metadataBase: new URL("https://clawzy.ai"),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai"),
     openGraph: {
       title: t("title"),
       description: t("description"),
       siteName: "Clawzy.ai",
       type: "website",
-      url: "https://clawzy.ai",
+      url: process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
       images: [{ url: "/og-image.png", width: 1200, height: 630 }],
     },
     twitter: {
@@ -25,10 +25,10 @@ export async function generateMetadata() {
     icons: { icon: "/favicon.ico" },
     alternates: {
       languages: {
-        "zh-CN": "https://clawzy.ai",
-        "en": "https://clawzy.ai",
-        "ja": "https://clawzy.ai",
-        "ko": "https://clawzy.ai",
+        "zh-CN": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
+        "en": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
+        "ja": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
+        "ko": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
       },
     },
   };

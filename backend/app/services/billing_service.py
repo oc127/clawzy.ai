@@ -41,8 +41,8 @@ async def create_checkout_session(db: AsyncSession, user: User, price_id: str) -
         payment_method_types=["card"],
         mode="subscription",
         line_items=[{"price": price_id, "quantity": 1}],
-        success_url="https://clawzy.ai/billing?success=true",
-        cancel_url="https://clawzy.ai/billing?canceled=true",
+        success_url=f"{settings.app_url}/billing?success=true",
+        cancel_url=f"{settings.app_url}/billing?canceled=true",
         metadata={"user_id": user.id},
     )
     return session.url
@@ -52,7 +52,7 @@ async def create_portal_session(user: User) -> str:
     """创建 Stripe Customer Portal Session，用户可管理订阅。"""
     session = stripe.billing_portal.Session.create(
         customer=user.stripe_customer_id,
-        return_url="https://clawzy.ai/billing",
+        return_url=f"{settings.app_url}/billing",
     )
     return session.url
 

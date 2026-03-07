@@ -50,8 +50,8 @@ app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://clawzy.ai",
-        "https://www.clawzy.ai",
+        settings.app_url,
+        settings.app_url.replace("://", "://www."),
         "http://localhost:3000",  # 本地开发
     ],
     allow_credentials=True,
