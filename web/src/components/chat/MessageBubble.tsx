@@ -31,7 +31,6 @@ export default function MessageBubble({ role, content, isStreaming }: MessageBub
       >
         {!content && isStreaming ? (
           <span className="inline-flex items-center gap-1.5 py-0.5">
-            <span className="text-base">🦞</span>
             <span className="lobster-dot" style={{ animationDelay: "0s" }} />
             <span className="lobster-dot" style={{ animationDelay: "0.15s" }} />
             <span className="lobster-dot" style={{ animationDelay: "0.3s" }} />
