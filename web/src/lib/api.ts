@@ -206,7 +206,7 @@ export interface ModelInfo {
 }
 
 export async function listModels() {
-  return request<{ models: ModelInfo[] }>("/models");
+  return request<ModelInfo[]>("/models");
 }
 
 // --- Billing ---

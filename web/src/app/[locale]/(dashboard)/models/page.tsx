@@ -19,7 +19,7 @@ export default function ModelsPage() {
 
   useEffect(() => {
     listModels()
-      .then((data) => setModels(data.models || []))
+      .then((data) => setModels(Array.isArray(data) ? data : []))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load models"))
       .finally(() => setLoading(false));
   }, []);

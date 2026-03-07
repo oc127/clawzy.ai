@@ -1,150 +1,55 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { createChatSocket, type ChatMessage, type ChatSocket } from "@/lib/ws";
-import { listConversations, listMessages } from "@/lib/api";
-
-interface Message {
-  role: "user" | "assistant" | "system";
-  content: string;
-}
-
-type ConnectionStatus = "connected" | "connecting" | "disconnected";
+import { useChat, type Message } from "@/hooks/useChat";
+import type { ChatMessage } from "@/lib/ws";
+import MessageBubble from "@/components/chat/MessageBubble";
+import MessageInput from "@/components/chat/MessageInput";
+import CreditsBadge from "@/components/dashboard/CreditsBadge";
 
 export default function ChatPage() {
   const { agentId } = useParams<{ agentId: string }>();
   const t = useTranslations("chat");
   const tc = useTranslations("common");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [connStatus, setConnStatus] = useState<ConnectionStatus>("connecting");
-  const [balance, setBalance] = useState<number | null>(null);
-  const socketRef = useRef<ChatSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const streamBufferRef = useRef("");
+  const addSystemMessageRef = useRef<(content: string) => void>(() => {});
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  useEffect(() => {
-    if (!agentId) return;
-    listConversations(agentId)
-      .then((convs) => {
-        if (convs.length > 0) {
-          return listMessages(convs[0].id, 50);
-        }
-        return [];
-      })
-      .then((msgs) => {
-        if (msgs.length > 0) {
-          setMessages(
-            msgs.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
-          );
-          scrollToBottom();
-        }
-      })
-      .catch((e: unknown) => console.error("Failed to load chat history:", e));
-  }, [agentId, scrollToBottom]);
+  const handleStatus = useCallback(
+    (msg: ChatMessage) => {
+      if (msg.message === "agent_starting") {
+        addSystemMessageRef.current(t("lobsterWaking"));
+      }
+      scrollToBottom();
+    },
+    [scrollToBottom, t],
+  );
+
+  const {
+    messages,
+    streaming,
+    connStatus,
+    balance,
+    sendMessage,
+    addSystemMessage,
+  } = useChat({
+    agentId,
+    onStatus: handleStatus,
+    errorFallback: t("errorFallback"),
+    reconnectedText: t("reconnected"),
+  });
 
   useEffect(() => {
-    if (!agentId) return;
+    addSystemMessageRef.current = addSystemMessage;
+  }, [addSystemMessage]);
 
-    const socket = createChatSocket(
-      agentId,
-      (msg: ChatMessage) => {
-        switch (msg.type) {
-          case "stream":
-            streamBufferRef.current += msg.content || "";
-            setMessages((prev) => {
-              const updated = [...prev];
-              if (updated.length > 0 && updated[updated.length - 1].role === "assistant") {
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: streamBufferRef.current,
-                };
-              }
-              return updated;
-            });
-            break;
-
-          case "done":
-            setStreaming(false);
-            streamBufferRef.current = "";
-            if (msg.usage?.balance != null) {
-              setBalance(msg.usage.balance);
-            }
-            break;
-
-          case "error":
-            setStreaming(false);
-            streamBufferRef.current = "";
-            setMessages((prev) => [
-              ...prev,
-              { role: "assistant", content: msg.content || t("errorFallback") },
-            ]);
-            break;
-
-          case "status":
-            // Backend sends status during container lifecycle (agent_starting, etc.)
-            if (msg.message === "agent_starting") {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === "system") {
-                  return [...prev.slice(0, -1), { role: "system", content: t("lobsterWaking") }];
-                }
-                return [...prev, { role: "system", content: t("lobsterWaking") }];
-              });
-            }
-            break;
-
-          case "agent_status":
-            if (msg.status === "reconnecting") {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === "system") {
-                  return [...prev.slice(0, -1), { role: "system", content: msg.content || "" }];
-                }
-                return [...prev, { role: "system", content: msg.content || "" }];
-              });
-            }
-            break;
-
-          case "reconnected":
-            setMessages((prev) => {
-              const filtered = prev.filter((m) => m.role !== "system");
-              return [...filtered, { role: "assistant", content: msg.content || t("reconnected") }];
-            });
-            break;
-        }
-        scrollToBottom();
-      },
-      setConnStatus,
-    );
-
-    socketRef.current = socket;
-
-    return () => {
-      socket.close();
-    };
-  }, [agentId, scrollToBottom, t]);
-
-  function sendMessage(e: React.FormEvent) {
-    e.preventDefault();
-    if (!input.trim() || !socketRef.current || streaming || connStatus !== "connected") return;
-
-    const content = input.trim();
-    setInput("");
-
-    setMessages((prev) => [...prev, { role: "user", content }]);
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-    streamBufferRef.current = "";
-    setStreaming(true);
-
-    socketRef.current.send({ type: "message", content });
+  function handleSend(content: string) {
+    sendMessage(content);
     scrollToBottom();
   }
 
@@ -162,9 +67,7 @@ export default function ChatPage() {
           <div className={`w-2 h-2 rounded-full ${statusDot}`} />
           <h2 className="text-sm font-medium text-foreground">{t("myLobster")}</h2>
         </div>
-        {balance !== null && (
-          <span className="text-xs text-muted">{balance} {tc("energy")}</span>
-        )}
+        {balance !== null && <CreditsBadge balance={balance} label={tc("energy")} />}
       </div>
 
       {connStatus === "disconnected" && (
@@ -189,58 +92,26 @@ export default function ChatPage() {
           </div>
         )}
 
-        {messages.map((msg, i) => {
-          const key = `${msg.role}-${i}`;
-          if (msg.role === "system") {
-            return (
-              <div key={key} className="text-center py-1">
-                <span className="text-xs text-muted">{msg.content}</span>
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={key}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[65%] rounded-xl px-4 py-2.5 ${
-                  msg.role === "user"
-                    ? "bg-accent text-white"
-                    : "bg-surface text-foreground"
-                }`}
-              >
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {msg.content || (streaming && i === messages.length - 1 ? t("thinking") : "")}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+        {messages.map((msg: Message, i: number) => (
+          <MessageBubble
+            key={`${msg.role}-${i}`}
+            role={msg.role}
+            content={msg.content}
+            isStreaming={streaming && i === messages.length - 1 && msg.role === "assistant"}
+            thinkingText={t("thinking")}
+          />
+        ))}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} className="px-6 py-4 border-t border-border">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={connStatus === "connected" ? t("inputPlaceholder") : t("inputConnecting")}
-            disabled={connStatus !== "connected"}
-            className="flex-1 px-4 py-2.5 bg-surface border border-border rounded-lg text-foreground placeholder-muted text-sm focus:outline-none focus:border-accent disabled:opacity-40 transition-colors"
-          />
-          <button
-            type="submit"
-            disabled={connStatus !== "connected" || streaming || !input.trim()}
-            className="px-5 py-2.5 bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            {tc("send")}
-          </button>
-        </div>
-      </form>
+      <MessageInput
+        onSend={handleSend}
+        disabled={connStatus !== "connected"}
+        streaming={streaming}
+        placeholder={connStatus === "connected" ? t("inputPlaceholder") : t("inputConnecting")}
+        sendLabel={tc("send")}
+      />
     </div>
   );
 }

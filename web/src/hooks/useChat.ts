@@ -14,9 +14,11 @@ export type ConnectionStatus = "connected" | "connecting" | "disconnected";
 interface UseChatOptions {
   agentId: string;
   onStatus?: (msg: ChatMessage) => void;
+  errorFallback?: string;
+  reconnectedText?: string;
 }
 
-export function useChat({ agentId, onStatus }: UseChatOptions) {
+export function useChat({ agentId, onStatus, errorFallback, reconnectedText }: UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -84,7 +86,7 @@ export function useChat({ agentId, onStatus }: UseChatOptions) {
             streamBufferRef.current = "";
             setMessages((prev) => [
               ...prev,
-              { role: "assistant", content: msg.content || msg.message || "" },
+              { role: "assistant", content: msg.content || msg.message || errorFallback || "" },
             ]);
             break;
 
@@ -107,7 +109,7 @@ export function useChat({ agentId, onStatus }: UseChatOptions) {
           case "reconnected":
             setMessages((prev) => {
               const filtered = prev.filter((m) => m.role !== "system");
-              return [...filtered, { role: "assistant", content: msg.content || "" }];
+              return [...filtered, { role: "assistant", content: msg.content || reconnectedText || "" }];
             });
             break;
         }
@@ -120,7 +122,7 @@ export function useChat({ agentId, onStatus }: UseChatOptions) {
     return () => {
       socket.close();
     };
-  }, [agentId, onStatus]);
+  }, [agentId, onStatus, errorFallback, reconnectedText]);
 
   const sendMessage = useCallback(
     (content: string) => {

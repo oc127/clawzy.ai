@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { listAgents, deleteAgent, startAgent, stopAgent, type Agent } from "@/lib/api";
+import { useAgents } from "@/hooks/useAgent";
 
 const STATUS_DOT: Record<string, string> = {
   running: "bg-green-500",
@@ -14,8 +14,7 @@ const STATUS_DOT: Record<string, string> = {
 export default function AgentsPage() {
   const t = useTranslations("agents");
   const tc = useTranslations("common");
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { agents, loading, startAgent, stopAgent, deleteAgent } = useAgents();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -33,17 +32,10 @@ export default function AgentsPage() {
     "gpt-4o": t("brainGpt4o"),
   };
 
-  useEffect(() => {
-    listAgents()
-      .then(setAgents)
-      .finally(() => setLoading(false));
-  }, []);
-
   async function handleStart(id: string) {
     setActionLoading(id);
     try {
-      const updated = await startAgent(id);
-      setAgents((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      await startAgent(id);
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : t("startFailed"));
     } finally {
@@ -54,8 +46,7 @@ export default function AgentsPage() {
   async function handleStop(id: string) {
     setActionLoading(id);
     try {
-      const updated = await stopAgent(id);
-      setAgents((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      await stopAgent(id);
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : t("stopFailed"));
     } finally {
@@ -67,7 +58,6 @@ export default function AgentsPage() {
     if (!confirm(t("confirmDelete"))) return;
     try {
       await deleteAgent(id);
-      setAgents((prev) => prev.filter((a) => a.id !== id));
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : "Delete failed");
     }
