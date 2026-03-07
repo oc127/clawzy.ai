@@ -936,7 +936,7 @@ services:
 |---|------|--------|------|------|----------|
 | I-1 | **单机单点故障** — 所有服务跑在一台 4C8G ECS 上，任何组件崩溃影响全站 | 🔴 高 | 中 | 全站不可用 | MVP 阶段接受。部署 Systemd watchdog + Docker restart policy。用户超 50 人后拆分为多节点 |
 | I-2 | **Docker socket 挂载** — 后端容器挂载 `/var/run/docker.sock`，等于拥有宿主机 root 权限 | 🔴 高 | 低 | 宿主机被完全控制 | MVP 用 socket，生产切换 Docker API over TCP + TLS mutual auth。限制后端容器的 capabilities |
-| I-3 | **无灾备/备份** — PostgreSQL 数据库没有主从复制，没有定时备份 | 🔴 高 | 中 | 用户数据永久丢失 | 立即实现：`pg_dump` 每日备份到 OSS，保留 30 天。后期上 pg_basebackup 流复制 |
+| I-3 | ~~**无灾备/备份**~~ — ✅ **已实现：pg_dump 每 6h → OSS** | 🟢 已解决 | — | — | **已实现**：`pg_dump` 每 6h cron → gzip → S3 兼容 API 上传 OSS（纯 curl+openssl，零额外依赖）。本地 14 天 + OSS 30 天自动清理。失败 webhook 告警。含 `restore-db.sh` 一键恢复。后期可上 pg_basebackup 流复制 |
 | I-4 | **单可用区** — 新加坡单区部署，该区故障则全站宕机 | 🟡 中 | 低 | 数小时不可用 | MVP 接受。用户超 200 后做多 AZ 部署 |
 | I-5 | **SSL 证书续期失败** — Let's Encrypt 证书 90 天过期，自动续期可能静默失败 | 🟡 中 | 中 | HTTPS 不可用 | certbot renew cron + 监控证书过期时间，过期前 14 天报警 |
 | I-6 | **阿里云供应商锁定** — 深度依赖阿里云 ECS/OSS | 🟢 低 | — | 迁移成本高 | 全部用 Docker 部署，OSS 用 S3 兼容 API，保留迁移能力 |
@@ -1013,7 +1013,7 @@ services:
 | 优先级 | 风险编号 | 风险 | 必须在何时解决 |
 |--------|----------|------|---------------|
 | ~~**P0**~~ | ~~E-5~~ | ~~OpenClaw License 确认~~ ✅ **已解决 — MIT License，可商用** | ~~**立即**~~ Done |
-| **P0** | I-3 | 数据库备份 | **Week 1** — 没备份等于裸奔 |
+| ~~**P0**~~ | ~~I-3~~ | ~~数据库备份~~ ✅ **已解决 — pg_dump 每 6h → OSS + 一键恢复** | ~~**Week 1**~~ Done |
 | **P0** | D-1 | 积分扣费竞态条件 | **Week 2** — 写扣费逻辑时必须处理 |
 | **P0** | D-2 | Usage callback 丢失兜底 | **Week 3** — 聊天链路完成时必须处理 |
 | **P1** | C-1 | 单机容器密度上限 | **上线后** — 清楚知道天花板在哪，提前规划扩容节点 |
