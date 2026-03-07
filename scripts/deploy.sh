@@ -33,9 +33,32 @@ done
 
 cd "$PROJECT_DIR"
 
-# --- 1. Check .env ---
+# --- 1. Check .env and critical variables ---
 if [ ! -f .env ]; then
   error ".env file not found. Copy .env.example and fill in values."
+  exit 1
+fi
+
+source .env 2>/dev/null || true
+
+MISSING=0
+for var in JWT_SECRET POSTGRES_PASSWORD LITELLM_MASTER_KEY; do
+  val="${!var:-}"
+  if [ -z "$val" ] || [ "$val" = "change-me-jwt-secret" ] || [ "$val" = "sk-clawzy-change-me" ]; then
+    error "Critical variable $var is missing or still a placeholder"
+    MISSING=1
+  fi
+done
+
+# Warn (but don't block) for optional-but-important vars
+for var in STRIPE_SECRET_KEY SMTP_HOST SENTRY_DSN; do
+  if [ -z "${!var:-}" ]; then
+    warn "$var is not set — related features will be disabled"
+  fi
+done
+
+if [ "$MISSING" = "1" ]; then
+  error "Fix critical variables above before deploying."
   exit 1
 fi
 

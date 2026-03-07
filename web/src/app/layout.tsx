@@ -25,10 +25,10 @@ export async function generateMetadata() {
     icons: { icon: "/favicon.ico" },
     alternates: {
       languages: {
-        "zh-CN": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
-        "en": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
-        "ja": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
-        "ko": process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
+        "zh-CN": `${process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai"}/zh-CN`,
+        "en": `${process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai"}/en`,
+        "ja": `${process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai"}/ja`,
+        "ko": `${process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai"}/ko`,
       },
     },
   };

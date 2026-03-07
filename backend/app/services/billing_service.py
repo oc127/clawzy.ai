@@ -43,7 +43,7 @@ async def create_checkout_session(db: AsyncSession, user: User, price_id: str) -
         line_items=[{"price": price_id, "quantity": 1}],
         success_url=f"{settings.app_url}/billing?success=true",
         cancel_url=f"{settings.app_url}/billing?canceled=true",
-        metadata={"user_id": user.id},
+        metadata={"user_id": str(user.id)},
     )
     return session.url
 
