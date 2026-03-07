@@ -156,7 +156,16 @@
     "lobsterWaking": "🦞 Lobster is waking up...",
     "prompt1": "Tell me a fun fact",
     "prompt2": "Help me write an email",
-    "prompt3": "Explain something complex simply"
+    "prompt3": "Explain something complex simply",
+    "greetMorning": "Good morning! Your lobster is ready",
+    "greetAfternoon": "Good afternoon! What are we working on?",
+    "greetEvening": "Good evening! Let's wind down together",
+    "greetNight": "Still up? Your lobster is here for you",
+    "milestone1": "🎉 First chat! Your lobster is getting to know you",
+    "milestone5": "🦞 5 chats! You two are getting along well",
+    "milestone10": "⚡ 10 chats! Your lobster is in the groove",
+    "milestone25": "🌟 25 chats! You're a power user now",
+    "milestone50": "🏆 50 chats! Your lobster has leveled up"
   },
   "billing": {
     "title": "Energy & Plans",

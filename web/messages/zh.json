@@ -156,7 +156,16 @@
     "lobsterWaking": "🦞 龙虾正在苏醒...",
     "prompt1": "告诉我一个冷知识",
     "prompt2": "帮我写一封邮件",
-    "prompt3": "用简单的话解释一件复杂的事"
+    "prompt3": "用简单的话解释一件复杂的事",
+    "greetMorning": "早上好！龙虾已就位",
+    "greetAfternoon": "下午好！今天做点什么？",
+    "greetEvening": "晚上好！一起放松一下",
+    "greetNight": "还没睡？龙虾陪着你",
+    "milestone1": "🎉 第一次聊天！龙虾正在认识你",
+    "milestone5": "🦞 聊了 5 次！你们越来越默契了",
+    "milestone10": "⚡ 聊了 10 次！龙虾进入状态了",
+    "milestone25": "🌟 聊了 25 次！你是超级用户了",
+    "milestone50": "🏆 聊了 50 次！龙虾升级了"
   },
   "billing": {
     "title": "能量 & 套餐",

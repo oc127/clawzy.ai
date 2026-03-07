@@ -4,6 +4,7 @@ import { useRef, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useChat, type Message } from "@/hooks/useChat";
+import { useRhythm } from "@/hooks/useRhythm";
 import type { ChatMessage } from "@/lib/ws";
 import MessageBubble from "@/components/chat/MessageBubble";
 import MessageInput from "@/components/chat/MessageInput";
@@ -15,6 +16,23 @@ export default function ChatPage() {
   const tc = useTranslations("common");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const addSystemMessageRef = useRef<(content: string) => void>(() => {});
+  const prevBalanceRef = useRef<number | null>(null);
+
+  const { greeting, onAssistantReply } = useRhythm({
+    greetings: {
+      morning: t("greetMorning"),
+      afternoon: t("greetAfternoon"),
+      evening: t("greetEvening"),
+      night: t("greetNight"),
+    },
+    milestones: {
+      1: t("milestone1"),
+      5: t("milestone5"),
+      10: t("milestone10"),
+      25: t("milestone25"),
+      50: t("milestone50"),
+    },
+  });
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,6 +66,27 @@ export default function ChatPage() {
     addSystemMessageRef.current = addSystemMessage;
   }, [addSystemMessage]);
 
+  // Milestone celebrations: fire when streaming ends (a reply just completed)
+  const wasStreamingRef = useRef(false);
+  useEffect(() => {
+    if (wasStreamingRef.current && !streaming) {
+      const milestone = onAssistantReply();
+      if (milestone) {
+        addSystemMessage(milestone);
+        scrollToBottom();
+      }
+    }
+    wasStreamingRef.current = streaming;
+  }, [streaming, onAssistantReply, addSystemMessage, scrollToBottom]);
+
+  // Track balance changes for CreditsBadge animation
+  const balanceChanged = prevBalanceRef.current !== null && balance !== null && balance !== prevBalanceRef.current;
+  useEffect(() => {
+    if (balance !== null) {
+      prevBalanceRef.current = balance;
+    }
+  }, [balance]);
+
   function handleSend(content: string) {
     sendMessage(content);
     scrollToBottom();
@@ -67,7 +106,7 @@ export default function ChatPage() {
           <div className={`w-2 h-2 rounded-full ${statusDot}`} />
           <h2 className="text-sm font-medium text-foreground">{t("myLobster")}</h2>
         </div>
-        {balance !== null && <CreditsBadge balance={balance} label={tc("energy")} />}
+        {balance !== null && <CreditsBadge balance={balance} label={tc("energy")} pulse={balanceChanged} />}
       </div>
 
       {connStatus === "disconnected" && (
@@ -91,6 +130,7 @@ export default function ChatPage() {
             <div className="animate-breathe mb-4">
               <span className="text-4xl">🦞</span>
             </div>
+            <p className="text-sm text-foreground/80 mb-1">{greeting}</p>
             <p className="text-sm text-muted mb-8">{t("emptyPrompt")}</p>
             <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
               {[t("prompt1"), t("prompt2"), t("prompt3")].map((prompt) => (
