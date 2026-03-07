@@ -989,7 +989,7 @@ services:
 | E-2 | **LiteLLM 上游 breaking change** — API 格式变化或 bug | 🟡 中 | 中 | 模型路由中断 | 同样锁定版本；关注 release notes；保留直连模型 API 的降级方案 |
 | E-3 | **模型供应商 API 宕机** — DeepSeek/Qwen 等 API 不可用 | 🟡 中 | 中 | 用户无法聊天 | 同模型多供应商备份（如 DeepSeek 官方 + 第三方代理）；LiteLLM fallback 路由配置 |
 | E-4 | **模型 API 涨价** — 供应商随时可能调价 | 🟡 中 | 高 | 毛利压缩甚至亏损 | Credits 换算表与模型成本解耦，可随时调整；定期审查定价；积分价格留有 30%+ 毛利空间 |
-| E-5 | **OpenClaw 开源协议风险** — License 可能不允许商业化包装出售 | 🔴 高 | 低 | 被迫下架或赔偿 | **立即确认 OpenClaw 的 License**（MIT/Apache 可以，AGPL/BSL 需要注意）。如有限制，走商业授权或 fork |
+| E-5 | ~~**OpenClaw 开源协议风险**~~ — ✅ **已确认：MIT License，允许商业化** | 🟢 已解决 | — | — | **已确认 2025-03：OpenClaw 采用 MIT License（Copyright Peter Steinberger）**，完全允许商用包装、SaaS 分发、修改再许可。合规动作：① THIRD_PARTY_LICENSES 已添加 ② ToS/Privacy Policy 已添加开源归属声明 ③ 页脚已添加 OpenClaw 链接 |
 | E-6 | **Cloudflare 免费计划限制** — 流量突增可能触发 Cloudflare 限制 | 🟢 低 | 低 | CDN 降级 | 监控 Cloudflare dashboard；预算内可升级到 Pro ($20/月) |
 
 ---
@@ -1012,7 +1012,7 @@ services:
 
 | 优先级 | 风险编号 | 风险 | 必须在何时解决 |
 |--------|----------|------|---------------|
-| **P0** | E-5 | OpenClaw License 确认 | **立即** — 决定整个项目能不能做 |
+| ~~**P0**~~ | ~~E-5~~ | ~~OpenClaw License 确认~~ ✅ **已解决 — MIT License，可商用** | ~~**立即**~~ Done |
 | **P0** | I-3 | 数据库备份 | **Week 1** — 没备份等于裸奔 |
 | **P0** | D-1 | 积分扣费竞态条件 | **Week 2** — 写扣费逻辑时必须处理 |
 | **P0** | D-2 | Usage callback 丢失兜底 | **Week 3** — 聊天链路完成时必须处理 |

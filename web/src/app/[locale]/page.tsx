@@ -99,7 +99,14 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border py-8 text-center text-xs text-muted">
-        Clawzy.ai
+        <div className="flex items-center justify-center gap-4 flex-wrap">
+          <span>Clawzy.ai</span>
+          <span className="text-border">|</span>
+          <Link href="/terms" className="hover:text-foreground transition-colors">{t("footerTerms")}</Link>
+          <Link href="/privacy" className="hover:text-foreground transition-colors">{t("footerPrivacy")}</Link>
+          <span className="text-border">|</span>
+          <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">{t("footerPoweredBy")}</a>
+        </div>
       </footer>
     </div>
   );
