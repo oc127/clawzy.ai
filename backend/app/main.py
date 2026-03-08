@@ -114,3 +114,22 @@ async def health_deep():
             for r in results
         ],
     }
+
+
+@app.get("/status")
+async def public_status():
+    """公开状态页 — 不需要认证，只返回核心服务状态（不暴露内部细节）。"""
+    from app.services.health_service import run_all_health_checks, HealthStatus
+    results = await run_all_health_checks()
+
+    services = {}
+    for r in results:
+        services[r.service] = r.status.value
+
+    overall = "operational"
+    if any(r.status == HealthStatus.UNHEALTHY for r in results):
+        overall = "major_outage"
+    elif any(r.status == HealthStatus.DEGRADED for r in results):
+        overall = "degraded"
+
+    return {"status": overall, "services": services}

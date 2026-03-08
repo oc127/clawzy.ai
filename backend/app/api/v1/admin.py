@@ -5,8 +5,10 @@
 
 import json
 import logging
+import re
 
 from fastapi import APIRouter, HTTPException, Depends, Header, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -119,6 +121,58 @@ async def health_history():
     if data:
         return {"results": json.loads(data)}
     return {"results": []}
+
+
+@router.get("/metrics/prometheus", dependencies=[Depends(verify_admin_key)])
+async def prometheus_metrics():
+    """Prometheus text format 指标输出 — 供外部 Prometheus / Grafana 抓取。"""
+    data = await get_all_metrics()
+    lines: list[str] = []
+
+    for name, val in data.get("counters", {}).items():
+        safe = _sanitize_metric_name(name)
+        lines.append(f"clawzy_counter_{safe} {val}")
+
+    for name, val in data.get("gauges", {}).items():
+        safe = _sanitize_metric_name(name)
+        lines.append(f"clawzy_gauge_{safe} {val}")
+
+    for name, lat in data.get("latencies", {}).items():
+        safe = _sanitize_metric_name(name)
+        for quantile in ("p50", "p95", "p99", "avg"):
+            lines.append(f"clawzy_latency_{safe}_{quantile} {lat.get(quantile, 0)}")
+        lines.append(f"clawzy_latency_{safe}_count {lat.get('count', 0)}")
+
+    return PlainTextResponse("\n".join(lines) + "\n")
+
+
+def _sanitize_metric_name(name: str) -> str:
+    """将 Redis 指标名转换为 Prometheus 合法名（仅字母数字下划线）。"""
+    return re.sub(r"[^a-zA-Z0-9_]", "_", name)
+
+
+@router.post("/deploy-event", dependencies=[Depends(verify_admin_key)])
+async def record_deploy_event(event: dict):
+    """记录部署/回滚事件到 Redis（最近 50 条）。"""
+    r = await get_redis()
+    key = "clawzy:deploy:history"
+    await r.lpush(key, json.dumps(event))
+    await r.ltrim(key, 0, 49)
+    return {"status": "recorded"}
+
+
+@router.get("/deploy-history", dependencies=[Depends(verify_admin_key)])
+async def deploy_history():
+    """最近 50 次部署/回滚事件。"""
+    r = await get_redis()
+    raw = await r.lrange("clawzy:deploy:history", 0, 49)
+    events = []
+    for item in raw:
+        try:
+            events.append(json.loads(item))
+        except (json.JSONDecodeError, TypeError):
+            continue
+    return {"events": events}
 
 
 @router.post("/ops/chat", dependencies=[Depends(verify_admin_key)])

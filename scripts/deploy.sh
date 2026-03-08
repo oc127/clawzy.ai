@@ -115,5 +115,18 @@ else
   fi
 fi
 
+# --- 8. Record deploy event ---
+ADMIN_KEY="${ADMIN_API_KEY:-}"
+if [ -n "$ADMIN_KEY" ]; then
+  COMMIT=$(git rev-parse --short HEAD)
+  log "Recording deploy event (commit: $COMMIT)..."
+  curl -sf http://localhost:8000/admin/deploy-event \
+    -H "X-Admin-Key: $ADMIN_KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"commit\":\"$COMMIT\",\"timestamp\":\"$(date -u +%FT%TZ)\",\"type\":\"deploy\"}" || true
+else
+  warn "ADMIN_API_KEY not set, skipping deploy event recording"
+fi
+
 log "Deployment complete!"
 docker compose -f "$COMPOSE_FILE" ps

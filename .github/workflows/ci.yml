@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
@@ -76,9 +81,34 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
       - name: Build backend image
-        run: docker build -t clawzy-backend ./backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
       - name: Build frontend image
-        run: docker build -t clawzy-web ./web
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          push: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
       - name: Verify compose config
         run: docker compose -f docker-compose.prod.yml config --quiet
+
+  load-test:
+    name: Load Test (k6 smoke)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Run k6 smoke test
+        run: k6 run tests/load/k6-smoke.js
+        env:
+          K6_BASE_URL: ${{ secrets.STAGING_URL || 'http://localhost:8000' }}
+          K6_TEST_EMAIL: ${{ secrets.K6_TEST_EMAIL || 'loadtest@clawzy.ai' }}
+          K6_TEST_PASSWORD: ${{ secrets.K6_TEST_PASSWORD || 'loadtest123' }}

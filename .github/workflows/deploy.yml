@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy to Production
@@ -31,4 +35,30 @@ jobs:
             done
             echo "Running migrations..."
             docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+            echo "Running smoke tests..."
+            bash scripts/smoke-test.sh || true
+            echo "Recording deploy event..."
+            COMMIT=$(git rev-parse --short HEAD)
+            curl -sf http://127.0.0.1:8000/admin/deploy-event \
+              -H "X-Admin-Key: $ADMIN_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"commit\":\"$COMMIT\",\"timestamp\":\"$(date -u +%FT%TZ)\"}" || true
             echo "Deploy complete at $(date)"
+
+      - name: Notify deploy success
+        if: success()
+        run: |
+          if [ -n "${{ secrets.ALERT_WEBHOOK_URL }}" ]; then
+            curl -sf "${{ secrets.ALERT_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"text\":\"Deploy succeeded: ${{ github.sha }}\\nTriggered by: ${{ github.actor }}\"}" || true
+          fi
+
+      - name: Notify deploy failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.ALERT_WEBHOOK_URL }}" ]; then
+            curl -sf "${{ secrets.ALERT_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"text\":\"Deploy FAILED: ${{ github.sha }}\\nSee: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" || true
+          fi
