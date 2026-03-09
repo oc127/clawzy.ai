@@ -231,7 +231,7 @@ services:
       NEXT_PUBLIC_STRIPE_PRICE_PRO: ${STRIPE_PRICE_PRO:-price_pro_monthly}
       NEXT_PUBLIC_STRIPE_PRICE_BUSINESS: ${STRIPE_PRICE_BUSINESS:-price_business_monthly}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     mem_limit: "512m"
     cpus: "0.5"
     logging:

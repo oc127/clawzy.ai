@@ -241,7 +241,7 @@ services:
       NEXT_PUBLIC_STRIPE_PRICE_PRO: ${STRIPE_PRICE_PRO}
       NEXT_PUBLIC_STRIPE_PRICE_BUSINESS: ${STRIPE_PRICE_BUSINESS}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     logging:
       driver: "json-file"
       options:
