@@ -28,8 +28,8 @@ if settings.sentry_dsn:
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
 )
 
 # --- 中间件（后添加的先执行） ---
@@ -57,6 +57,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    max_age=86400,
 )
 
 app.include_router(api_router)

@@ -84,6 +84,21 @@ class Settings(BaseSettings):
                 "LITELLM_MASTER_KEY is still the default placeholder",
                 stacklevel=2,
             )
+        if not self.debug:
+            if not self.admin_api_key:
+                raise RuntimeError(
+                    "ADMIN_API_KEY must be set in production. "
+                    "Generate one: openssl rand -hex 16"
+                )
+            if self.stripe_secret_key and not self.stripe_webhook_secret:
+                raise RuntimeError(
+                    "STRIPE_WEBHOOK_SECRET must be set when STRIPE_SECRET_KEY is configured"
+                )
+            if not self.smtp_host:
+                warnings.warn(
+                    "SMTP_HOST not configured — email features (verification, password reset) will not work",
+                    stacklevel=2,
+                )
 
 
 settings = Settings()

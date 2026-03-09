@@ -1,8 +1,11 @@
 """限流中间件 — Redis 滑动窗口，防止 API 滥用。"""
 
+import logging
 import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -52,7 +55,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     content={"detail": t("rateLimit.tooManyRequests", locale)},
                     headers={"Retry-After": "60"},
                 )
-        except Exception:
-            pass  # Redis 挂了不阻塞请求
+        except Exception as e:
+            logger.warning("Rate limit check failed (Redis down?): %s", e)
 
         return await call_next(request)

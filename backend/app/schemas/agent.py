@@ -1,15 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AgentCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100)
     model_name: str = "deepseek-chat"
 
 
 class AgentUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=100)
     model_name: str | None = None
 
 
