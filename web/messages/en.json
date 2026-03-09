@@ -120,7 +120,8 @@
     "statusRunning": "🟢 Online",
     "statusStopped": "😴 Resting",
     "statusCreating": "⏳ Creating",
-    "statusError": "🤒 Unwell"
+    "statusError": "🤒 Unwell",
+    "toolStore": "Tool Store"
   },
   "agents": {
     "title": "Manage Lobsters",
@@ -250,5 +251,24 @@
     "passwordChangeFailed": "Change failed",
     "changing": "Changing...",
     "changePasswordBtn": "Change password"
+  },
+  "toolstore": {
+    "title": "Tool Store",
+    "searchPlaceholder": "Search tools...",
+    "allCategories": "All",
+    "addToAgent": "Add to Agent",
+    "installed": "Installed",
+    "alreadyInstalled": "Tool is already installed on this agent",
+    "selectAgent": "Select an agent to install this tool",
+    "installSuccess": "Tool installed! Restart your agent to apply changes.",
+    "installSuccessNoRestart": "Tool installed successfully!",
+    "uninstallSuccess": "Tool removed. Restart your agent to apply changes.",
+    "noResults": "No tools found",
+    "noAgents": "You don't have any agents yet. Create one first!",
+    "cancel": "Cancel",
+    "popular": "Popular",
+    "typeMcp": "MCP",
+    "typeSkill": "Skill",
+    "typePrompt": "Prompt"
   }
 }

@@ -119,7 +119,8 @@
     "statusRunning": "🟢 オンライン",
     "statusStopped": "😴 休憩中",
     "statusCreating": "⏳ 作成中",
-    "statusError": "🤒 不調"
+    "statusError": "🤒 不調",
+    "toolStore": "ツールストア"
   },
   "agents": {
     "title": "ロブスター管理",
@@ -245,5 +246,24 @@
     "passwordChangeFailed": "変更に失敗しました",
     "changing": "変更中...",
     "changePasswordBtn": "パスワードを変更"
+  },
+  "toolstore": {
+    "title": "ツールストア",
+    "searchPlaceholder": "ツールを検索...",
+    "allCategories": "すべて",
+    "addToAgent": "エージェントに追加",
+    "installed": "インストール済み",
+    "alreadyInstalled": "このツールは既にインストールされています",
+    "selectAgent": "ツールをインストールするエージェントを選択",
+    "installSuccess": "ツールをインストールしました！エージェントを再起動して適用してください。",
+    "installSuccessNoRestart": "ツールをインストールしました！",
+    "uninstallSuccess": "ツールを削除しました。エージェントを再起動して適用してください。",
+    "noResults": "ツールが見つかりません",
+    "noAgents": "エージェントがありません。まず作成してください！",
+    "cancel": "キャンセル",
+    "popular": "人気",
+    "typeMcp": "MCP",
+    "typeSkill": "スキル",
+    "typePrompt": "プロンプト"
   }
 }

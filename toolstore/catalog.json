@@ -1,0 +1,367 @@
+{
+  "categories": [
+    { "id": "developer", "name": "Developer Tools", "name_zh": "开发工具", "name_ja": "開発ツール", "name_ko": "개발 도구", "icon": "code" },
+    { "id": "research", "name": "Research", "name_zh": "研究调查", "name_ja": "リサーチ", "name_ko": "리서치", "icon": "search" },
+    { "id": "writing", "name": "Writing", "name_zh": "写作辅助", "name_ja": "ライティング", "name_ko": "글쓰기", "icon": "pencil" },
+    { "id": "data", "name": "Data & Analysis", "name_zh": "数据分析", "name_ja": "データ分析", "name_ko": "데이터 분석", "icon": "chart" },
+    { "id": "productivity", "name": "Productivity", "name_zh": "效率工具", "name_ja": "生産性", "name_ko": "생산성", "icon": "zap" }
+  ],
+  "tools": [
+    {
+      "id": "mcp-filesystem",
+      "name": "File System",
+      "name_zh": "文件系统",
+      "name_ja": "ファイルシステム",
+      "name_ko": "파일 시스템",
+      "type": "mcp",
+      "category": "developer",
+      "description": "Read, write, and manage files in the agent's workspace",
+      "description_zh": "读写和管理 Agent 工作区中的文件",
+      "description_ja": "エージェントのワークスペースでファイルの読み書きと管理",
+      "description_ko": "에이전트 작업 공간의 파일 읽기, 쓰기 및 관리",
+      "icon": "folder",
+      "author": "Clawzy Official",
+      "tags": ["files", "filesystem", "read", "write"],
+      "popularity": 95,
+      "config": {
+        "mcpServers": {
+          "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/node/workspace"]
+          }
+        }
+      }
+    },
+    {
+      "id": "mcp-web-browser",
+      "name": "Web Browser",
+      "name_zh": "网页浏览器",
+      "name_ja": "ウェブブラウザ",
+      "name_ko": "웹 브라우저",
+      "type": "mcp",
+      "category": "research",
+      "description": "Browse web pages, take screenshots, and extract content",
+      "description_zh": "浏览网页、截图和提取内容",
+      "description_ja": "ウェブページの閲覧、スクリーンショット、コンテンツ抽出",
+      "description_ko": "웹 페이지 탐색, 스크린샷 및 콘텐츠 추출",
+      "icon": "globe",
+      "author": "Clawzy Official",
+      "tags": ["web", "browser", "screenshot", "scrape"],
+      "popularity": 90,
+      "config": {
+        "mcpServers": {
+          "puppeteer": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+          }
+        }
+      }
+    },
+    {
+      "id": "mcp-web-search",
+      "name": "Web Search",
+      "name_zh": "网络搜索",
+      "name_ja": "ウェブ検索",
+      "name_ko": "웹 검색",
+      "type": "mcp",
+      "category": "research",
+      "description": "Search the web using Brave Search API",
+      "description_zh": "使用 Brave Search API 搜索网络",
+      "description_ja": "Brave Search APIでウェブ検索",
+      "description_ko": "Brave Search API로 웹 검색",
+      "icon": "search",
+      "author": "Clawzy Official",
+      "tags": ["search", "web", "brave", "query"],
+      "popularity": 88,
+      "config": {
+        "mcpServers": {
+          "brave-search": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+            "env": {
+              "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "mcp-github",
+      "name": "GitHub",
+      "name_zh": "GitHub",
+      "name_ja": "GitHub",
+      "name_ko": "GitHub",
+      "type": "mcp",
+      "category": "developer",
+      "description": "Manage repositories, pull requests, issues, and code on GitHub",
+      "description_zh": "管理 GitHub 仓库、PR、Issue 和代码",
+      "description_ja": "GitHubリポジトリ、PR、Issue、コードの管理",
+      "description_ko": "GitHub 저장소, PR, 이슈 및 코드 관리",
+      "icon": "github",
+      "author": "Clawzy Official",
+      "tags": ["github", "git", "pr", "issues", "code"],
+      "popularity": 85,
+      "config": {
+        "mcpServers": {
+          "github": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {
+              "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "mcp-sqlite",
+      "name": "SQLite Database",
+      "name_zh": "SQLite 数据库",
+      "name_ja": "SQLiteデータベース",
+      "name_ko": "SQLite 데이터베이스",
+      "type": "mcp",
+      "category": "data",
+      "description": "Query and manage local SQLite databases",
+      "description_zh": "查询和管理本地 SQLite 数据库",
+      "description_ja": "ローカルSQLiteデータベースの照会と管理",
+      "description_ko": "로컬 SQLite 데이터베이스 쿼리 및 관리",
+      "icon": "database",
+      "author": "Clawzy Official",
+      "tags": ["sql", "sqlite", "database", "query"],
+      "popularity": 75,
+      "config": {
+        "mcpServers": {
+          "sqlite": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-sqlite", "/home/node/workspace/data.db"]
+          }
+        }
+      }
+    },
+    {
+      "id": "mcp-memory",
+      "name": "Memory",
+      "name_zh": "持久记忆",
+      "name_ja": "メモリ",
+      "name_ko": "메모리",
+      "type": "mcp",
+      "category": "productivity",
+      "description": "Persistent memory storage using a knowledge graph",
+      "description_zh": "使用知识图谱的持久化记忆存储",
+      "description_ja": "ナレッジグラフを使った永続メモリ",
+      "description_ko": "지식 그래프를 사용한 영구 메모리 저장",
+      "icon": "brain",
+      "author": "Clawzy Official",
+      "tags": ["memory", "knowledge", "remember", "persistent"],
+      "popularity": 82,
+      "config": {
+        "mcpServers": {
+          "memory": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-memory"]
+          }
+        }
+      }
+    },
+    {
+      "id": "skill-code-interpreter",
+      "name": "Code Interpreter",
+      "name_zh": "代码解释器",
+      "name_ja": "コードインタプリタ",
+      "name_ko": "코드 인터프리터",
+      "type": "skill",
+      "category": "developer",
+      "description": "Execute Python code, create charts, and analyze data",
+      "description_zh": "执行 Python 代码、创建图表和分析数据",
+      "description_ja": "Pythonコードの実行、チャート作成、データ分析",
+      "description_ko": "Python 코드 실행, 차트 생성, 데이터 분석",
+      "icon": "terminal",
+      "author": "Clawzy Official",
+      "tags": ["python", "code", "execute", "chart", "data"],
+      "popularity": 92,
+      "config": {
+        "skills": {
+          "code-interpreter": {
+            "enabled": true,
+            "sandbox": true,
+            "timeout": 30
+          }
+        }
+      }
+    },
+    {
+      "id": "skill-image-gen",
+      "name": "Image Generator",
+      "name_zh": "图像生成",
+      "name_ja": "画像生成",
+      "name_ko": "이미지 생성",
+      "type": "skill",
+      "category": "writing",
+      "description": "Generate images from text descriptions",
+      "description_zh": "根据文字描述生成图像",
+      "description_ja": "テキストから画像を生成",
+      "description_ko": "텍스트 설명으로 이미지 생성",
+      "icon": "image",
+      "author": "Clawzy Official",
+      "tags": ["image", "generate", "art", "visual"],
+      "popularity": 78,
+      "config": {
+        "skills": {
+          "image-generator": {
+            "enabled": true,
+            "model": "dall-e-3"
+          }
+        }
+      }
+    },
+    {
+      "id": "skill-translator",
+      "name": "Translator",
+      "name_zh": "翻译助手",
+      "name_ja": "翻訳",
+      "name_ko": "번역기",
+      "type": "skill",
+      "category": "productivity",
+      "description": "Translate text between 50+ languages with context awareness",
+      "description_zh": "支持 50+ 语言的上下文感知翻译",
+      "description_ja": "50以上の言語間でコンテキスト対応翻訳",
+      "description_ko": "50개 이상의 언어 간 맥락 인식 번역",
+      "icon": "languages",
+      "author": "Clawzy Official",
+      "tags": ["translate", "language", "multilingual"],
+      "popularity": 80,
+      "config": {
+        "skills": {
+          "translator": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "skill-summarizer",
+      "name": "Summarizer",
+      "name_zh": "摘要生成",
+      "name_ja": "要約",
+      "name_ko": "요약기",
+      "type": "skill",
+      "category": "research",
+      "description": "Summarize long documents, articles, and conversations",
+      "description_zh": "长文档、文章和对话摘要",
+      "description_ja": "長文ドキュメント・記事・会話の要約",
+      "description_ko": "긴 문서, 기사, 대화 요약",
+      "icon": "text",
+      "author": "Clawzy Official",
+      "tags": ["summary", "tldr", "digest", "brief"],
+      "popularity": 76,
+      "config": {
+        "skills": {
+          "summarizer": {
+            "enabled": true,
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    {
+      "id": "prompt-code-reviewer",
+      "name": "Code Reviewer",
+      "name_zh": "代码审查专家",
+      "name_ja": "コードレビュアー",
+      "name_ko": "코드 리뷰어",
+      "type": "prompt",
+      "category": "developer",
+      "description": "Expert code reviewer focused on security, performance, and best practices",
+      "description_zh": "专注于安全、性能和最佳实践的代码审查专家",
+      "description_ja": "セキュリティ・パフォーマンス・ベストプラクティスに特化したコードレビュー",
+      "description_ko": "보안, 성능, 모범 사례에 중점을 둔 코드 리뷰 전문가",
+      "icon": "shield",
+      "author": "Clawzy Official",
+      "tags": ["review", "code", "security", "quality"],
+      "popularity": 86,
+      "config": {
+        "systemPrompt": "You are an expert code reviewer. Review code for: 1) Security vulnerabilities (OWASP Top 10), 2) Performance issues, 3) Code smells and anti-patterns, 4) Error handling gaps. Be specific with line references and suggest fixes."
+      }
+    },
+    {
+      "id": "prompt-writing-assistant",
+      "name": "Writing Assistant",
+      "name_zh": "写作助手",
+      "name_ja": "ライティングアシスタント",
+      "name_ko": "글쓰기 도우미",
+      "type": "prompt",
+      "category": "writing",
+      "description": "Professional writing assistant for articles, emails, and documentation",
+      "description_zh": "专业写作助手，适用于文章、邮件和文档",
+      "description_ja": "記事・メール・ドキュメント用プロライティングアシスタント",
+      "description_ko": "기사, 이메일, 문서를 위한 전문 글쓰기 도우미",
+      "icon": "pencil",
+      "author": "Clawzy Official",
+      "tags": ["writing", "article", "email", "documentation"],
+      "popularity": 84,
+      "config": {
+        "systemPrompt": "You are a professional writing assistant. Help users write clear, engaging, and well-structured content. Adapt your tone to the context: formal for business, friendly for blogs, precise for documentation. Always suggest improvements and alternatives."
+      }
+    },
+    {
+      "id": "prompt-data-analyst",
+      "name": "Data Analyst",
+      "name_zh": "数据分析师",
+      "name_ja": "データアナリスト",
+      "name_ko": "데이터 분석가",
+      "type": "prompt",
+      "category": "data",
+      "description": "Analyze data, create visualizations, and find insights",
+      "description_zh": "分析数据、创建可视化图表、发现洞察",
+      "description_ja": "データ分析、可視化、インサイト発見",
+      "description_ko": "데이터 분석, 시각화, 인사이트 발견",
+      "icon": "chart",
+      "author": "Clawzy Official",
+      "tags": ["data", "analysis", "visualization", "insights"],
+      "popularity": 74,
+      "config": {
+        "systemPrompt": "You are a data analyst expert. Help users analyze datasets, create visualizations, identify trends and patterns, and derive actionable insights. Use statistical methods when appropriate. Present findings clearly with supporting evidence."
+      }
+    },
+    {
+      "id": "prompt-devops-engineer",
+      "name": "DevOps Engineer",
+      "name_zh": "运维工程师",
+      "name_ja": "DevOpsエンジニア",
+      "name_ko": "DevOps 엔지니어",
+      "type": "prompt",
+      "category": "developer",
+      "description": "Infrastructure, CI/CD, Docker, and cloud operations expert",
+      "description_zh": "基础设施、CI/CD、Docker 和云运维专家",
+      "description_ja": "インフラ・CI/CD・Docker・クラウド運用エキスパート",
+      "description_ko": "인프라, CI/CD, Docker, 클라우드 운영 전문가",
+      "icon": "server",
+      "author": "Clawzy Official",
+      "tags": ["devops", "docker", "ci/cd", "infrastructure", "cloud"],
+      "popularity": 72,
+      "config": {
+        "systemPrompt": "You are a senior DevOps engineer. Help with infrastructure as code, CI/CD pipelines, Docker/Kubernetes, monitoring, and cloud operations. Prioritize security, reliability, and cost optimization. Always explain the trade-offs of different approaches."
+      }
+    },
+    {
+      "id": "prompt-research-assistant",
+      "name": "Research Assistant",
+      "name_zh": "研究助手",
+      "name_ja": "リサーチアシスタント",
+      "name_ko": "연구 도우미",
+      "type": "prompt",
+      "category": "research",
+      "description": "Deep research with structured analysis and source tracking",
+      "description_zh": "深度研究，带结构化分析和来源追踪",
+      "description_ja": "構造化分析とソース追跡による深層リサーチ",
+      "description_ko": "구조화된 분석과 출처 추적을 통한 심층 리서치",
+      "icon": "book",
+      "author": "Clawzy Official",
+      "tags": ["research", "analysis", "sources", "academic"],
+      "popularity": 70,
+      "config": {
+        "systemPrompt": "You are a research assistant. Conduct thorough research on any topic. Always: 1) Structure findings clearly with headers, 2) Cite sources when available, 3) Distinguish facts from opinions, 4) Note limitations and gaps, 5) Suggest follow-up questions."
+      }
+    }
+  ]
+}

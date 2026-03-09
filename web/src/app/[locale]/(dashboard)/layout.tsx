@@ -48,6 +48,7 @@ export default function DashboardLayout({
           <NavLink href="/" label={t("myLobsters")} active={pathname === "/"} />
           <NavLink href="/agents" label={t("manageLobsters")} active={pathname === "/agents"} />
           <NavLink href="/models" label={t("availableBrains")} active={pathname === "/models"} />
+          <NavLink href="/toolstore" label={t("toolStore")} active={pathname === "/toolstore"} />
           <NavLink href="/billing" label={t("energyAndPlans")} active={pathname === "/billing"} />
           <NavLink href="/settings" label={tc("settings")} active={pathname === "/settings"} />
         </nav>

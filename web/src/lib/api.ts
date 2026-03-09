@@ -255,4 +255,55 @@ export async function listMessages(conversationId: string, limit = 50) {
   );
 }
 
+// --- Tool Store ---
+export interface ToolInfo {
+  id: string;
+  name: string;
+  type: "mcp" | "skill" | "prompt";
+  category: string;
+  description: string;
+  icon: string;
+  author: string;
+  tags: string[];
+  popularity: number;
+}
+
+export interface CategoryInfo {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+export async function getToolCatalog(category?: string, search?: string) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  if (search) params.set("search", search);
+  const qs = params.toString();
+  return request<{ tools: ToolInfo[]; categories: CategoryInfo[] }>(
+    `/toolstore/catalog${qs ? `?${qs}` : ""}`
+  );
+}
+
+export async function getPopularTools() {
+  return request<{ tools: ToolInfo[] }>("/toolstore/popular");
+}
+
+export async function getAgentTools(agentId: string) {
+  return request<{ tools: ToolInfo[] }>(`/toolstore/agents/${agentId}/tools`);
+}
+
+export async function installTool(agentId: string, toolId: string) {
+  return request<{ status: string; tool_id: string; needs_restart: boolean }>(
+    `/toolstore/agents/${agentId}/tools`,
+    { method: "POST", body: JSON.stringify({ tool_id: toolId }) }
+  );
+}
+
+export async function uninstallTool(agentId: string, toolId: string) {
+  return request<{ status: string; tool_id: string; needs_restart: boolean }>(
+    `/toolstore/agents/${agentId}/tools/${toolId}`,
+    { method: "DELETE" }
+  );
+}
+
 export { ApiError };
