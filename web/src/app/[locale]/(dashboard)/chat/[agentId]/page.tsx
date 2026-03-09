@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useChat, type Message } from "@/hooks/useChat";
 import { useRhythm } from "@/hooks/useRhythm";
-import { listModels, type ModelInfo } from "@/lib/api";
+import { listModels, listAgents, type ModelInfo } from "@/lib/api";
 import type { ChatMessage } from "@/lib/ws";
 import MessageBubble from "@/components/chat/MessageBubble";
 import MessageInput from "@/components/chat/MessageInput";
@@ -20,9 +20,16 @@ export default function ChatPage() {
   const prevBalanceRef = useRef<number | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [showConversations, setShowConversations] = useState(false);
+  const [agentName, setAgentName] = useState<string>("");
 
   useEffect(() => {
     listModels().then(setModels).catch(() => {});
+    listAgents()
+      .then((agents) => {
+        const agent = agents.find((a) => a.id === agentId);
+        if (agent) setAgentName(agent.name);
+      })
+      .catch(() => {});
   }, []);
 
   const { greeting, onAssistantReply } = useRhythm({
@@ -218,15 +225,20 @@ export default function ChatPage() {
           </div>
         )}
 
-        {messages.map((msg: Message, i: number) => (
-          <MessageBubble
-            key={`${msg.role}-${i}`}
-            role={msg.role}
-            content={msg.content}
-            isStreaming={streaming && i === messages.length - 1 && msg.role === "assistant"}
-            thinkingText={t("thinking")}
-          />
-        ))}
+        {messages.map((msg: Message, i: number) => {
+          // Only show agent name when this is the first assistant msg in a group
+          const showName = msg.role === "assistant" && (i === 0 || messages[i - 1].role !== "assistant");
+          return (
+            <MessageBubble
+              key={`${msg.role}-${i}`}
+              role={msg.role}
+              content={msg.content}
+              isStreaming={streaming && i === messages.length - 1 && msg.role === "assistant"}
+              thinkingText={t("thinking")}
+              agentName={showName ? (agentName || undefined) : undefined}
+            />
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
