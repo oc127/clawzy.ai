@@ -14,13 +14,11 @@ export async function generateMetadata() {
       siteName: "Clawzy.ai",
       type: "website",
       url: process.env.NEXT_PUBLIC_APP_URL || "https://clawzy.ai",
-      images: [{ url: "/og-image.png", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title: t("title"),
       description: t("description"),
-      images: ["/og-image.png"],
     },
     icons: { icon: "/favicon.ico" },
     alternates: {
