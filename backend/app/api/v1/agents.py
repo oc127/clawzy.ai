@@ -38,6 +38,15 @@ async def create_my_agent(
         agent = await create_agent(db, user.id, body.name, body.model_name)
     except AgentLimitError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+
+    # Auto-start OpenClaw container immediately after creation
+    try:
+        agent = await start_agent(db, agent)
+    except AgentStartError:
+        # Agent created but container failed to start — return agent anyway,
+        # chat page will retry auto-start on WebSocket connect.
+        pass
+
     return agent
 
 
