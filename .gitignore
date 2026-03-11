@@ -1,6 +1,10 @@
 # Environment (contains secrets)
 .env
 
+# Python
+__pycache__/
+*.pyc
+
 # Docker volumes
 postgres_data/
 
