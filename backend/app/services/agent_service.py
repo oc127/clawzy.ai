@@ -1,12 +1,13 @@
-import json
 import logging
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
 from app.models.subscription import Subscription, PlanType
+from app.services.credits_service import CREDIT_RATES
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,9 @@ async def count_user_agents(db: AsyncSession, user_id: str) -> int:
 
 async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: str) -> Agent:
     """Create a new agent record. Container provisioning is separate."""
+    if model_name not in CREDIT_RATES:
+        raise ValueError(f"Model '{model_name}' is not available")
+
     plan = await get_user_plan(db, user_id)
     count = await count_user_agents(db, user_id)
     limit = PLAN_AGENT_LIMITS.get(plan, 1)
@@ -67,12 +71,13 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
 
 
 async def allocate_port(db: AsyncSession) -> int:
-    """Find the next available WS port."""
+    """Find the next available WS port with row locking to prevent races."""
     result = await db.execute(
         select(Agent.ws_port)
         .where(Agent.ws_port.isnot(None))
         .order_by(Agent.ws_port.desc())
         .limit(1)
+        .with_for_update()
     )
     last_port = result.scalar_one_or_none()
     next_port = (last_port + 1) if last_port else settings.openclaw_port_start
@@ -99,6 +104,8 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
     if name is not None:
         agent.name = name
     if model_name is not None:
+        if model_name not in CREDIT_RATES:
+            raise ValueError(f"Model '{model_name}' is not available")
         agent.model_name = model_name
     await db.commit()
     await db.refresh(agent)
@@ -106,5 +113,11 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
 
 
 async def delete_agent(db: AsyncSession, agent: Agent) -> None:
+    # Clean up Docker container if it exists
+    if agent.container_id:
+        try:
+            docker_manager.remove_container(agent.container_id)
+        except Exception:
+            logger.warning("Failed to remove container %s for agent %s", agent.container_id, agent.id)
     await db.delete(agent)
     await db.commit()

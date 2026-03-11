@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
 
 from app.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+TOKEN_EXPIRED = "token_expired"
+TOKEN_INVALID = "token_invalid"
 
 
 def hash_password(password: str) -> str:
@@ -34,9 +37,12 @@ def create_refresh_token(user_id: str) -> str:
     )
 
 
-def decode_token(token: str) -> dict | None:
+def decode_token(token: str) -> dict | None | str:
+    """Decode JWT token. Returns payload dict, TOKEN_EXPIRED, or None for invalid."""
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return payload
+    except ExpiredSignatureError:
+        return TOKEN_EXPIRED
     except JWTError:
         return None

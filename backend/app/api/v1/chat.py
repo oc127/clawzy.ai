@@ -6,12 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db, async_session
-from app.core.security import decode_token
+from app.core.security import decode_token, TOKEN_EXPIRED
 from app.deps import get_current_user
 from app.models.user import User
 from app.models.chat import Conversation, Message
 from app.schemas.chat import ConversationResponse, MessageResponse
 from app.services.agent_service import get_agent
+from app.services.credits_service import CREDIT_RATES
 from app.services.chat_service import (
     get_or_create_conversation,
     stream_chat_completion,
@@ -49,7 +50,10 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
         return
 
     payload = decode_token(token)
-    if payload is None or payload.get("type") != "access":
+    if payload == TOKEN_EXPIRED:
+        await websocket.close(code=4001, reason="Token expired")
+        return
+    if not isinstance(payload, dict) or payload.get("type") != "access":
         await websocket.close(code=4001, reason="Invalid token")
         return
 
@@ -67,6 +71,9 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
         if agent is None:
             await websocket.close(code=4004, reason="Agent not found")
             return
+
+        # Cache agent info for the connection
+        cached_model_name = agent.model_name
 
     await websocket.accept()
 
@@ -103,9 +110,18 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                         }))
                         break
 
+                    cached_model_name = agent.model_name
+
                     # Check credits
                     result = await db.execute(select(User).where(User.id == user_id))
-                    user = result.scalar_one()
+                    user = result.scalar_one_or_none()
+                    if user is None:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "code": "user_not_found",
+                            "message": "User no longer exists",
+                        }))
+                        break
                     if user.credit_balance <= 0:
                         await websocket.send_text(json.dumps({
                             "type": "error",
@@ -118,23 +134,43 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                     await db.commit()
                     conv_id = conv.id
 
-                    async for event in stream_chat_completion(
-                        db, user_id, agent, conv_id, content
-                    ):
-                        await websocket.send_text(event)
+                    try:
+                        async for event in stream_chat_completion(
+                            db, user_id, agent, conv_id, content
+                        ):
+                            await websocket.send_text(event)
+                    except Exception:
+                        logger.exception(
+                            "Error during stream_chat_completion: user=%s agent=%s",
+                            user_id, agent_id,
+                        )
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "code": "stream_error",
+                            "message": "An error occurred while processing your message",
+                        }))
 
             elif msg_type == "switch_model":
                 new_model = data.get("model", "").strip()
-                if new_model:
-                    async with async_session() as db:
-                        agent = await get_agent(db, agent_id, user_id)
-                        if agent:
-                            agent.model_name = new_model
-                            await db.commit()
-                            await websocket.send_text(json.dumps({
-                                "type": "model_switched",
-                                "model": new_model,
-                            }))
+                if not new_model:
+                    continue
+                if new_model not in CREDIT_RATES:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "code": "invalid_model",
+                        "message": f"Model '{new_model}' is not available",
+                    }))
+                    continue
+                async with async_session() as db:
+                    agent = await get_agent(db, agent_id, user_id)
+                    if agent:
+                        agent.model_name = new_model
+                        await db.commit()
+                        cached_model_name = new_model
+                        await websocket.send_text(json.dumps({
+                            "type": "model_switched",
+                            "model": new_model,
+                        }))
 
             elif msg_type == "ping":
                 await websocket.send_text(json.dumps({"type": "pong"}))
@@ -170,7 +206,7 @@ async def list_messages(
     conversation_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ):
     result = await db.execute(

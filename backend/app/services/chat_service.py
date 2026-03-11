@@ -2,7 +2,6 @@
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 
 import httpx
@@ -12,9 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.agent import Agent
 from app.models.chat import Conversation, Message, MessageRole
+from app.models.user import User
 from app.services.credits_service import deduct_credits, InsufficientCreditsError
 
 logger = logging.getLogger(__name__)
+
+CHARS_PER_TOKEN_ESTIMATE = 4
 
 
 async def get_or_create_conversation(
@@ -66,15 +68,20 @@ async def save_message(
 async def get_conversation_history(
     db: AsyncSession, conversation_id: str, limit: int = 20
 ) -> list[dict]:
-    """Get recent messages for context."""
-    result = await db.execute(
+    """Get recent messages for context, ordered chronologically."""
+    # Use subquery to get last N messages, then order ascending
+    subq = (
         select(Message)
         .where(Message.conversation_id == conversation_id)
         .order_by(Message.created_at.desc())
         .limit(limit)
+        .subquery()
     )
-    messages = list(reversed(result.scalars().all()))
-    return [{"role": m.role.value, "content": m.content} for m in messages]
+    result = await db.execute(
+        select(subq).order_by(subq.c.created_at.asc())
+    )
+    rows = result.all()
+    return [{"role": row.role.value if hasattr(row.role, 'value') else row.role, "content": row.content} for row in rows]
 
 
 async def stream_chat_completion(
@@ -92,9 +99,8 @@ async def stream_chat_completion(
       {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
-    # Save user message
+    # Save user message (flushed but not committed — will commit with assistant message)
     await save_message(db, conversation_id, MessageRole.user, user_content)
-    await db.commit()
 
     # Build message history for context
     history = await get_conversation_history(db, conversation_id)
@@ -108,7 +114,7 @@ async def stream_chat_completion(
     payload = {
         "model": agent.model_name,
         "messages": history,
-        "max_tokens": 4096,
+        "max_tokens": settings.default_max_tokens,
         "stream": True,
     }
 
@@ -122,6 +128,7 @@ async def stream_chat_completion(
                 if response.status_code != 200:
                     body = await response.aread()
                     logger.error("LiteLLM error %s: %s", response.status_code, body)
+                    await db.rollback()
                     yield json.dumps({
                         "type": "error",
                         "code": "model_error",
@@ -157,21 +164,34 @@ async def stream_chat_completion(
                         tokens_output = usage.get("completion_tokens", 0)
 
     except httpx.TimeoutException:
+        await db.rollback()
         yield json.dumps({
             "type": "error",
             "code": "timeout",
             "message": "Model request timed out",
         })
         return
-    except httpx.ConnectError:
+    except httpx.RequestError as e:
+        logger.error("LiteLLM request error: %s", e)
+        await db.rollback()
         yield json.dumps({
             "type": "error",
             "code": "connection_error",
             "message": "Cannot connect to model service",
         })
         return
+    except Exception as e:
+        logger.exception("Unexpected error during LiteLLM streaming")
+        await db.rollback()
+        yield json.dumps({
+            "type": "error",
+            "code": "internal_error",
+            "message": "An unexpected error occurred",
+        })
+        return
 
     if not full_content:
+        await db.rollback()
         yield json.dumps({
             "type": "error",
             "code": "empty_response",
@@ -181,18 +201,17 @@ async def stream_chat_completion(
 
     # Estimate tokens if not provided by API
     if tokens_input == 0:
-        tokens_input = len(str(history)) // 4  # rough estimate
+        tokens_input = len(str(history)) // CHARS_PER_TOKEN_ESTIMATE
     if tokens_output == 0:
-        tokens_output = len(full_content) // 4
+        tokens_output = len(full_content) // CHARS_PER_TOKEN_ESTIMATE
 
-    # Deduct credits
+    # Deduct credits (uses SELECT ... FOR UPDATE for atomicity)
     try:
         credits_used = await deduct_credits(
             db, user_id, agent.model_name,
             tokens_input, tokens_output, agent.id,
         )
     except InsufficientCreditsError:
-        # Still save the message but warn user
         credits_used = 0
         yield json.dumps({
             "type": "error",
@@ -219,10 +238,11 @@ async def stream_chat_completion(
 
     # Update agent last_active_at
     agent.last_active_at = datetime.now(timezone.utc)
+
+    # Single commit for all changes: user message + assistant message + title + agent update
     await db.commit()
 
     # Refresh user balance
-    from app.models.user import User
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one()
 
