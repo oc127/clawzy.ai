@@ -34,7 +34,7 @@ class DockerManager:
                 "LITELLM_MASTER_KEY": litellm_key,
             },
             ports={
-                "18789/tcp": ("127.0.0.1", ws_port),
+                "18789/tcp": ("0.0.0.0", ws_port),
             },
             network=settings.openclaw_network,
             volumes={
