@@ -26,7 +26,7 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     plan: Mapped[PlanType] = mapped_column(SAEnum(PlanType), default=PlanType.free)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[SubStatus] = mapped_column(SAEnum(SubStatus), default=SubStatus.active)

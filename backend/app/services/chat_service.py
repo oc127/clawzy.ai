@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.agent import Agent
 from app.models.chat import Conversation, Message, MessageRole
+from app.models.user import User
 from app.services.credits_service import deduct_credits, InsufficientCreditsError
 
 logger = logging.getLogger(__name__)
@@ -222,7 +223,6 @@ async def stream_chat_completion(
     await db.commit()
 
     # Refresh user balance
-    from app.models.user import User
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one()
 
