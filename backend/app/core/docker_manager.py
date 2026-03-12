@@ -30,6 +30,7 @@ class DockerManager:
             restart_policy={"Name": "unless-stopped"},
             environment={
                 "OPENCLAW_GATEWAY_TOKEN": gateway_token,
+                "OPENCLAW_GATEWAY_BIND": "lan",
                 "OPENCLAW_ALLOW_INSECURE_PRIVATE_WS": "true",
                 "LITELLM_MASTER_KEY": litellm_key,
             },

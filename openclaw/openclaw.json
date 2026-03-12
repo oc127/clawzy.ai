@@ -1,4 +1,7 @@
 {
+  "gateway": {
+    "bind": "lan"
+  },
   "models": {
     "mode": "merge",
     "providers": {
