@@ -16,6 +16,7 @@ from app.deps import get_current_user
 from app.models.user import User
 from app.models.chat import Conversation, Message
 from app.schemas.chat import ConversationResponse, MessageResponse
+from app.core.docker_manager import docker_manager
 from app.services.agent_service import get_agent
 from app.models.agent import AgentStatus
 
@@ -131,17 +132,27 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
             await websocket.close(code=4003, reason="Agent not running")
             return
 
-        if not agent.ws_port or not agent.gateway_token:
+        if not agent.container_id or not agent.gateway_token:
             await websocket.close(code=4003, reason="Agent not provisioned")
             return
 
-        ws_port = agent.ws_port
+        container_id = agent.container_id
         gateway_token = agent.gateway_token
 
     await websocket.accept()
 
-    # --- Connect to OpenClaw Gateway ---
-    openclaw_url = f"ws://127.0.0.1:{ws_port}"
+    # --- Connect to OpenClaw Gateway via container IP ---
+    # Backend runs with network_mode:host, so it can reach bridge network IPs directly.
+    container_ip = docker_manager.get_container_ip(container_id)
+    if not container_ip:
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "code": "connection_error",
+            "message": "Cannot resolve agent container IP.",
+        }))
+        await websocket.close()
+        return
+    openclaw_url = f"ws://{container_ip}:18789"
     oc_ws = None
 
     try:
