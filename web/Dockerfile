@@ -14,6 +14,8 @@ COPY . .
 
 # Set backend URL for Next.js rewrites (resolved at build time)
 ENV BACKEND_URL=http://backend:8000
+# Ensure client-side API calls use relative paths (no localhost)
+ENV NEXT_PUBLIC_API_URL=
 
 RUN npm run build
 
