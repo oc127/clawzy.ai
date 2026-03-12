@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+const API_BASE = '/api/v1';
 
 interface ApiOptions {
   method?: string;
@@ -14,15 +14,27 @@ export async function apiFetch<T>(path: string, opts: ApiOptions = {}): Promise<
     headers['Authorization'] = `Bearer ${opts.token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: opts.method || 'GET',
-    headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: opts.method || 'GET',
+      headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      cache: 'no-store',
+    });
+  } catch (e) {
+    throw new Error('Network error: unable to connect to server');
+  }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || `API error ${res.status}`);
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      detail = body.detail || detail;
+    } catch {
+      // ignore parse error
+    }
+    throw new Error(detail);
   }
 
   return res.json();

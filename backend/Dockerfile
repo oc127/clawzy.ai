@@ -16,5 +16,6 @@ COPY . .
 
 EXPOSE 8000
 
-# Run DB migrations then start the server
-CMD ["sh", "-c", "alembic upgrade head 2>/dev/null; uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Run DB migrations (if any) then start the server
+# Tables are also auto-created by SQLAlchemy on startup (main.py lifespan)
+CMD ["sh", "-c", "alembic upgrade head 2>&1 || echo 'Alembic migration skipped'; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

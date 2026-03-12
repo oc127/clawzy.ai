@@ -119,6 +119,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:8000
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:

@@ -11,6 +11,10 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Set backend URL for Next.js rewrites (resolved at build time)
+ENV BACKEND_URL=http://backend:8000
+
 RUN npm run build
 
 # Production
