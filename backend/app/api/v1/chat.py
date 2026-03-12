@@ -141,7 +141,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
     await websocket.accept()
 
     # --- Connect to OpenClaw Gateway ---
-    openclaw_url = f"ws://host.docker.internal:{ws_port}"
+    openclaw_url = f"ws://127.0.0.1:{ws_port}"
     oc_ws = None
 
     try:

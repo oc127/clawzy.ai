@@ -83,6 +83,7 @@ services:
     build: ./backend
     container_name: clawzy-backend
     restart: unless-stopped
+    network_mode: host
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,21 +92,17 @@ services:
       litellm:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+asyncpg://clawzy:${POSTGRES_PASSWORD}@postgres:5432/clawzy
-      REDIS_URL: redis://redis:6379/0
-      LITELLM_URL: http://litellm:4000
+      DATABASE_URL: postgresql+asyncpg://clawzy:${POSTGRES_PASSWORD}@127.0.0.1:5432/clawzy
+      REDIS_URL: redis://127.0.0.1:6379/0
+      LITELLM_URL: http://127.0.0.1:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       JWT_SECRET: ${JWT_SECRET}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "127.0.0.1:8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -122,7 +119,7 @@ services:
       backend:
         condition: service_healthy
     environment:
-      BACKEND_URL: http://backend:8000
+      BACKEND_URL: http://127.0.0.1:8000
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
