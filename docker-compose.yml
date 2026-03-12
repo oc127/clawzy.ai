@@ -110,6 +110,25 @@ services:
       start_period: 15s
 
   # ---------------------------------------------------------------------------
+  # Clawzy Web — Next.js frontend
+  # ---------------------------------------------------------------------------
+  web:
+    build: ./web
+    container_name: clawzy-web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
   # OpenClaw Gateway — default AI assistant engine (PoC / demo)
   # In production, user agents are created dynamically by the backend
   # ---------------------------------------------------------------------------
