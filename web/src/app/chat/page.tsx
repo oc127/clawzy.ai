@@ -18,6 +18,7 @@ function ChatContent() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [connStatus, setConnStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamBuf = useRef('');
@@ -43,9 +44,15 @@ function ChatContent() {
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
+    ws.onopen = () => {
+      setConnStatus('connecting'); // still waiting for 'ready' from backend
+    };
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === 'stream') {
+      if (data.type === 'ready') {
+        setConnStatus('connected');
+      } else if (data.type === 'stream') {
         streamBuf.current += data.content;
         setMessages((prev) => {
           const updated = [...prev];
@@ -75,10 +82,12 @@ function ChatContent() {
 
     ws.onerror = () => {
       setStreaming(false);
+      setConnStatus('disconnected');
     };
 
     ws.onclose = () => {
       setStreaming(false);
+      setConnStatus('disconnected');
     };
 
     return () => {
@@ -88,7 +97,7 @@ function ChatContent() {
 
   function sendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim() || streaming || !wsRef.current) return;
+    if (!input.trim() || streaming || !wsRef.current || connStatus !== 'connected') return;
 
     const content = input.trim();
     setInput('');
@@ -114,6 +123,10 @@ function ChatContent() {
             &larr; Back
           </button>
           <h1 className="font-semibold text-gray-900">Chat</h1>
+          <span className={`ml-2 w-2 h-2 rounded-full inline-block ${
+            connStatus === 'connected' ? 'bg-green-500' :
+            connStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
+          }`} />
         </div>
         {credits !== null && (
           <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
@@ -164,13 +177,17 @@ function ChatContent() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={streaming ? 'AI is thinking...' : 'Type your message...'}
-            disabled={streaming}
+            placeholder={
+              connStatus === 'connecting' ? 'Connecting to AI agent...' :
+              connStatus === 'disconnected' ? 'Disconnected. Refresh to reconnect.' :
+              streaming ? 'AI is thinking...' : 'Type your message...'
+            }
+            disabled={streaming || connStatus !== 'connected'}
             className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 transition"
           />
           <button
             type="submit"
-            disabled={streaming || !input.trim()}
+            disabled={streaming || !input.trim() || connStatus !== 'connected'}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             Send

@@ -25,14 +25,23 @@ class DockerManager:
         """Create and start an OpenClaw container for a user's agent."""
         container = self.client.containers.run(
             image=settings.openclaw_image,
-            name=f"clawzy-agent-{agent_id}",
+            name=f"clawzy-agent-{agent_id[:12]}",
             detach=True,
             restart_policy={"Name": "unless-stopped"},
             environment={
                 "OPENCLAW_GATEWAY_TOKEN": gateway_token,
+                "OPENCLAW_ALLOW_INSECURE_PRIVATE_WS": "true",
+                "LITELLM_MASTER_KEY": litellm_key,
             },
             ports={
                 "18789/tcp": ("127.0.0.1", ws_port),
+            },
+            network=settings.openclaw_network,
+            volumes={
+                "/opt/clawzy/openclaw/openclaw.json": {
+                    "bind": "/home/node/.openclaw/openclaw.json",
+                    "mode": "ro",
+                },
             },
             mem_limit="512m",
             cpu_quota=50000,

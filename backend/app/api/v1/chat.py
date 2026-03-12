@@ -1,9 +1,14 @@
+"""Chat WebSocket — proxies frontend ↔ OpenClaw Gateway."""
+
+import asyncio
 import json
 import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import websockets
 
 from app.core.database import get_db, async_session
 from app.core.security import decode_token
@@ -12,10 +17,6 @@ from app.models.user import User
 from app.models.chat import Conversation, Message
 from app.schemas.chat import ConversationResponse, MessageResponse
 from app.services.agent_service import get_agent
-from app.services.chat_service import (
-    get_or_create_conversation,
-    stream_chat_completion,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -23,26 +24,83 @@ router = APIRouter(tags=["chat"])
 
 
 # --------------------------------------------------------------------------- #
-#  WebSocket — real-time chat
+#  OpenClaw Gateway handshake helpers
+# --------------------------------------------------------------------------- #
+
+async def openclaw_handshake(oc_ws, gateway_token: str) -> bool:
+    """
+    Perform the OpenClaw Gateway WebSocket handshake.
+
+    Flow:
+      1. Server sends connect.challenge event
+      2. Client sends connect request with auth token
+      3. Server sends hello-ok response
+    """
+    try:
+        # Step 1: Wait for connect.challenge
+        raw = await asyncio.wait_for(oc_ws.recv(), timeout=10)
+        challenge = json.loads(raw)
+        logger.debug("OpenClaw challenge: %s", challenge)
+
+        # Step 2: Send connect request
+        connect_msg = {
+            "type": "req",
+            "id": str(uuid.uuid4()),
+            "method": "connect",
+            "params": {
+                "protocol": {"min": 3, "max": 3},
+                "auth": {"token": gateway_token},
+                "role": "operator",
+                "scopes": ["operator.chat", "operator.admin"],
+                "client": {
+                    "name": "clawzy-backend",
+                    "version": "0.1.0",
+                },
+                "device": {
+                    "id": f"clawzy-proxy-{uuid.uuid4().hex[:8]}",
+                    "name": "clawzy-proxy",
+                    "type": "api",
+                },
+            },
+        }
+        await oc_ws.send(json.dumps(connect_msg))
+
+        # Step 3: Wait for hello-ok
+        raw = await asyncio.wait_for(oc_ws.recv(), timeout=10)
+        hello = json.loads(raw)
+        logger.debug("OpenClaw hello: %s", hello)
+
+        if hello.get("type") == "res" and hello.get("ok"):
+            return True
+
+        logger.error("OpenClaw handshake failed: %s", hello)
+        return False
+
+    except (asyncio.TimeoutError, Exception) as e:
+        logger.error("OpenClaw handshake error: %s", e)
+        return False
+
+
+# --------------------------------------------------------------------------- #
+#  WebSocket — real-time chat (proxied to OpenClaw)
 # --------------------------------------------------------------------------- #
 
 @router.websocket("/ws/chat/{agent_id}")
 async def ws_chat(websocket: WebSocket, agent_id: str):
     """
-    WebSocket chat endpoint.
+    WebSocket chat endpoint that proxies to an OpenClaw Gateway container.
 
     Connection: ws://host/api/v1/ws/chat/{agent_id}?token=<JWT>
 
     Client sends:
-      {"type": "message", "content": "hello", "conversation_id": "optional-uuid"}
-      {"type": "switch_model", "model": "claude-sonnet"}
+      {"type": "message", "content": "hello"}
 
     Server sends:
       {"type": "stream", "content": "..."}
-      {"type": "done", "usage": {...}, "conversation_id": "..."}
+      {"type": "done"}
       {"type": "error", "code": "...", "message": "..."}
     """
-    # Authenticate via query param token
+    # --- Authenticate via query param token ---
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=4001, reason="Missing token")
@@ -55,7 +113,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 
     user_id = payload["sub"]
 
-    # Verify agent ownership
+    # --- Verify agent ownership and get connection info ---
     async with async_session() as db:
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -68,79 +126,155 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
             await websocket.close(code=4004, reason="Agent not found")
             return
 
+        if agent.status != "running":
+            await websocket.close(code=4003, reason="Agent not running")
+            return
+
+        if not agent.ws_port or not agent.gateway_token:
+            await websocket.close(code=4003, reason="Agent not provisioned")
+            return
+
+        ws_port = agent.ws_port
+        gateway_token = agent.gateway_token
+
     await websocket.accept()
 
+    # --- Connect to OpenClaw Gateway ---
+    openclaw_url = f"ws://127.0.0.1:{ws_port}"
+    oc_ws = None
+
     try:
-        while True:
-            raw = await websocket.receive_text()
+        oc_ws = await asyncio.wait_for(
+            websockets.connect(openclaw_url, max_size=25 * 1024 * 1024),
+            timeout=15,
+        )
+
+        # Perform OpenClaw handshake
+        if not await openclaw_handshake(oc_ws, gateway_token):
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "code": "handshake_failed",
+                "message": "Failed to connect to AI agent",
+            }))
+            await websocket.close()
+            return
+
+        # Send ready signal to frontend
+        await websocket.send_text(json.dumps({"type": "ready"}))
+
+        # --- Bidirectional proxy ---
+        async def forward_client_to_openclaw():
+            """Read from frontend, translate and send to OpenClaw."""
             try:
-                data = json.loads(raw)
-            except json.JSONDecodeError:
-                await websocket.send_text(json.dumps({
-                    "type": "error",
-                    "code": "invalid_json",
-                    "message": "Invalid JSON",
-                }))
-                continue
-
-            msg_type = data.get("type")
-
-            if msg_type == "message":
-                content = data.get("content", "").strip()
-                if not content:
-                    continue
-
-                conversation_id = data.get("conversation_id")
-
-                async with async_session() as db:
-                    # Re-fetch agent to get latest model_name
-                    agent = await get_agent(db, agent_id, user_id)
-                    if agent is None:
-                        await websocket.send_text(json.dumps({
-                            "type": "error",
-                            "code": "agent_not_found",
-                            "message": "Agent no longer exists",
-                        }))
-                        break
-
-                    # Check credits
-                    result = await db.execute(select(User).where(User.id == user_id))
-                    user = result.scalar_one()
-                    if user.credit_balance <= 0:
-                        await websocket.send_text(json.dumps({
-                            "type": "error",
-                            "code": "insufficient_credits",
-                            "message": "No credits remaining",
-                        }))
+                while True:
+                    raw = await websocket.receive_text()
+                    try:
+                        data = json.loads(raw)
+                    except json.JSONDecodeError:
                         continue
 
-                    conv = await get_or_create_conversation(db, agent_id, conversation_id)
-                    await db.commit()
-                    conv_id = conv.id
+                    msg_type = data.get("type")
 
-                    async for event in stream_chat_completion(
-                        db, user_id, agent, conv_id, content
-                    ):
-                        await websocket.send_text(event)
+                    if msg_type == "message":
+                        content = data.get("content", "").strip()
+                        if not content:
+                            continue
 
-            elif msg_type == "switch_model":
-                new_model = data.get("model", "").strip()
-                if new_model:
-                    async with async_session() as db:
-                        agent = await get_agent(db, agent_id, user_id)
-                        if agent:
-                            agent.model_name = new_model
-                            await db.commit()
+                        # Translate to OpenClaw chat.send
+                        oc_msg = {
+                            "type": "req",
+                            "id": str(uuid.uuid4()),
+                            "method": "chat.send",
+                            "params": {
+                                "message": content,
+                            },
+                        }
+                        await oc_ws.send(json.dumps(oc_msg))
+
+                    elif msg_type == "ping":
+                        await websocket.send_text(json.dumps({"type": "pong"}))
+
+            except WebSocketDisconnect:
+                pass
+
+        async def forward_openclaw_to_client():
+            """Read from OpenClaw, translate and send to frontend."""
+            try:
+                async for raw in oc_ws:
+                    try:
+                        data = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+
+                    oc_type = data.get("type")
+
+                    if oc_type == "event":
+                        event_name = data.get("event", "")
+                        event_payload = data.get("payload", {})
+
+                        if event_name == "agent":
+                            # Agent streaming content
+                            content = event_payload.get("content") or event_payload.get("text", "")
+                            if content:
+                                await websocket.send_text(json.dumps({
+                                    "type": "stream",
+                                    "content": content,
+                                }))
+
+                    elif oc_type == "res":
+                        # Response to a chat.send request
+                        if data.get("ok"):
+                            res_payload = data.get("payload", {})
+                            status_val = res_payload.get("status", "ok")
+                            if status_val == "error":
+                                await websocket.send_text(json.dumps({
+                                    "type": "error",
+                                    "code": "agent_error",
+                                    "message": res_payload.get("message", "Agent error"),
+                                }))
+                            else:
+                                await websocket.send_text(json.dumps({
+                                    "type": "done",
+                                    "conversation_id": res_payload.get("sessionKey", ""),
+                                }))
+                        else:
+                            error = data.get("error", {})
                             await websocket.send_text(json.dumps({
-                                "type": "model_switched",
-                                "model": new_model,
+                                "type": "error",
+                                "code": error.get("code", "unknown"),
+                                "message": error.get("message", "Unknown error"),
                             }))
 
-            elif msg_type == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
+            except websockets.ConnectionClosed:
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "code": "agent_disconnected",
+                    "message": "AI agent disconnected",
+                }))
 
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected: user=%s agent=%s", user_id, agent_id)
+        # Run both directions concurrently
+        client_task = asyncio.create_task(forward_client_to_openclaw())
+        openclaw_task = asyncio.create_task(forward_openclaw_to_client())
+
+        done, pending = await asyncio.wait(
+            [client_task, openclaw_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+
+        for task in pending:
+            task.cancel()
+
+    except (asyncio.TimeoutError, OSError) as e:
+        logger.error("Cannot connect to OpenClaw for agent %s: %s", agent_id, e)
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "code": "connection_error",
+            "message": "Cannot connect to AI agent. It may be starting up.",
+        }))
+    finally:
+        if oc_ws:
+            await oc_ws.close()
+        logger.info("WebSocket closed: user=%s agent=%s", user_id, agent_id)
 
 
 # --------------------------------------------------------------------------- #

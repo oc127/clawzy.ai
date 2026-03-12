@@ -1,10 +1,11 @@
-import json
 import logging
+import secrets
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
 from app.models.subscription import Subscription, PlanType, SubStatus
 
@@ -20,6 +21,10 @@ PLAN_AGENT_LIMITS: dict[str, int] = {
 
 
 class AgentLimitError(Exception):
+    pass
+
+
+class AgentProvisionError(Exception):
     pass
 
 
@@ -41,31 +46,6 @@ async def count_user_agents(db: AsyncSession, user_id: str) -> int:
     return result.scalar_one()
 
 
-async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: str) -> Agent:
-    """Create a new agent record. Container provisioning is separate."""
-    plan = await get_user_plan(db, user_id)
-    count = await count_user_agents(db, user_id)
-    limit = PLAN_AGENT_LIMITS.get(plan, 1)
-
-    if count >= limit:
-        raise AgentLimitError(f"Plan '{plan}' allows max {limit} agent(s). You have {count}.")
-
-    # Allocate a WS port
-    ws_port = await allocate_port(db)
-
-    agent = Agent(
-        user_id=user_id,
-        name=name,
-        model_name=model_name,
-        status=AgentStatus.stopped,
-        ws_port=ws_port,
-    )
-    db.add(agent)
-    await db.commit()
-    await db.refresh(agent)
-    return agent
-
-
 async def allocate_port(db: AsyncSession) -> int:
     """Find the next available WS port."""
     result = await db.execute(
@@ -79,6 +59,75 @@ async def allocate_port(db: AsyncSession) -> int:
     if next_port > settings.openclaw_port_end:
         raise RuntimeError("No available ports")
     return next_port
+
+
+async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: str) -> Agent:
+    """Create a new agent and provision an OpenClaw container."""
+    plan = await get_user_plan(db, user_id)
+    count = await count_user_agents(db, user_id)
+    limit = PLAN_AGENT_LIMITS.get(plan, 1)
+
+    if count >= limit:
+        raise AgentLimitError(f"Plan '{plan}' allows max {limit} agent(s). You have {count}.")
+
+    ws_port = await allocate_port(db)
+    gateway_token = secrets.token_hex(32)
+
+    agent = Agent(
+        user_id=user_id,
+        name=name,
+        model_name=model_name,
+        status=AgentStatus.creating,
+        ws_port=ws_port,
+        gateway_token=gateway_token,
+    )
+    db.add(agent)
+    await db.commit()
+    await db.refresh(agent)
+
+    # Provision OpenClaw container
+    try:
+        container_id = docker_manager.create_agent_container(
+            agent_id=agent.id,
+            gateway_token=gateway_token,
+            litellm_key=settings.litellm_master_key,
+            model_name=model_name,
+            ws_port=ws_port,
+        )
+        agent.container_id = container_id
+        agent.status = AgentStatus.running
+    except Exception as e:
+        logger.error("Failed to provision container for agent %s: %s", agent.id, e)
+        agent.status = AgentStatus.error
+
+    await db.commit()
+    await db.refresh(agent)
+    return agent
+
+
+async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Start a stopped agent's container."""
+    if not agent.container_id:
+        raise AgentProvisionError("Agent has no container")
+    try:
+        docker_manager.start_container(agent.container_id)
+        agent.status = AgentStatus.running
+    except Exception as e:
+        logger.error("Failed to start container %s: %s", agent.container_id, e)
+        agent.status = AgentStatus.error
+    await db.commit()
+    await db.refresh(agent)
+    return agent
+
+
+async def stop_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Stop a running agent's container."""
+    if agent.container_id:
+        docker_manager.stop_container(agent.container_id)
+    agent.status = AgentStatus.stopped
+    await db.commit()
+    await db.refresh(agent)
+    return agent
 
 
 async def list_agents(db: AsyncSession, user_id: str) -> list[Agent]:
@@ -106,5 +155,7 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
 
 
 async def delete_agent(db: AsyncSession, agent: Agent) -> None:
+    if agent.container_id:
+        docker_manager.remove_container(agent.container_id)
     await db.delete(agent)
     await db.commit()

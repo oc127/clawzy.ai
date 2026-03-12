@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,6 +7,9 @@ from app.config import settings
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 from app.models.user import User
 from app.models.credits import CreditTransaction, CreditReason
+from app.services.agent_service import create_agent
+
+logger = logging.getLogger(__name__)
 
 
 class AuthError(Exception):
@@ -37,6 +42,13 @@ async def register_user(db: AsyncSession, email: str, password: str, name: str) 
     db.add(txn)
     await db.commit()
     await db.refresh(user)
+
+    # Auto-provision a default OpenClaw agent for the new user
+    try:
+        await create_agent(db, user.id, f"{name}'s Agent", "deepseek-chat")
+        logger.info("Auto-provisioned OpenClaw agent for user %s", user.id)
+    except Exception as e:
+        logger.error("Failed to auto-provision agent for user %s: %s", user.id, e)
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)

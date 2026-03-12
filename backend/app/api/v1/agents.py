@@ -11,7 +11,10 @@ from app.services.agent_service import (
     get_agent,
     update_agent,
     delete_agent,
+    start_agent,
+    stop_agent,
     AgentLimitError,
+    AgentProvisionError,
 )
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -73,3 +76,30 @@ async def delete_my_agent(
     if agent is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     await delete_agent(db, agent)
+
+
+@router.post("/{agent_id}/start", response_model=AgentResponse)
+async def start_my_agent(
+    agent_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    try:
+        return await start_agent(db, agent)
+    except AgentProvisionError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/{agent_id}/stop", response_model=AgentResponse)
+async def stop_my_agent(
+    agent_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    return await stop_agent(db, agent)
