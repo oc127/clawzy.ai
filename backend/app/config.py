@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # --- JWT ---
     jwt_secret: str = "change-me-jwt-secret"
     jwt_algorithm: str = "HS256"
-    jwt_access_expire_minutes: int = 15
+    jwt_access_expire_minutes: int = 1440
     jwt_refresh_expire_days: int = 7
 
     # --- LiteLLM ---

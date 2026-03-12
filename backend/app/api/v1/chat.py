@@ -17,6 +17,7 @@ from app.models.user import User
 from app.models.chat import Conversation, Message
 from app.schemas.chat import ConversationResponse, MessageResponse
 from app.services.agent_service import get_agent
+from app.models.agent import AgentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
             await websocket.close(code=4004, reason="Agent not found")
             return
 
-        if agent.status != "running":
+        if agent.status != AgentStatus.running:
             await websocket.close(code=4003, reason="Agent not running")
             return
 
@@ -140,7 +141,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
     await websocket.accept()
 
     # --- Connect to OpenClaw Gateway ---
-    openclaw_url = f"ws://127.0.0.1:{ws_port}"
+    openclaw_url = f"ws://clawzy-agent-{agent_id[:12]}:18789"
     oc_ws = None
 
     try:
