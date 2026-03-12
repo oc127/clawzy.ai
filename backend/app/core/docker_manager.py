@@ -23,6 +23,10 @@ class DockerManager:
         ws_port: int,
     ) -> str:
         """Create and start an OpenClaw container for a user's agent."""
+        # NOTE: Do NOT pass `network` to containers.run() together with `ports`.
+        # Docker Python SDK ignores port bindings when a custom network is set
+        # via the `network` parameter. Instead, create on default bridge first
+        # (so port mapping works), then connect to the custom network afterwards.
         container = self.client.containers.run(
             image=settings.openclaw_image,
             name=f"clawzy-agent-{agent_id[:12]}",
@@ -36,7 +40,6 @@ class DockerManager:
             ports={
                 "18789/tcp": ("127.0.0.1", ws_port),
             },
-            network=settings.openclaw_network,
             volumes={
                 "/opt/clawzy/openclaw/openclaw.json": {
                     "bind": "/home/node/.openclaw/openclaw.json",
@@ -50,6 +53,12 @@ class DockerManager:
                 "clawzy.managed": "true",
             },
         )
+        # Connect to custom network so agent can reach LiteLLM and other services
+        try:
+            network = self.client.networks.get(settings.openclaw_network)
+            network.connect(container)
+        except Exception:
+            pass  # Port mapping still works on default bridge
         return container.id
 
     def stop_container(self, container_id: str) -> None:
