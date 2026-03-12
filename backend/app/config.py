@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     # --- App ---
     app_name: str = "Clawzy.ai"
     debug: bool = False
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:3000", "https://clawzy.ai", "https://www.clawzy.ai"]
 
     # --- Database ---
     database_url: str = "postgresql+asyncpg://clawzy:clawzy@localhost:5432/clawzy"
