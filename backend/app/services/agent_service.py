@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
-from app.models.subscription import Subscription, PlanType
+from app.models.subscription import Subscription, PlanType, SubStatus
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class AgentLimitError(Exception):
 async def get_user_plan(db: AsyncSession, user_id: str) -> str:
     result = await db.execute(
         select(Subscription.plan)
-        .where(Subscription.user_id == user_id, Subscription.status == "active")
+        .where(Subscription.user_id == user_id, Subscription.status == SubStatus.active)
         .order_by(Subscription.created_at.desc())
         .limit(1)
     )

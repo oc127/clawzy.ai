@@ -261,14 +261,15 @@ async def stream_chat_completion(
     # Refresh user balance
     from app.models.user import User
     result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one()
+    user = result.scalar_one_or_none()
+    balance = user.credit_balance if user else 0
 
     yield json.dumps({
         "type": "done",
         "conversation_id": conversation_id,
         "usage": {
             "credits_used": credits_used,
-            "balance": user.credit_balance,
+            "balance": balance,
             "tokens_input": tokens_input,
             "tokens_output": tokens_output,
             "model": agent.model_name,
