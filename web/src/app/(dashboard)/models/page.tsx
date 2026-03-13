@@ -9,11 +9,12 @@ import { Cpu } from "lucide-react";
 export default function ModelsPage() {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     apiGet<ModelInfo[]>("/models")
       .then(setModels)
-      .catch(() => {})
+      .catch((err) => setError(err.message || "Failed to load models"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -27,6 +28,12 @@ export default function ModelsPage() {
       <p className="mb-8 text-muted-foreground">
         Available AI models for your agents.
       </p>
+
+      {error && (
+        <div className="mb-6 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {models.map((model) => (

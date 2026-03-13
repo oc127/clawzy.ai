@@ -194,6 +194,24 @@ services:
     profiles:
       - cli
 
+  # ---------------------------------------------------------------------------
+  # Nginx — reverse proxy (HTTP + WebSocket)
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: clawzy-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - webapp
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - "80:80"
+    networks:
+      - clawzy-network
+
 networks:
   clawzy-network:
     name: clawzy-network

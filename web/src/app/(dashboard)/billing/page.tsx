@@ -11,6 +11,7 @@ export default function BillingPage() {
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -23,7 +24,7 @@ export default function BillingPage() {
         setTransactions(t);
         setPlans(p);
       })
-      .catch(() => {})
+      .catch((err) => setError(err.message || "Failed to load billing info"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -37,6 +38,12 @@ export default function BillingPage() {
       <p className="mb-8 text-muted-foreground">
         Manage your credits and subscription.
       </p>
+
+      {error && (
+        <div className="mb-6 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Credits overview */}
       {credits && (

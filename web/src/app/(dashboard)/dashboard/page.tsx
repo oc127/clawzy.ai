@@ -11,14 +11,15 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [agentCount, setAgentCount] = useState(0);
   const [modelCount, setModelCount] = useState(0);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     apiGet<Agent[]>("/agents")
       .then((a) => setAgentCount(a.length))
-      .catch(() => {});
+      .catch((err) => setError(err.message || "Failed to load data"));
     apiGet<ModelInfo[]>("/models")
       .then((m) => setModelCount(m.length))
-      .catch(() => {});
+      .catch((err) => setError(err.message || "Failed to load data"));
   }, []);
 
   if (!user) return null;
@@ -31,6 +32,12 @@ export default function DashboardPage() {
       <p className="mb-8 text-muted-foreground">
         Here&apos;s an overview of your account.
       </p>
+
+      {error && (
+        <div className="mb-6 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
