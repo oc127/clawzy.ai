@@ -48,7 +48,7 @@ services:
   # LiteLLM Proxy — unified model gateway
   # ---------------------------------------------------------------------------
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:main-v1.82.0-stable.patch5
     container_name: clawzy-litellm
     restart: unless-stopped
     depends_on:
@@ -71,10 +71,10 @@ services:
       --detailed_debug
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
-      interval: 30s
+      interval: 15s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
   # ---------------------------------------------------------------------------
   # Clawzy Backend API — FastAPI
@@ -140,7 +140,7 @@ services:
     restart: unless-stopped
     depends_on:
       litellm:
-        condition: service_healthy
+        condition: service_started
     environment:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: "true"
