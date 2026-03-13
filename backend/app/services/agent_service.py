@@ -106,5 +106,5 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
 
 
 async def delete_agent(db: AsyncSession, agent: Agent) -> None:
-    await db.delete(agent)
+    db.delete(agent)
     await db.commit()
