@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import type { Credits, CreditTransaction, Plan } from "@/lib/types";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Coins, TrendingUp, Crown } from "lucide-react";
 
 export default function BillingPage() {
@@ -12,9 +13,10 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [subscribing, setSubscribing] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([
+  const fetchData = () => {
+    return Promise.all([
       apiGet<Credits>("/billing/credits"),
       apiGet<CreditTransaction[]>("/billing/credits/transactions"),
       apiGet<Plan[]>("/billing/plans"),
@@ -24,9 +26,25 @@ export default function BillingPage() {
         setTransactions(t);
         setPlans(p);
       })
-      .catch((err) => setError(err.message || "Failed to load billing info"))
-      .finally(() => setLoading(false));
+      .catch((err) => setError(err.message || "Failed to load billing info"));
+  };
+
+  useEffect(() => {
+    fetchData().finally(() => setLoading(false));
   }, []);
+
+  const handleSubscribe = async (planId: string) => {
+    setSubscribing(planId);
+    setError("");
+    try {
+      await apiPost("/billing/subscribe", { plan: planId });
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to switch plan");
+    } finally {
+      setSubscribing(null);
+    }
+  };
 
   if (loading) {
     return <p className="text-muted-foreground">Loading billing info...</p>;
@@ -89,33 +107,49 @@ export default function BillingPage() {
         <div className="mb-8">
           <h2 className="mb-4 text-lg font-semibold">Plans</h2>
           <div className="grid gap-4 md:grid-cols-4">
-            {plans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={
-                  credits?.plan === plan.id
-                    ? "border-primary"
-                    : ""
-                }
-              >
-                <h3 className="font-semibold">{plan.name}</h3>
-                <p className="mt-1 text-2xl font-bold">
-                  ${plan.price_monthly}
-                  <span className="text-sm font-normal text-muted-foreground">
-                    /mo
-                  </span>
-                </p>
-                <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-                  <p>{plan.credits_included.toLocaleString()} credits</p>
-                  <p>{plan.max_agents} agent{plan.max_agents !== 1 ? "s" : ""}</p>
-                </div>
-                {credits?.plan === plan.id && (
-                  <p className="mt-3 text-sm font-medium text-primary">
-                    Current Plan
+            {plans.map((plan) => {
+              const isCurrent = credits?.plan === plan.id;
+              return (
+                <Card
+                  key={plan.id}
+                  className={isCurrent ? "border-primary" : ""}
+                >
+                  <h3 className="font-semibold">{plan.name}</h3>
+                  <p className="mt-1 text-2xl font-bold">
+                    ${plan.price_monthly}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      /mo
+                    </span>
                   </p>
-                )}
-              </Card>
-            ))}
+                  <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                    <p>{plan.credits_included.toLocaleString()} credits</p>
+                    <p>
+                      {plan.max_agents} agent{plan.max_agents !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    {isCurrent ? (
+                      <Button variant="outline" size="sm" disabled className="w-full">
+                        Current Plan
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        disabled={subscribing !== null}
+                        onClick={() => handleSubscribe(plan.id)}
+                      >
+                        {subscribing === plan.id
+                          ? "Switching..."
+                          : plan.price_monthly === 0
+                            ? "Downgrade"
+                            : "Upgrade"}
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -139,13 +173,16 @@ export default function BillingPage() {
               </thead>
               <tbody>
                 {transactions.map((tx) => (
-                  <tr key={tx.id} className="border-b border-border last:border-0">
+                  <tr
+                    key={tx.id}
+                    className="border-b border-border last:border-0"
+                  >
                     <td className="px-4 py-3">
                       {new Date(tx.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">{tx.reason}</td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {tx.model_name ?? "—"}
+                      {tx.model_name ?? "\u2014"}
                     </td>
                     <td
                       className={`px-4 py-3 text-right font-medium ${
