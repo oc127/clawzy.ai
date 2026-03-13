@@ -16,6 +16,7 @@ from app.deps import get_current_user
 from app.models.user import User
 from app.models.chat import Conversation, Message
 from app.schemas.chat import ConversationResponse, MessageResponse
+from app.config import settings
 from app.core.docker_manager import docker_manager
 from app.services.agent_service import get_agent
 from app.models.agent import AgentStatus
@@ -152,7 +153,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
         }))
         await websocket.close()
         return
-    openclaw_url = f"ws://{container_ip}:18789"
+    openclaw_url = f"ws://{container_ip}:{settings.openclaw_gateway_port}"
     oc_ws = None
 
     try:

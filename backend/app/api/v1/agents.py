@@ -38,6 +38,10 @@ async def create_my_agent(
         agent = await create_agent(db, user.id, body.name, body.model_name)
     except AgentLimitError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except AgentProvisionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
     return agent
 
 

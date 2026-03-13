@@ -99,6 +99,9 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
     except Exception as e:
         logger.error("Failed to provision container for agent %s: %s", agent.id, e)
         agent.status = AgentStatus.error
+        await db.commit()
+        await db.refresh(agent)
+        raise AgentProvisionError(f"Failed to create agent container: {e}") from e
 
     await db.commit()
     await db.refresh(agent)

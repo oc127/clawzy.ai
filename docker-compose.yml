@@ -186,3 +186,4 @@ volumes:
 networks:
   default:
     name: clawzy-network
+    external: true

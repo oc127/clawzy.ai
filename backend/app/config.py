@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # --- OpenClaw ---
     openclaw_image: str = "ghcr.io/openclaw/openclaw:latest"
     openclaw_network: str = "clawzy-network"
+    openclaw_gateway_port: int = 18789
     openclaw_port_start: int = 19000
     openclaw_port_end: int = 19999
 
