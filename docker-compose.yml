@@ -1,6 +1,6 @@
 # =============================================================================
 # Clawzy.ai — Docker Compose
-# Services: PostgreSQL + Redis + LiteLLM + Backend API + OpenClaw Gateway
+# Services: PostgreSQL + Redis + LiteLLM + Backend API + Web App + OpenClaw Gateway
 # Target: Alibaba Cloud ECS 4C8G Singapore
 # =============================================================================
 
@@ -104,6 +104,27 @@ services:
       - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Web App — Next.js frontend
+  # ---------------------------------------------------------------------------
+  webapp:
+    build: ./web
+    container_name: clawzy-webapp
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
