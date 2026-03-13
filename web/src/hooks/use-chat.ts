@@ -12,6 +12,8 @@ interface UseChatOptions {
   onConversationCreated?: (id: string) => void;
 }
 
+const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
+
 export function useChat({
   agentId,
   conversationId,
@@ -22,53 +24,91 @@ export function useChat({
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const streamBufferRef = useRef("");
+  const onConversationCreatedRef = useRef(onConversationCreated);
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep callback ref up to date to avoid stale closures
+  useEffect(() => {
+    onConversationCreatedRef.current = onConversationCreated;
+  }, [onConversationCreated]);
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
+    let unmounted = false;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(
-      `${protocol}//${window.location.host}/api/v1/ws/chat/${agentId}?token=${token}`,
-    );
+    function connect() {
+      const token = getAccessToken();
+      if (!token || unmounted) return;
 
-    ws.onopen = () => setError(null);
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(
+        `${protocol}//${window.location.host}/api/v1/ws/chat/${agentId}?token=${token}`,
+      );
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === "stream") {
-        streamBufferRef.current += data.content;
-        const buffered = streamBufferRef.current;
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last && last.role === "assistant") {
-            return [
-              ...prev.slice(0, -1),
-              { ...last, content: buffered },
-            ];
-          }
-          return [...prev, { role: "assistant", content: buffered }];
-        });
-      } else if (data.type === "done") {
-        setIsStreaming(false);
-        streamBufferRef.current = "";
-        if (data.conversation_id && onConversationCreated) {
-          onConversationCreated(data.conversation_id);
+      ws.onopen = () => {
+        setError(null);
+        reconnectAttemptRef.current = 0;
+      };
+
+      ws.onmessage = (event) => {
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch {
+          return;
         }
-      } else if (data.type === "error") {
-        setError(data.message);
-        setIsStreaming(false);
-      }
-    };
+        if (data.type === "stream") {
+          streamBufferRef.current += data.content;
+          const buffered = streamBufferRef.current;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === "assistant") {
+              return [
+                ...prev.slice(0, -1),
+                { ...last, content: buffered },
+              ];
+            }
+            return [...prev, { role: "assistant", content: buffered }];
+          });
+        } else if (data.type === "done") {
+          setIsStreaming(false);
+          streamBufferRef.current = "";
+          if (data.conversation_id && onConversationCreatedRef.current) {
+            onConversationCreatedRef.current(data.conversation_id);
+          }
+        } else if (data.type === "error") {
+          setError(data.message);
+          setIsStreaming(false);
+        }
+      };
 
-    ws.onerror = () => setError("Connection error");
-    ws.onclose = () => {};
+      ws.onerror = () => setError("Connection error");
 
-    wsRef.current = ws;
+      ws.onclose = () => {
+        if (unmounted) return;
+        const attempt = reconnectAttemptRef.current;
+        if (attempt < RECONNECT_DELAYS.length) {
+          reconnectTimerRef.current = setTimeout(() => {
+            reconnectAttemptRef.current = attempt + 1;
+            connect();
+          }, RECONNECT_DELAYS[attempt]);
+        } else {
+          setError("Connection lost. Please refresh the page.");
+        }
+      };
+
+      wsRef.current = ws;
+    }
+
+    connect();
+
     return () => {
-      ws.close();
+      unmounted = true;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+      wsRef.current?.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentId]);
 
   const sendMessage = useCallback(
