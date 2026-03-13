@@ -99,30 +99,31 @@ async def stream_chat_completion(
     # Build message history for context
     history = await get_conversation_history(db, conversation_id)
 
-    # Route through the agent's OpenClaw container if available,
-    # otherwise fall back to the shared OpenClaw gateway,
-    # or finally direct to LiteLLM as last resort.
+    # Build ordered list of endpoints to try.
+    # Priority: per-user OpenClaw container → shared OpenClaw gateway → direct LiteLLM.
+    endpoints = []
+
     if agent.ws_port and agent.gateway_token and agent.status.value == "running":
-        # Per-user OpenClaw container
-        url = f"http://127.0.0.1:{agent.ws_port}/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {agent.gateway_token}",
-            "Content-Type": "application/json",
-        }
-    elif settings.openclaw_gateway_url and settings.openclaw_gateway_token:
-        # Shared OpenClaw gateway
-        url = f"{settings.openclaw_gateway_url}/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {settings.openclaw_gateway_token}",
-            "Content-Type": "application/json",
-        }
-    else:
-        # Fallback: direct LiteLLM
-        url = f"{settings.litellm_url}/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {settings.litellm_master_key}",
-            "Content-Type": "application/json",
-        }
+        endpoints.append((
+            f"http://127.0.0.1:{agent.ws_port}/v1/chat/completions",
+            f"Bearer {agent.gateway_token}",
+            "per-user OpenClaw",
+        ))
+
+    if settings.openclaw_gateway_url and settings.openclaw_gateway_token:
+        endpoints.append((
+            f"{settings.openclaw_gateway_url}/v1/chat/completions",
+            f"Bearer {settings.openclaw_gateway_token}",
+            "shared OpenClaw gateway",
+        ))
+
+    # Always include direct LiteLLM as final fallback
+    endpoints.append((
+        f"{settings.litellm_url}/v1/chat/completions",
+        f"Bearer {settings.litellm_master_key}",
+        "direct LiteLLM",
+    ))
+
     payload = {
         "model": agent.model_name,
         "messages": history,
@@ -134,54 +135,70 @@ async def stream_chat_completion(
     tokens_input = 0
     tokens_output = 0
 
-    try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            async with client.stream("POST", url, headers=headers, json=payload) as response:
-                if response.status_code != 200:
-                    body = await response.aread()
-                    logger.error("LiteLLM error %s: %s", response.status_code, body)
-                    yield json.dumps({
-                        "type": "error",
-                        "code": "model_error",
-                        "message": f"Model returned HTTP {response.status_code}",
-                    })
-                    return
+    # Try each endpoint in order; fall back on connection errors.
+    last_error = None
+    for url, auth, label in endpoints:
+        headers = {
+            "Authorization": auth,
+            "Content-Type": "application/json",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    if response.status_code != 200:
+                        body = await response.aread()
+                        logger.error("LiteLLM error %s: %s", response.status_code, body)
+                        yield json.dumps({
+                            "type": "error",
+                            "code": "model_error",
+                            "message": f"Model returned HTTP {response.status_code}",
+                        })
+                        return
 
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    data_str = line[6:]
-                    if data_str.strip() == "[DONE]":
-                        break
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str.strip() == "[DONE]":
+                            break
 
-                    try:
-                        chunk = json.loads(data_str)
-                    except json.JSONDecodeError:
-                        continue
+                        try:
+                            chunk = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
 
-                    # Extract content delta
-                    choices = chunk.get("choices", [])
-                    if choices:
-                        delta = choices[0].get("delta", {})
-                        content = delta.get("content")
-                        if content:
-                            full_content += content
-                            yield json.dumps({"type": "stream", "content": content})
+                        # Extract content delta
+                        choices = chunk.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            content = delta.get("content")
+                            if content:
+                                full_content += content
+                                yield json.dumps({"type": "stream", "content": content})
 
-                    # Extract usage if present (final chunk)
-                    usage = chunk.get("usage")
-                    if usage:
-                        tokens_input = usage.get("prompt_tokens", 0)
-                        tokens_output = usage.get("completion_tokens", 0)
+                        # Extract usage if present (final chunk)
+                        usage = chunk.get("usage")
+                        if usage:
+                            tokens_input = usage.get("prompt_tokens", 0)
+                            tokens_output = usage.get("completion_tokens", 0)
 
-    except httpx.TimeoutException:
-        yield json.dumps({
-            "type": "error",
-            "code": "timeout",
-            "message": "Model request timed out",
-        })
-        return
-    except httpx.ConnectError:
+            # Success — break out of retry loop
+            break
+
+        except httpx.ConnectError as exc:
+            logger.warning("Cannot connect to %s (%s), trying next endpoint", label, url)
+            last_error = exc
+            continue
+        except httpx.TimeoutException:
+            yield json.dumps({
+                "type": "error",
+                "code": "timeout",
+                "message": "Model request timed out",
+            })
+            return
+    else:
+        # All endpoints failed with ConnectError
+        logger.error("All model endpoints unreachable: %s", last_error)
         yield json.dumps({
             "type": "error",
             "code": "connection_error",
