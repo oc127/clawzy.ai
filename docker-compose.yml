@@ -89,7 +89,7 @@ services:
       redis:
         condition: service_healthy
       litellm:
-        condition: service_healthy
+        condition: service_started
     environment:
       DATABASE_URL: postgresql+asyncpg://clawzy:${POSTGRES_PASSWORD}@postgres:5432/clawzy
       REDIS_URL: redis://redis:6379/0
@@ -118,7 +118,7 @@ services:
     restart: unless-stopped
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "127.0.0.1:3000:3000"
     environment:
