@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import {
   LayoutDashboard,
   Bot,
@@ -16,10 +17,10 @@ import {
 
 const sidebarLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard", label: "Agents", icon: Bot },
-  { href: "/dashboard", label: "Models", icon: Cpu },
-  { href: "/dashboard", label: "Billing", icon: CreditCard },
-  { href: "/dashboard", label: "Settings", icon: Settings },
+  { href: "/agents", label: "Agents", icon: Bot },
+  { href: "/models", label: "Models", icon: Cpu },
+  { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function DashboardLayout({
@@ -29,6 +30,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -61,7 +63,12 @@ export default function DashboardLayout({
             <Link
               key={link.label}
               href={link.href}
-              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href + "/"))
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
             >
               <link.icon className="h-4 w-4" />
               {link.label}

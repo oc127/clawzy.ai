@@ -1,11 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { apiGet } from "@/lib/api";
+import type { Agent, ModelInfo } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Coins, Bot, Cpu } from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [agentCount, setAgentCount] = useState(0);
+  const [modelCount, setModelCount] = useState(0);
+
+  useEffect(() => {
+    apiGet<Agent[]>("/agents")
+      .then((a) => setAgentCount(a.length))
+      .catch(() => {});
+    apiGet<ModelInfo[]>("/models")
+      .then((m) => setModelCount(m.length))
+      .catch(() => {});
+  }, []);
 
   if (!user) return null;
 
@@ -38,7 +52,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Active Agents</p>
-              <p className="text-2xl font-bold">0</p>
+              <p className="text-2xl font-bold">{agentCount}</p>
             </div>
           </div>
         </Card>
@@ -50,7 +64,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Available Models</p>
-              <p className="text-2xl font-bold">5</p>
+              <p className="text-2xl font-bold">{modelCount}</p>
             </div>
           </div>
         </Card>
