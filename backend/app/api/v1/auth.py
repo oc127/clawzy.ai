@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,6 +8,8 @@ from app.core.security import decode_token, create_access_token, create_refresh_
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest
 from app.schemas.user import UserResponse
 from app.services.auth_service import register_user, login_user, AuthError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -16,6 +20,9 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         user, access, refresh = await register_user(db, body.email, body.password, body.name)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
+    except Exception:
+        logger.exception("Unexpected error during registration")
+        raise
     return TokenResponse(access_token=access, refresh_token=refresh)
 
 
@@ -25,6 +32,9 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         user, access, refresh = await login_user(db, body.email, body.password)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=e.detail)
+    except Exception:
+        logger.exception("Unexpected error during login")
+        raise
     return TokenResponse(access_token=access, refresh_token=refresh)
 
 
