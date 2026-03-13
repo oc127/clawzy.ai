@@ -104,8 +104,10 @@ async def stream_chat_completion(
     endpoints = []
 
     if agent.ws_port and agent.gateway_token and agent.status.value == "running":
+        # Use Docker network container name (not 127.0.0.1, which is the backend itself)
+        container_name = f"clawzy-agent-{agent.id}"
         endpoints.append((
-            f"http://127.0.0.1:{agent.ws_port}/v1/chat/completions",
+            f"http://{container_name}:18789/v1/chat/completions",
             f"Bearer {agent.gateway_token}",
             "per-user OpenClaw",
         ))

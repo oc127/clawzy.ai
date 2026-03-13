@@ -134,9 +134,11 @@ class DockerManager:
         except NotFound:
             return None
 
-    def wait_for_healthy(self, ws_port: int, timeout: int = 30) -> bool:
+    def wait_for_healthy(self, agent_id: str, timeout: int = 30) -> bool:
         """Poll the container's /healthz endpoint until it responds 200."""
-        url = f"http://127.0.0.1:{ws_port}/healthz"
+        # Use Docker network container name (backend runs inside Docker)
+        container_name = f"clawzy-agent-{agent_id}"
+        url = f"http://{container_name}:18789/healthz"
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:

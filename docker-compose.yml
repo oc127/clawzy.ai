@@ -156,13 +156,16 @@ services:
     depends_on:
       litellm:
         condition: service_started
+    entrypoint: ["/bin/sh", "/tmp/entrypoint.sh"]
     environment:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: "true"
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
     volumes:
       - openclaw_config:/home/node/.openclaw
       - openclaw_workspace:/home/node/workspace
-      - ./openclaw/openclaw.json:/home/node/.openclaw/openclaw.json:ro
+      - ./openclaw/openclaw.json:/tmp/openclaw.json.tpl:ro
+      - ./openclaw/entrypoint.sh:/tmp/entrypoint.sh:ro
     ports:
       - "127.0.0.1:18789:18789"
       - "127.0.0.1:18790:18790"
