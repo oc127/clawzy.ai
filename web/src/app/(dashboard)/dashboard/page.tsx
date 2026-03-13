@@ -6,7 +6,6 @@ import { useAuth } from "@/context/auth-context";
 import { apiGet } from "@/lib/api";
 import type { Agent, ModelInfo } from "@/lib/types";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Coins,
   Bot,
