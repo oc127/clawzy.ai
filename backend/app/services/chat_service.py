@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.agent import Agent
+from app.models.agent import Agent, AgentStatus
 from app.models.chat import Conversation, Message, MessageRole
 from app.services.credits_service import deduct_credits, InsufficientCreditsError
 
@@ -103,7 +103,7 @@ async def stream_chat_completion(
     # Priority: per-user OpenClaw container → shared OpenClaw gateway → direct LiteLLM.
     endpoints = []
 
-    if agent.ws_port and agent.gateway_token and agent.status.value == "running":
+    if agent.ws_port and agent.gateway_token and agent.status == AgentStatus.running:
         # Use Docker network container name (not 127.0.0.1, which is the backend itself)
         container_name = f"clawzy-agent-{agent.id}"
         endpoints.append((

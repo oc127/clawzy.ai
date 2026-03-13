@@ -89,6 +89,13 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                 content = data.get("content", "").strip()
                 if not content:
                     continue
+                if len(content) > 20000:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "code": "message_too_long",
+                        "message": "Message exceeds 20,000 character limit",
+                    }))
+                    continue
 
                 conversation_id = data.get("conversation_id")
 

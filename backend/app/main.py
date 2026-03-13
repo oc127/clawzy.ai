@@ -31,8 +31,8 @@ async def lifespan(app: FastAPI):
         for stmt in _COLUMN_MIGRATIONS:
             try:
                 await conn.execute(text(stmt))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Migration skipped (%s): %s", stmt.split()[-1], e)
     logger.info("Database tables ready")
     yield
 
