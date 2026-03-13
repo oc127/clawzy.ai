@@ -21,6 +21,8 @@ services:
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
       - "127.0.0.1:5432:5432"
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U clawzy"]
       interval: 10s
@@ -38,6 +40,8 @@ services:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -65,6 +69,8 @@ services:
       - ./litellm/config.yaml:/app/config.yaml
     ports:
       - "127.0.0.1:4000:4000"
+    networks:
+      - clawzy-network
     command: >
       --config /app/config.yaml
       --port 4000
@@ -98,10 +104,17 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      OPENCLAW_GATEWAY_URL: http://clawzy-openclaw:18789
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      OPENCLAW_IMAGE: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+      OPENCLAW_NETWORK: clawzy-network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - openclaw_agent_configs:/var/lib/clawzy/agents
     ports:
       - "127.0.0.1:8000:8000"
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -121,6 +134,8 @@ services:
         condition: service_started
     ports:
       - "127.0.0.1:3000:3000"
+    networks:
+      - clawzy-network
     environment:
       NODE_ENV: production
     healthcheck:
@@ -131,7 +146,7 @@ services:
       start_period: 15s
 
   # ---------------------------------------------------------------------------
-  # OpenClaw Gateway — default AI assistant engine (PoC / demo)
+  # OpenClaw Gateway — shared AI assistant engine (PoC / demo)
   # In production, user agents are created dynamically by the backend
   # ---------------------------------------------------------------------------
   openclaw-gateway:
@@ -151,8 +166,10 @@ services:
     ports:
       - "127.0.0.1:18789:18789"
       - "127.0.0.1:18790:18790"
+    networks:
+      - clawzy-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:18789/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -177,8 +194,14 @@ services:
     profiles:
       - cli
 
+networks:
+  clawzy-network:
+    name: clawzy-network
+    driver: bridge
+
 volumes:
   postgres_data:
   redis_data:
   openclaw_config:
   openclaw_workspace:
+  openclaw_agent_configs:

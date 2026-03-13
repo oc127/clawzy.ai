@@ -23,6 +23,7 @@ class Agent(Base):
     name: Mapped[str] = mapped_column(String(100))
     model_name: Mapped[str] = mapped_column(String(50), default="deepseek-chat")
     container_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    gateway_token: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[AgentStatus] = mapped_column(SAEnum(AgentStatus), default=AgentStatus.creating)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ws_port: Mapped[int | None] = mapped_column(Integer, nullable=True)

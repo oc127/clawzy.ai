@@ -1,10 +1,11 @@
-import json
 import logging
+import secrets
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
 from app.models.subscription import Subscription, PlanType
 
@@ -42,7 +43,7 @@ async def count_user_agents(db: AsyncSession, user_id: str) -> int:
 
 
 async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: str) -> Agent:
-    """Create a new agent record. Container provisioning is separate."""
+    """Create a new agent record and provision an OpenClaw container."""
     plan = await get_user_plan(db, user_id)
     count = await count_user_agents(db, user_id)
     limit = PLAN_AGENT_LIMITS.get(plan, 1)
@@ -53,14 +54,35 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
     # Allocate a WS port
     ws_port = await allocate_port(db)
 
+    # Generate a unique gateway token for this agent
+    gateway_token = secrets.token_hex(32)
+
     agent = Agent(
         user_id=user_id,
         name=name,
         model_name=model_name,
-        status=AgentStatus.stopped,
+        status=AgentStatus.creating,
         ws_port=ws_port,
+        gateway_token=gateway_token,
     )
     db.add(agent)
+    await db.commit()
+    await db.refresh(agent)
+
+    # Provision the OpenClaw container
+    try:
+        container_id = docker_manager.create_agent_container(
+            agent_id=agent.id,
+            gateway_token=gateway_token,
+            litellm_key=settings.litellm_master_key,
+            model_name=model_name,
+            ws_port=ws_port,
+        )
+        agent.container_id = container_id
+        agent.status = AgentStatus.running
+    except Exception as e:
+        logger.error("Failed to create container for agent %s: %s", agent.id, e)
+        agent.status = AgentStatus.error
     await db.commit()
     await db.refresh(agent)
     return agent
@@ -106,5 +128,29 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
 
 
 async def delete_agent(db: AsyncSession, agent: Agent) -> None:
-    db.delete(agent)
+    if agent.container_id:
+        docker_manager.remove_container(agent.container_id, agent_id=agent.id)
+    await db.delete(agent)
     await db.commit()
+
+
+async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Start a stopped agent's container."""
+    if not agent.container_id:
+        raise ValueError("Agent has no container")
+    docker_manager.start_container(agent.container_id)
+    agent.status = AgentStatus.running
+    await db.commit()
+    await db.refresh(agent)
+    return agent
+
+
+async def stop_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Stop a running agent's container."""
+    if not agent.container_id:
+        raise ValueError("Agent has no container")
+    docker_manager.stop_container(agent.container_id)
+    agent.status = AgentStatus.stopped
+    await db.commit()
+    await db.refresh(agent)
+    return agent

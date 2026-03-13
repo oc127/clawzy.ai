@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     openclaw_network: str = "clawzy-network"
     openclaw_port_start: int = 19000
     openclaw_port_end: int = 19999
+    openclaw_gateway_url: str = "http://localhost:18789"
+    openclaw_gateway_token: str = ""
+    openclaw_agent_config_dir: str = "/var/lib/clawzy/agents"
 
     # --- Credits ---
     signup_bonus_credits: int = 500

@@ -99,12 +99,30 @@ async def stream_chat_completion(
     # Build message history for context
     history = await get_conversation_history(db, conversation_id)
 
-    # Call LiteLLM streaming endpoint
-    url = f"{settings.litellm_url}/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {settings.litellm_master_key}",
-        "Content-Type": "application/json",
-    }
+    # Route through the agent's OpenClaw container if available,
+    # otherwise fall back to the shared OpenClaw gateway,
+    # or finally direct to LiteLLM as last resort.
+    if agent.ws_port and agent.gateway_token and agent.status.value == "running":
+        # Per-user OpenClaw container
+        url = f"http://127.0.0.1:{agent.ws_port}/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {agent.gateway_token}",
+            "Content-Type": "application/json",
+        }
+    elif settings.openclaw_gateway_url and settings.openclaw_gateway_token:
+        # Shared OpenClaw gateway
+        url = f"{settings.openclaw_gateway_url}/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {settings.openclaw_gateway_token}",
+            "Content-Type": "application/json",
+        }
+    else:
+        # Fallback: direct LiteLLM
+        url = f"{settings.litellm_url}/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {settings.litellm_master_key}",
+            "Content-Type": "application/json",
+        }
     payload = {
         "model": agent.model_name,
         "messages": history,
