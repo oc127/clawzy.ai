@@ -8,7 +8,8 @@ import { useChat } from "@/hooks/use-chat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, Plus, MessageSquare, Play, Square } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { Bot, Send, Plus, MessageSquare, Play, Square, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 
 export default function AgentDetailPage() {
   const params = useParams();
@@ -19,6 +20,7 @@ export default function AgentDetailPage() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
+  const [showSidebar, setShowSidebar] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, setMessages, isStreaming, error, sendMessage } = useChat({
@@ -56,6 +58,7 @@ export default function AgentDetailPage() {
 
   const loadConversation = async (convId: string) => {
     setActiveConvId(convId);
+    setShowSidebar(false);
     try {
       const history = await apiGet<Message[]>(
         `/conversations/${convId}/messages`,
@@ -74,6 +77,7 @@ export default function AgentDetailPage() {
   const handleNewConversation = () => {
     setActiveConvId(null);
     setMessages([]);
+    setShowSidebar(false);
   };
 
   const handleSend = (e: React.FormEvent) => {
@@ -92,9 +96,28 @@ export default function AgentDetailPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] gap-4">
+    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-4rem)] gap-4">
+      {/* Mobile sidebar toggle */}
+      <button
+        className="fixed bottom-20 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg md:hidden"
+        onClick={() => setShowSidebar(!showSidebar)}
+      >
+        {showSidebar ? (
+          <PanelLeftClose className="h-5 w-5" />
+        ) : (
+          <PanelLeftOpen className="h-5 w-5" />
+        )}
+      </button>
+
       {/* Left sidebar: agent info + conversations */}
-      <div className="flex w-64 shrink-0 flex-col gap-4">
+      <div
+        className={cn(
+          "w-64 shrink-0 flex-col gap-4",
+          showSidebar
+            ? "fixed inset-y-0 left-0 z-30 flex bg-background p-4 pt-18 shadow-xl md:relative md:p-0 md:pt-0 md:shadow-none"
+            : "hidden md:flex"
+        )}
+      >
         <Card>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -176,6 +199,14 @@ export default function AgentDetailPage() {
         </div>
       </div>
 
+      {/* Overlay for mobile sidebar */}
+      {showSidebar && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 md:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
       {/* Right: chat area */}
       <div className="flex flex-1 flex-col">
         {/* Messages */}
@@ -199,7 +230,7 @@ export default function AgentDetailPage() {
                   }`}
                 >
                   <div
-                    className={`max-w-[75%] rounded-lg px-4 py-2 text-sm ${
+                    className={`max-w-[90%] md:max-w-[75%] rounded-lg px-4 py-2 text-sm ${
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-accent text-accent-foreground"

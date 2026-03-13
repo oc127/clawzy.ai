@@ -15,7 +15,7 @@ export function Navbar() {
           <span className="text-foreground">.ai</span>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           {user ? (
             <>
               <Link href="/dashboard">
@@ -23,7 +23,7 @@ export function Navbar() {
                   Dashboard
                 </Button>
               </Link>
-              <span className="text-sm text-muted-foreground">
+              <span className="hidden text-sm text-muted-foreground md:inline">
                 {user.name}
               </span>
               <Button variant="outline" size="sm" onClick={logout}>
