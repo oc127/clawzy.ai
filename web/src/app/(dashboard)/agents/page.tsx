@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { Bot, Plus, Trash2, MessageSquare } from "lucide-react";
+import { Bot, Plus, Trash2, MessageSquare, Play, Square } from "lucide-react";
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -60,6 +60,16 @@ export default function AgentsPage() {
   const handleDelete = async (id: string) => {
     try {
       await apiDelete(`/agents/${id}`);
+      fetchAgents();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleToggle = async (agent: Agent) => {
+    const action = agent.status === "running" ? "stop" : "start";
+    try {
+      await apiPost(`/agents/${agent.id}/${action}`);
       fetchAgents();
     } catch {
       // ignore
@@ -174,6 +184,24 @@ export default function AgentsPage() {
                     Chat
                   </Button>
                 </Link>
+                {(agent.status === "running" || agent.status === "stopped") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggle(agent)}
+                    className={
+                      agent.status === "running"
+                        ? "text-yellow-400 hover:text-yellow-300"
+                        : "text-green-400 hover:text-green-300"
+                    }
+                  >
+                    {agent.status === "running" ? (
+                      <Square className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

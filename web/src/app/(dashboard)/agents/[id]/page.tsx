@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import type { Agent, Conversation, Message } from "@/lib/types";
 import { useChat } from "@/hooks/use-chat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, Plus, MessageSquare } from "lucide-react";
+import { Bot, Send, Plus, MessageSquare, Play, Square } from "lucide-react";
 
 export default function AgentDetailPage() {
   const params = useParams();
@@ -117,6 +117,32 @@ export default function AgentDetailPage() {
             >
               {agent.status}
             </span>
+            {(agent.status === "running" || agent.status === "stopped") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  const action = agent.status === "running" ? "stop" : "start";
+                  try {
+                    const updated = await apiPost<Agent>(`/agents/${agentId}/${action}`);
+                    setAgent(updated);
+                  } catch {
+                    // ignore
+                  }
+                }}
+                className={
+                  agent.status === "running"
+                    ? "h-7 text-yellow-400 hover:text-yellow-300"
+                    : "h-7 text-green-400 hover:text-green-300"
+                }
+              >
+                {agent.status === "running" ? (
+                  <Square className="h-3 w-3" />
+                ) : (
+                  <Play className="h-3 w-3" />
+                )}
+              </Button>
+            )}
           </div>
         </Card>
 
