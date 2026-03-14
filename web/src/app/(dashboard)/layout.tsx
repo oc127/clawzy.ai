@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { Logo } from "@/components/logo";
 import {
   LayoutDashboard,
   Bot,
@@ -66,8 +67,8 @@ export default function DashboardLayout({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Link href="/" className="ml-3 text-lg font-bold">
-          <span className="text-primary">Clawzy</span>.ai
+        <Link href="/" className="ml-3">
+          <Logo size="sm" />
         </Link>
       </div>
 
@@ -88,8 +89,8 @@ export default function DashboardLayout({
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-border px-6">
-          <Link href="/" className="text-lg font-bold">
-            <span className="text-primary">Clawzy</span>.ai
+          <Link href="/">
+            <Logo size="sm" />
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -107,7 +108,7 @@ export default function DashboardLayout({
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href + "/"))
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >

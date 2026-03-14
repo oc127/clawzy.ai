@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "Clawzy.ai — Your AI Lobster, Any Brain.",
   description:
     "AI agent platform powered by multiple LLM models. Create custom agents, chat with any AI model, pay only for what you use.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

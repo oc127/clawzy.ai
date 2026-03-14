@@ -3,18 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #e4e4e7;
-  --card: #141419;
-  --card-foreground: #e4e4e7;
-  --border: #27272a;
-  --input: #1e1e24;
-  --primary: #ef4444;
+  /* Clawzy.ai Brand — Warm Coral Dark Theme */
+  --background: #111114;
+  --foreground: #f0eeeb;
+  --card: #1c1c21;
+  --card-foreground: #f0eeeb;
+  --border: #2d2d33;
+  --input: #222228;
+  --primary: #ff5a5f;
+  --primary-hover: #ff4449;
   --primary-foreground: #ffffff;
-  --muted: #1e1e24;
-  --muted-foreground: #a1a1aa;
-  --accent: #1e1e24;
-  --accent-foreground: #e4e4e7;
+  --secondary: #ffab76;
+  --secondary-foreground: #1c1c21;
+  --muted: #222228;
+  --muted-foreground: #a8a5a0;
+  --accent: #2a2a31;
+  --accent-foreground: #f0eeeb;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --ring: #ff5a5f;
+  --radius: 0.75rem;
 }
 
 body {
@@ -24,4 +32,15 @@ body {
 
 * {
   border-color: var(--border);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom selection color */
+::selection {
+  background: rgba(255, 90, 95, 0.3);
+  color: var(--foreground);
 }

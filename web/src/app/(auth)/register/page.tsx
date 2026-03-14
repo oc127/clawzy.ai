@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Logo } from "@/components/logo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -51,12 +52,11 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold">
-            Join <span className="text-primary">Clawzy</span>.ai
-          </h1>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <Logo size="lg" className="mb-4" />
+          <h1 className="text-2xl font-bold">Create your account</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create your account and get 500 free credits
+            Get started with 500 free credits
           </p>
         </div>
 

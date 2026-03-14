@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Logo } from "@/components/logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,11 +39,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold">
-            Welcome back to{" "}
-            <span className="text-primary">Clawzy</span>.ai
-          </h1>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <Logo size="lg" className="mb-4" />
+          <h1 className="text-2xl font-bold">Welcome back</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Sign in to your account
           </p>

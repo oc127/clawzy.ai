@@ -16,14 +16,30 @@ const config: Config = {
         "card-foreground": "var(--card-foreground)",
         border: "var(--border)",
         input: "var(--input)",
-        primary: "var(--primary)",
-        "primary-foreground": "var(--primary-foreground)",
-        muted: "var(--muted)",
-        "muted-foreground": "var(--muted-foreground)",
-        accent: "var(--accent)",
-        "accent-foreground": "var(--accent-foreground)",
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        ring: "var(--ring)",
       },
       borderRadius: {
+        xl: "1rem",
         lg: "0.75rem",
         md: "0.5rem",
         sm: "0.375rem",
