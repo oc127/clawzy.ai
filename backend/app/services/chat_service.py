@@ -100,7 +100,8 @@ async def stream_chat_completion(
     history = await get_conversation_history(db, conversation_id)
 
     # Build ordered list of endpoints to try.
-    # Priority: per-user OpenClaw container → shared OpenClaw gateway → direct LiteLLM.
+    # Priority: per-user OpenClaw container → shared OpenClaw gateway.
+    # All chat goes through OpenClaw — no direct LiteLLM fallback.
     endpoints = []
 
     if agent.ws_port and agent.gateway_token and agent.status == AgentStatus.running:
@@ -119,12 +120,14 @@ async def stream_chat_completion(
             "shared OpenClaw gateway",
         ))
 
-    # Always include direct LiteLLM as final fallback
-    endpoints.append((
-        f"{settings.litellm_url}/v1/chat/completions",
-        f"Bearer {settings.litellm_master_key}",
-        "direct LiteLLM",
-    ))
+    if not endpoints:
+        logger.error("No OpenClaw endpoints configured — check OPENCLAW_GATEWAY_URL and OPENCLAW_GATEWAY_TOKEN")
+        yield json.dumps({
+            "type": "error",
+            "code": "configuration_error",
+            "message": "OpenClaw gateway not configured",
+        })
+        return
 
     payload = {
         "model": agent.model_name,
