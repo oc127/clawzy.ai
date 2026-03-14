@@ -1,6 +1,5 @@
 {
   "gateway": {
-    "host": "0.0.0.0",
     "auth": {
       "mode": "token"
     },

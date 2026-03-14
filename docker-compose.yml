@@ -157,7 +157,7 @@ services:
       litellm:
         condition: service_healthy
     entrypoint: ["/bin/sh", "/tmp/entrypoint.sh"]
-    command: ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]
+    command: ["node", "openclaw.mjs", "gateway", "--allow-unconfigured", "--host", "0.0.0.0"]
     environment:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: "true"
