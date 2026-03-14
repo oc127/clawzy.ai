@@ -39,10 +39,13 @@ class DockerManager:
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
+        # Create a workspace directory for the agent
+        workspace_dir = os.path.join(config_dir, "workspace")
+        os.makedirs(workspace_dir, exist_ok=True)
+
         container = self.client.containers.run(
             image=settings.openclaw_image,
             name=f"clawzy-agent-{agent_id}",
-            command="gateway start --foreground",
             detach=True,
             restart_policy={"Name": "unless-stopped"},
             environment={
@@ -56,9 +59,13 @@ class DockerManager:
             cpu_quota=50000,
             network=settings.openclaw_network,
             volumes={
-                config_path: {
-                    "bind": "/home/node/.openclaw/openclaw.json",
-                    "mode": "ro",
+                config_dir: {
+                    "bind": "/home/node/.openclaw",
+                    "mode": "rw",
+                },
+                workspace_dir: {
+                    "bind": "/home/node/workspace",
+                    "mode": "rw",
                 },
             },
             labels={

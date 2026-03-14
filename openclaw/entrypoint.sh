@@ -1,7 +1,7 @@
 #!/bin/sh
-# Entrypoint for OpenClaw gateway container.
-# Runs as root (via docker-compose user: "0:0") to fix volume permissions,
-# then drops to the node user for the actual process.
+# Entrypoint wrapper for OpenClaw gateway container.
+# Runs as root (user: "0:0") to fix Docker volume permissions,
+# then delegates to the image's original docker-entrypoint.sh.
 
 # Fix volume permissions — Docker named volumes are created as root
 mkdir -p /home/node/.openclaw/workspace /home/node/.openclaw/cron /home/node/workspace
@@ -17,5 +17,5 @@ if [ -f "$CONFIG_TEMPLATE" ]; then
     chown node:node "$CONFIG_TARGET"
 fi
 
-# Drop privileges and execute the original command as node user
-exec su -s /bin/sh node -c "exec $*"
+# Delegate to the image's original entrypoint (handles PATH, user, etc.)
+exec docker-entrypoint.sh "$@"
