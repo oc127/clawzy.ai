@@ -4,7 +4,7 @@
 # then drops to the node user for the actual process.
 
 # Fix volume permissions — Docker named volumes are created as root
-mkdir -p /home/node/.openclaw/workspace /home/node/workspace
+mkdir -p /home/node/.openclaw/workspace /home/node/.openclaw/cron /home/node/workspace
 chown -R node:node /home/node/.openclaw /home/node/workspace
 
 # Generate openclaw.json from template, substituting environment variables.
