@@ -153,7 +153,6 @@ services:
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: clawzy-openclaw
     restart: unless-stopped
-    user: "0:0"
     depends_on:
       litellm:
         condition: service_healthy
