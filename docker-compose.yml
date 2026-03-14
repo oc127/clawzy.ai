@@ -104,7 +104,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      OPENCLAW_GATEWAY_URL: http://clawzy-openclaw:18789
+      OPENCLAW_GATEWAY_URL: http://clawzy-openclaw-proxy:18800
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       OPENCLAW_IMAGE: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
       OPENCLAW_NETWORK: clawzy-network
@@ -162,8 +162,6 @@ services:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: "true"
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
-      HOST: "0.0.0.0"
-      OPENCLAW_HOST: "0.0.0.0"
     volumes:
       - openclaw_config:/home/node/.openclaw
       - openclaw_workspace:/home/node/workspace
@@ -180,6 +178,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # OpenClaw Proxy — exposes gateway on 0.0.0.0 for Docker network access
+  # Gateway only listens on 127.0.0.1; this socat proxy shares its network
+  # namespace and forwards from 0.0.0.0:18800 → 127.0.0.1:18789
+  # ---------------------------------------------------------------------------
+  openclaw-proxy:
+    image: alpine/socat
+    container_name: clawzy-openclaw-proxy
+    restart: unless-stopped
+    network_mode: "service:openclaw-gateway"
+    depends_on:
+      openclaw-gateway:
+        condition: service_healthy
+    command: TCP-LISTEN:18800,fork,reuseaddr TCP-CONNECT:127.0.0.1:18789
 
   # ---------------------------------------------------------------------------
   # OpenClaw CLI — interactive terminal (run on-demand)
