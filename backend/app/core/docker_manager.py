@@ -75,9 +75,14 @@ class DockerManager:
         )
         return container.id
 
-    def _generate_agent_config(self, model_name: str, litellm_key: str) -> dict:
+    def generate_agent_config(
+        self,
+        model_name: str,
+        litellm_key: str,
+        skill_slugs: list[str] | None = None,
+    ) -> dict:
         """Generate a per-agent openclaw.json config."""
-        return {
+        config = {
             "gateway": {
                 "auth": {"mode": "token"},
                 "http": {
@@ -103,6 +108,21 @@ class DockerManager:
                 },
             },
         }
+
+        # Inject installed skills into config
+        if skill_slugs:
+            config["skills"] = {
+                "entries": {slug: {"enabled": True} for slug in skill_slugs},
+            }
+            config["plugins"] = {
+                "entries": {slug: {"enabled": True} for slug in skill_slugs},
+            }
+
+        return config
+
+    def _generate_agent_config(self, model_name: str, litellm_key: str) -> dict:
+        """Backward-compatible wrapper."""
+        return self.generate_agent_config(model_name, litellm_key)
 
     def stop_container(self, container_id: str) -> None:
         try:

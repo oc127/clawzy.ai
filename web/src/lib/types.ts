@@ -62,3 +62,39 @@ export interface ModelInfo {
   credits_per_1k_output: number;
   description: string;
 }
+
+export interface Skill {
+  id: string;
+  slug: string;
+  name: string;
+  summary: string;
+  description: string;
+  category: string;
+  tags: string[] | null;
+  icon_url: string | null;
+  clawhub_url: string | null;
+  author: string | null;
+  version: string | null;
+  install_count: number;
+  is_featured: boolean;
+  created_at: string;
+}
+
+export interface SkillBrief {
+  id: string;
+  slug: string;
+  name: string;
+  summary: string;
+  category: string;
+  tags: string[] | null;
+  icon_url: string | null;
+  install_count: number;
+  is_featured: boolean;
+}
+
+export interface AgentSkill {
+  id: string;
+  skill: SkillBrief;
+  enabled: boolean;
+  installed_at: string;
+}

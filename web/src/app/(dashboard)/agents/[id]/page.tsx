@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiGet, apiPost } from "@/lib/api";
-import type { Agent, Conversation, Message } from "@/lib/types";
+import { apiGet, apiPost, getAgentSkills, uninstallSkill, toggleAgentSkill } from "@/lib/api";
+import type { Agent, Conversation, Message, AgentSkill } from "@/lib/types";
 import { useChat } from "@/hooks/use-chat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
-import { Bot, Send, Plus, MessageSquare, Play, Square, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import Link from "next/link";
+import { Bot, Send, Plus, MessageSquare, Play, Square, PanelLeftOpen, PanelLeftClose, Package, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 
 export default function AgentDetailPage() {
   const params = useParams();
@@ -18,6 +19,7 @@ export default function AgentDetailPage() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [agentSkills, setAgentSkills] = useState<AgentSkill[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
   const [showSidebar, setShowSidebar] = useState(false);
@@ -42,10 +44,12 @@ export default function AgentDetailPage() {
     Promise.all([
       apiGet<Agent>(`/agents/${agentId}`),
       apiGet<Conversation[]>(`/agents/${agentId}/conversations`),
+      getAgentSkills(agentId),
     ])
-      .then(([a, c]) => {
+      .then(([a, c, s]) => {
         setAgent(a);
         setConversations(c);
+        setAgentSkills(s);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -196,6 +200,75 @@ export default function AgentDetailPage() {
               No conversations yet. Send a message to start.
             </p>
           )}
+        </div>
+
+        {/* Installed Skills */}
+        <div className="border-t border-border pt-3 mt-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5" />
+              Skills
+            </h3>
+            <Link href="/clawhub">
+              <Button variant="ghost" size="sm" className="h-6 text-xs text-primary">
+                Browse
+              </Button>
+            </Link>
+          </div>
+          <div className="space-y-1">
+            {agentSkills.map((as) => (
+              <div
+                key={as.id}
+                className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm"
+              >
+                <span className={as.enabled ? "text-foreground" : "text-muted-foreground line-through"}>
+                  {as.skill.name}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await toggleAgentSkill(agentId, as.skill.id, !as.enabled);
+                        setAgentSkills((prev) =>
+                          prev.map((s) =>
+                            s.id === as.id ? { ...s, enabled: !s.enabled } : s
+                          )
+                        );
+                      } catch {}
+                    }}
+                    className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    title={as.enabled ? "Disable" : "Enable"}
+                  >
+                    {as.enabled ? (
+                      <ToggleRight className="h-4 w-4 text-green-400" />
+                    ) : (
+                      <ToggleLeft className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await uninstallSkill(agentId, as.skill.id);
+                        setAgentSkills((prev) => prev.filter((s) => s.id !== as.id));
+                      } catch {}
+                    }}
+                    className="rounded p-0.5 text-muted-foreground hover:text-red-400"
+                    title="Uninstall"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {agentSkills.length === 0 && (
+              <p className="px-2 text-xs text-muted-foreground">
+                No skills installed.{" "}
+                <Link href="/clawhub" className="text-primary hover:underline">
+                  Browse ClawHub
+                </Link>
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

@@ -68,3 +68,52 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
 export function apiDelete(path: string): Promise<void> {
   return request<void>(path, { method: "DELETE" });
 }
+
+// --- Skills / ClawHub API ---
+
+import type { SkillBrief, Skill, AgentSkill } from "./types";
+
+export function getSkills(params?: {
+  category?: string;
+  search?: string;
+  sort_by?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<SkillBrief[]> {
+  const q = new URLSearchParams();
+  if (params?.category) q.set("category", params.category);
+  if (params?.search) q.set("search", params.search);
+  if (params?.sort_by) q.set("sort_by", params.sort_by);
+  if (params?.limit) q.set("limit", String(params.limit));
+  if (params?.offset) q.set("offset", String(params.offset));
+  const qs = q.toString();
+  return apiGet<SkillBrief[]>(`/skills${qs ? `?${qs}` : ""}`);
+}
+
+export function getSkillCategories(): Promise<string[]> {
+  return apiGet<string[]>("/skills/categories");
+}
+
+export function getTrendingSkills(limit = 10): Promise<SkillBrief[]> {
+  return apiGet<SkillBrief[]>(`/skills/trending?limit=${limit}`);
+}
+
+export function getSkillBySlug(slug: string): Promise<Skill> {
+  return apiGet<Skill>(`/skills/${slug}`);
+}
+
+export function getAgentSkills(agentId: string): Promise<AgentSkill[]> {
+  return apiGet<AgentSkill[]>(`/skills/agents/${agentId}/installed`);
+}
+
+export function installSkill(agentId: string, skillId: string): Promise<AgentSkill> {
+  return apiPost<AgentSkill>(`/skills/agents/${agentId}/install`, { skill_id: skillId });
+}
+
+export function uninstallSkill(agentId: string, skillId: string): Promise<void> {
+  return apiDelete(`/skills/agents/${agentId}/uninstall/${skillId}`);
+}
+
+export function toggleAgentSkill(agentId: string, skillId: string, enabled: boolean): Promise<AgentSkill> {
+  return apiPatch<AgentSkill>(`/skills/agents/${agentId}/toggle/${skillId}`, { enabled });
+}

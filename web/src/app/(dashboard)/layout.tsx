@@ -16,11 +16,13 @@ import {
   LogOut,
   Menu,
   X,
+  Package,
 } from "lucide-react";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/agents", label: "Agents", icon: Bot },
+  { href: "/clawhub", label: "ClawHub", icon: Package },
   { href: "/models", label: "Models", icon: Cpu },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/settings", label: "Settings", icon: Settings },
