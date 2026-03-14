@@ -104,7 +104,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      OPENCLAW_GATEWAY_URL: http://clawzy-openclaw-proxy:18800
+      OPENCLAW_GATEWAY_URL: http://clawzy-openclaw:18800
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       OPENCLAW_IMAGE: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
       OPENCLAW_NETWORK: clawzy-network
