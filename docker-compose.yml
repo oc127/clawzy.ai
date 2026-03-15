@@ -87,6 +87,7 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     build: ./backend
+    image: ${BACKEND_IMAGE:-clawzy-backend:local}
     container_name: clawzy-backend
     restart: unless-stopped
     depends_on:
@@ -127,6 +128,7 @@ services:
   # ---------------------------------------------------------------------------
   webapp:
     build: ./web
+    image: ${WEBAPP_IMAGE:-clawzy-webapp:local}
     container_name: clawzy-webapp
     restart: unless-stopped
     depends_on:

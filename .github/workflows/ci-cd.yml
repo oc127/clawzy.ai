@@ -1,3 +1,15 @@
+# =============================================================================
+# Clawzy.ai — CI/CD Pipeline
+# Triggers: push to main, pull requests to main
+# Jobs:
+#   1. backend-lint    — Python code quality (ruff)
+#   2. backend-test    — pytest with coverage
+#   3. frontend-lint   — ESLint
+#   4. frontend-build  — Next.js production build
+#   5. docker-build    — Build & push images to GHCR
+#   6. deploy          — SSH deploy to Alibaba Cloud ECS
+# =============================================================================
+
 name: CI/CD
 
 on:
@@ -6,9 +18,43 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
+  WEBAPP_IMAGE: ghcr.io/${{ github.repository }}/webapp
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # ==========================================================================
-  # CI — 后端 Python 测试
+  # CI — Backend lint (ruff)
+  # ==========================================================================
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint (ruff check)
+        run: ruff check .
+
+      - name: Format check (ruff format)
+        run: ruff format --check .
+
+  # ==========================================================================
+  # CI — Backend tests with coverage
   # ==========================================================================
   backend-test:
     name: Backend Tests
@@ -28,16 +74,29 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio httpx
+          pip install pytest-cov
 
-      - name: Run tests
-        run: pytest tests/ -v
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --tb=short
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 14
 
   # ==========================================================================
-  # CI — 前端构建检查
+  # CI — Frontend lint
   # ==========================================================================
-  frontend-build:
-    name: Frontend Build Check
+  frontend-lint:
+    name: Frontend Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -57,17 +116,92 @@ jobs:
       - name: Lint
         run: npm run lint
 
+  # ==========================================================================
+  # CI — Frontend build
+  # ==========================================================================
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build
         run: npm run build
 
   # ==========================================================================
-  # CD — 部署到阿里云 ECS
+  # CD — Build & push Docker images to GHCR
+  # ==========================================================================
+  docker-build:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      matrix:
+        include:
+          - context: ./backend
+            image_env: BACKEND_IMAGE
+            name: backend
+          - context: ./web
+            image_env: WEBAPP_IMAGE
+            name: webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.name }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================================================
+  # CD — Deploy to Alibaba Cloud ECS
   # ==========================================================================
   deploy:
     name: Deploy to ECS
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-build]
+    needs: [docker-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
@@ -75,9 +209,62 @@ jobs:
           host: ${{ secrets.ECS_HOST }}
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_KEY }}
+          command_timeout: 10m
           script: |
+            set -euo pipefail
             cd /opt/clawzy
+
+            echo "=== Pull latest code ==="
             git pull origin main
-            docker compose up -d --build
-            sleep 30
+
+            echo "=== Pull pre-built images ==="
+            docker compose pull backend webapp 2>/dev/null || true
+
+            echo "=== Save current image digests for rollback ==="
+            docker inspect clawzy-backend --format='{{.Image}}' > /tmp/clawzy-backend-prev.digest 2>/dev/null || true
+            docker inspect clawzy-webapp --format='{{.Image}}' > /tmp/clawzy-webapp-prev.digest 2>/dev/null || true
+
+            echo "=== Rebuild and restart ==="
+            docker compose up -d --build --remove-orphans
+
+            echo "=== Wait for health checks ==="
+            MAX_WAIT=120
+            ELAPSED=0
+            while [ $ELAPSED -lt $MAX_WAIT ]; do
+              BACKEND_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' clawzy-backend 2>/dev/null || echo "unknown")
+              WEBAPP_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' clawzy-webapp 2>/dev/null || echo "unknown")
+
+              if [ "$BACKEND_HEALTH" = "healthy" ] && [ "$WEBAPP_HEALTH" = "healthy" ]; then
+                echo "All services healthy!"
+                break
+              fi
+
+              echo "Waiting... backend=$BACKEND_HEALTH webapp=$WEBAPP_HEALTH (${ELAPSED}s)"
+              sleep 10
+              ELAPSED=$((ELAPSED + 10))
+            done
+
+            if [ $ELAPSED -ge $MAX_WAIT ]; then
+              echo "WARNING: Services not healthy after ${MAX_WAIT}s"
+              echo "=== Rolling back ==="
+              git checkout HEAD~1
+              docker compose up -d --build
+              echo "Rollback initiated. Check logs:"
+              docker compose logs --tail=50 backend webapp
+              exit 1
+            fi
+
+            echo "=== Deployment successful ==="
             docker compose ps
+            echo ""
+            echo "=== Disk usage ==="
+            docker system df
+
+      - name: Notify deployment (optional)
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "Deployment succeeded for commit ${{ github.sha }}"
+          else
+            echo "Deployment FAILED for commit ${{ github.sha }}"
+          fi
