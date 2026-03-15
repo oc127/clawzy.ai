@@ -9,19 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
+import { CATEGORY_ICONS } from "@/lib/skill-icons";
 import { toast } from "sonner";
 import {
   Search,
   TrendingUp,
   Download,
   Star,
-  Globe,
-  Calculator,
-  Code,
-  Database,
-  Sparkles,
-  MessageSquare,
-  Monitor,
   Zap,
   Package,
   AlertCircle,
@@ -29,16 +23,6 @@ import {
   ShieldCheck,
   ShieldAlert,
 } from "lucide-react";
-
-const CATEGORY_ICONS: Record<string, React.ElementType> = {
-  search: Globe,
-  productivity: Calculator,
-  development: Code,
-  data: Database,
-  ai: Sparkles,
-  communication: MessageSquare,
-  browser: Monitor,
-};
 
 const SORT_OPTIONS = [
   { value: "install_count", label: "Most Popular" },

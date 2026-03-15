@@ -7,6 +7,9 @@ import { getSkillBySlug, getSkills, apiGet, installSkill } from "@/lib/api";
 import type { Skill, SkillBrief, Agent } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CATEGORY_ICONS } from "@/lib/skill-icons";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Download,
@@ -16,25 +19,8 @@ import {
   ExternalLink,
   Check,
   ChevronDown,
-  Globe,
-  Calculator,
-  Code,
-  Database,
-  Sparkles,
-  MessageSquare,
-  Monitor,
   Zap,
 } from "lucide-react";
-
-const CATEGORY_ICONS: Record<string, React.ElementType> = {
-  search: Globe,
-  productivity: Calculator,
-  development: Code,
-  data: Database,
-  ai: Sparkles,
-  communication: MessageSquare,
-  browser: Monitor,
-};
 
 export default function SkillDetailPage() {
   const params = useParams();
@@ -57,7 +43,7 @@ export default function SkillDetailPage() {
         // Fetch related skills from same category
         getSkills({ category: s.category, limit: 5 })
           .then((r) => setRelated(r.filter((rs) => rs.slug !== slug)))
-          .catch(() => {});
+          .catch(() => toast.error("Failed to load related skills"));
       })
       .catch(() => setError("Skill not found"))
       .finally(() => setLoading(false));
@@ -65,7 +51,7 @@ export default function SkillDetailPage() {
     // Fetch user's agents for install picker
     apiGet<Agent[]>("/agents")
       .then(setAgents)
-      .catch(() => {});
+      .catch(() => toast.error("Failed to load agents"));
   }, [slug]);
 
   const handleInstall = async (agentId: string) => {
@@ -83,7 +69,13 @@ export default function SkillDetailPage() {
   };
 
   if (loading) {
-    return <p className="text-muted-foreground">Loading skill...</p>;
+    return (
+      <div className="mx-auto max-w-4xl space-y-6">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   if (!skill) {

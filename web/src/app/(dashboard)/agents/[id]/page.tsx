@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiGet, apiPost, getAgentSkills, uninstallSkill, toggleAgentSkill } from "@/lib/api";
 import type { Agent, Conversation, Message, AgentSkill } from "@/lib/types";
@@ -274,6 +274,18 @@ export default function AgentDetailPage() {
     },
   });
 
+  const handleToggleAgent = useCallback(async () => {
+    if (!agent) return;
+    const action = agent.status === "running" ? "stop" : "start";
+    try {
+      const updated = await apiPost<Agent>(`/agents/${agentId}/${action}`);
+      setAgent(updated);
+      toast.success(`Agent ${action === "start" ? "started" : "stopped"}`);
+    } catch {
+      toast.error(`Failed to ${action} agent`);
+    }
+  }, [agent, agentId]);
+
   const fetchConversations = () => {
     apiGet<Conversation[]>(`/agents/${agentId}/conversations`)
       .then(setConversations)
@@ -317,6 +329,14 @@ export default function AgentDetailPage() {
         history.map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
+          timestamp: m.created_at,
+          usage: m.credits_used != null ? {
+            credits_used: m.credits_used,
+            tokens_input: m.tokens_input ?? 0,
+            tokens_output: m.tokens_output ?? 0,
+            model: m.model_name ?? "",
+            balance: 0,
+          } : undefined,
         })),
       );
     } catch {
@@ -427,16 +447,7 @@ export default function AgentDetailPage() {
                 variant="ghost"
                 size="sm"
                 aria-label={agent.status === "running" ? "Stop agent" : "Start agent"}
-                onClick={async () => {
-                  const action = agent.status === "running" ? "stop" : "start";
-                  try {
-                    const updated = await apiPost<Agent>(`/agents/${agentId}/${action}`);
-                    setAgent(updated);
-                    toast.success(`Agent ${action === "start" ? "started" : "stopped"}`);
-                  } catch {
-                    toast.error(`Failed to ${action} agent`);
-                  }
-                }}
+                onClick={handleToggleAgent}
                 className={
                   agent.status === "running"
                     ? "h-7 text-yellow-400 hover:text-yellow-300"

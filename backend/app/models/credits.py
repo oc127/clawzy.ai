@@ -33,3 +33,4 @@ class CreditTransaction(Base):
     )
 
     user = relationship("User", back_populates="credit_transactions")
+    agent = relationship("Agent", back_populates="credit_transactions")

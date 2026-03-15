@@ -84,7 +84,11 @@ export function useChat({
         } else if (data.type === "done") {
           setIsStreaming(false);
           streamBufferRef.current = "";
-          const usage = data.usage as MessageUsage | undefined;
+          const rawUsage = data.usage;
+          const usage: MessageUsage | undefined =
+            rawUsage && typeof rawUsage.credits_used === "number"
+              ? (rawUsage as MessageUsage)
+              : undefined;
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === "assistant" && !last.timestamp) {

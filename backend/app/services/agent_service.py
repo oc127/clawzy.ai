@@ -94,18 +94,29 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
 
 
 async def allocate_port(db: AsyncSession) -> int:
-    """Find the next available WS port."""
+    """Find the next available WS port.
+
+    Uses a gap-finding query to handle non-contiguous port ranges
+    (e.g. if an agent in the middle was deleted). Falls back to
+    max(port)+1 when there are no gaps.
+    """
+    # Get all currently allocated ports
     result = await db.execute(
         select(Agent.ws_port)
         .where(Agent.ws_port.isnot(None))
-        .order_by(Agent.ws_port.desc())
-        .limit(1)
+        .order_by(Agent.ws_port.asc())
     )
-    last_port = result.scalar_one_or_none()
-    next_port = (last_port + 1) if last_port else settings.openclaw_port_start
-    if next_port > settings.openclaw_port_end:
-        raise RuntimeError("No available ports")
-    return next_port
+    used_ports = set(result.scalars().all())
+
+    if not used_ports:
+        return settings.openclaw_port_start
+
+    # Try to find a gap in the range
+    for port in range(settings.openclaw_port_start, settings.openclaw_port_end + 1):
+        if port not in used_ports:
+            return port
+
+    raise RuntimeError("No available ports")
 
 
 async def list_agents(db: AsyncSession, user_id: str) -> list[Agent]:
