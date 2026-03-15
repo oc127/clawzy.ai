@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     openclaw_gateway_token: str = ""
     openclaw_agent_config_dir: str = "/var/lib/clawzy/agents"
 
+    # --- CORS ---
+    cors_origins: str = "*"  # comma-separated origins, or "*" for dev
+
+    # --- Rate Limiting ---
+    rate_limit_per_minute: int = 60
+    rate_limit_auth_per_minute: int = 10
+
     # --- Credits ---
     signup_bonus_credits: int = 500
 

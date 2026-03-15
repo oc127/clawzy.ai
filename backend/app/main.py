@@ -8,6 +8,7 @@ from sqlalchemy import text
 from app.api.router import api_router
 from app.config import settings
 from app.core.database import engine, Base
+from app.core.rate_limit import RateLimitMiddleware
 
 # Import all models so Base.metadata knows about them
 import app.models  # noqa: F401
@@ -45,13 +46,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Parse CORS origins from config (comma-separated or "*")
+_cors_origins = (
+    ["*"]
+    if settings.cors_origins.strip() == "*"
+    else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: restrict to clawzy.ai in production
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(RateLimitMiddleware)
 
 app.include_router(api_router)
 
