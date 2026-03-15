@@ -19,8 +19,8 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "确认",
-  cancelLabel = "取消",
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
   variant = "default",
   loading = false,
   onConfirm,
@@ -52,6 +52,7 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       aria-modal="true"
+      aria-label={title}
       className="fixed inset-0 z-50 m-auto max-w-sm w-[calc(100%-2rem)] rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       style={{ animation: "page-enter 200ms ease-out" }}
       onClick={(e) => {

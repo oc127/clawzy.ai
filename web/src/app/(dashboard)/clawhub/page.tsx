@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
+import { toast } from "sonner";
 import {
   Search,
   TrendingUp,
@@ -107,7 +108,7 @@ export default function ClawHubPage() {
       sort_by: sortBy,
     })
       .then(setSkills)
-      .catch(() => {});
+      .catch(() => toast.error("Failed to load skills"));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, searchQuery, sortBy]);
 

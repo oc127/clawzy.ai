@@ -131,7 +131,7 @@ export default function AgentsPage() {
   const fetchAgents = () => {
     apiGet<Agent[]>("/agents")
       .then(setAgents)
-      .catch(() => {});
+      .catch(() => toast.error("Failed to refresh agents"));
   };
 
   useEffect(() => {

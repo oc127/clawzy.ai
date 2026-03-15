@@ -113,7 +113,14 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 
                     # Check credits
                     result = await db.execute(select(User).where(User.id == user_id))
-                    user = result.scalar_one()
+                    user = result.scalar_one_or_none()
+                    if user is None:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "code": "user_not_found",
+                            "message": "User no longer exists",
+                        }))
+                        break
                     if user.credit_balance <= 0:
                         await websocket.send_text(json.dumps({
                             "type": "error",
@@ -133,8 +140,17 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                         }))
                         continue
 
-                    conv = await get_or_create_conversation(db, agent_id, conversation_id)
-                    await db.commit()
+                    try:
+                        conv = await get_or_create_conversation(db, agent_id, conversation_id)
+                        await db.commit()
+                    except Exception:
+                        logger.exception("Failed to get/create conversation")
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "code": "conversation_error",
+                            "message": "Failed to create conversation",
+                        }))
+                        continue
                     conv_id = conv.id
 
                     async for event in stream_chat_completion(
@@ -145,6 +161,14 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
             elif msg_type == "switch_model":
                 new_model = data.get("model", "").strip()
                 if new_model:
+                    from app.services.credits_service import CREDIT_RATES
+                    if new_model not in CREDIT_RATES:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "code": "invalid_model",
+                            "message": f"Unknown model: {new_model}",
+                        }))
+                        continue
                     async with async_session() as db:
                         agent = await get_agent(db, agent_id, user_id)
                         if agent:

@@ -277,7 +277,7 @@ export default function AgentDetailPage() {
   const fetchConversations = () => {
     apiGet<Conversation[]>(`/agents/${agentId}/conversations`)
       .then(setConversations)
-      .catch(() => {});
+      .catch(() => toast.error("Failed to load conversations"));
   };
 
   const fetchData = () => {
@@ -507,14 +507,15 @@ export default function AgentDetailPage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={async () => {
+                      const newEnabled = !as.enabled;
                       try {
-                        await toggleAgentSkill(agentId, as.skill.id, !as.enabled);
+                        await toggleAgentSkill(agentId, as.skill.id, newEnabled);
                         setAgentSkills((prev) =>
                           prev.map((s) =>
-                            s.id === as.id ? { ...s, enabled: !s.enabled } : s
+                            s.id === as.id ? { ...s, enabled: newEnabled } : s
                           )
                         );
-                        toast.success(`Skill ${as.enabled ? "disabled" : "enabled"}`);
+                        toast.success(`Skill ${newEnabled ? "enabled" : "disabled"}`);
                       } catch {
                         toast.error("Failed to toggle skill");
                       }

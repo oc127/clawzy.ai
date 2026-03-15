@@ -1,12 +1,13 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_token, create_access_token, create_refresh_token
+from app.models.user import User
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest
-from app.schemas.user import UserResponse
 from app.services.auth_service import register_user, login_user, AuthError
 
 logger = logging.getLogger(__name__)
@@ -44,8 +45,6 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     if payload is None or payload.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
     user_id = payload["sub"]
-    from sqlalchemy import select
-    from app.models.user import User
     result = await db.execute(select(User).where(User.id == user_id))
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists")

@@ -27,7 +27,7 @@ class InsufficientCreditsError(Exception):
 
 def calculate_credits(model_name: str, tokens_input: int, tokens_output: int) -> int:
     """Calculate credits cost for a model call."""
-    rate = CREDIT_RATES.get(model_name, {"input": 1.0, "output": 2.0})
+    rate = CREDIT_RATES[model_name]
     cost = (tokens_input / 1000) * rate["input"] + (tokens_output / 1000) * rate["output"]
     return max(1, round(cost))
 
@@ -63,7 +63,7 @@ async def deduct_credits(
         agent_id=agent_id,
     )
     db.add(txn)
-    await db.commit()
+    await db.flush()
     return credits_used
 
 

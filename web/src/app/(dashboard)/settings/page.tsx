@@ -20,6 +20,12 @@ export default function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? "");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setName(user?.name ?? "");
+    setAvatarUrl(user?.avatar_url ?? "");
+    setDailyLimit(user?.daily_credit_limit ? String(user.daily_credit_limit) : "");
+  }, [user]);
+
   // Budget manager state
   const [dailyLimit, setDailyLimit] = useState<string>(
     user?.daily_credit_limit ? String(user.daily_credit_limit) : ""

@@ -104,6 +104,11 @@ async def stream_chat_completion(
     effective_model, was_downgraded = smart_route(
         agent.model_name, user_content, history_len=len(history)
     )
+    from app.services.credits_service import CREDIT_RATES
+    if effective_model not in CREDIT_RATES:
+        logger.error("smart_route returned unknown model %s, falling back to %s", effective_model, agent.model_name)
+        effective_model = agent.model_name
+        was_downgraded = False
     if was_downgraded:
         logger.info(
             "Smart route: downgraded %s → %s for agent %s",
@@ -232,9 +237,9 @@ async def stream_chat_completion(
 
     # Estimate tokens if not provided by API
     if tokens_input == 0:
-        tokens_input = len(str(history)) // 4  # rough estimate
+        tokens_input = max(1, len(str(history)) // 4)  # rough estimate
     if tokens_output == 0:
-        tokens_output = len(full_content) // 4
+        tokens_output = max(1, len(full_content) // 4)
 
     # Deduct credits
     try:
