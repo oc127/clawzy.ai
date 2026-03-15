@@ -17,6 +17,7 @@ interface User {
   name: string;
   avatar_url: string | null;
   credit_balance: number;
+  daily_credit_limit: number | null;
   created_at: string;
 }
 

@@ -16,7 +16,7 @@ from app.schemas.billing import (
     CheckoutRequest,
 )
 from app.services.agent_service import get_user_plan
-from app.services.credits_service import get_usage_this_period
+from app.services.credits_service import get_usage_this_period, get_usage_today, get_usage_last_7_days
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -55,6 +55,27 @@ async def get_transactions(
         .offset(offset)
     )
     return list(result.scalars().all())
+
+
+@router.get("/credits/today")
+async def get_today_usage(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    used = await get_usage_today(db, user.id)
+    return {
+        "used_today": used,
+        "daily_limit": user.daily_credit_limit,
+    }
+
+
+@router.get("/credits/usage-chart")
+async def get_usage_chart(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get daily usage for the last 7 days (for dashboard chart)."""
+    return await get_usage_last_7_days(db, user.id)
 
 
 @router.get("/plans", response_model=list[PlanResponse])

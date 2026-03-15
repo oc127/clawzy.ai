@@ -1,4 +1,6 @@
-from sqlalchemy import select, func
+from datetime import datetime, timezone, timedelta
+
+from sqlalchemy import select, func, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -74,3 +76,60 @@ async def get_usage_this_period(db: AsyncSession, user_id: str) -> int:
         )
     )
     return result.scalar_one()
+
+
+async def get_usage_today(db: AsyncSession, user_id: str) -> int:
+    """Get total credits used today (UTC)."""
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    result = await db.execute(
+        select(func.coalesce(func.sum(func.abs(CreditTransaction.amount)), 0)).where(
+            CreditTransaction.user_id == user_id,
+            CreditTransaction.reason == CreditReason.usage,
+            CreditTransaction.created_at >= today_start,
+        )
+    )
+    return result.scalar_one()
+
+
+class DailyLimitExceededError(Exception):
+    pass
+
+
+async def check_daily_limit(db: AsyncSession, user: User) -> None:
+    """Check if user has exceeded daily credit limit."""
+    if user.daily_credit_limit is None:
+        return
+    used_today = await get_usage_today(db, user.id)
+    if used_today >= user.daily_credit_limit:
+        raise DailyLimitExceededError(
+            f"Daily credit limit of {user.daily_credit_limit} reached. Used {used_today} today."
+        )
+
+
+async def get_usage_last_7_days(db: AsyncSession, user_id: str) -> list[dict]:
+    """Get daily usage for the last 7 days."""
+    now = datetime.now(timezone.utc)
+    seven_days_ago = (now - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    result = await db.execute(
+        select(
+            cast(CreditTransaction.created_at, Date).label("date"),
+            func.coalesce(func.sum(func.abs(CreditTransaction.amount)), 0).label("credits"),
+        )
+        .where(
+            CreditTransaction.user_id == user_id,
+            CreditTransaction.reason == CreditReason.usage,
+            CreditTransaction.created_at >= seven_days_ago,
+        )
+        .group_by(cast(CreditTransaction.created_at, Date))
+        .order_by(cast(CreditTransaction.created_at, Date))
+    )
+    rows = result.all()
+    usage_map = {str(row.date): int(row.credits) for row in rows}
+
+    # Fill in missing days with 0
+    days = []
+    for i in range(7):
+        day = (now - timedelta(days=6 - i)).date()
+        days.append({"date": str(day), "credits": usage_map.get(str(day), 0)})
+    return days

@@ -16,6 +16,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100))
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     credit_balance: Mapped[int] = mapped_column(Integer, default=500)
+    daily_credit_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = unlimited
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

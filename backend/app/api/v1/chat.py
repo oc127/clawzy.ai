@@ -16,6 +16,7 @@ from app.services.chat_service import (
     get_or_create_conversation,
     stream_chat_completion,
 )
+from app.services.credits_service import check_daily_limit, DailyLimitExceededError
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,17 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                             "type": "error",
                             "code": "insufficient_credits",
                             "message": "No credits remaining",
+                        }))
+                        continue
+
+                    # Check daily credit limit
+                    try:
+                        await check_daily_limit(db, user)
+                    except DailyLimitExceededError as e:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "code": "daily_limit_exceeded",
+                            "message": str(e),
                         }))
                         continue
 

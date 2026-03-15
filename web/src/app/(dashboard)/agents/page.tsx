@@ -11,7 +11,73 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
-import { Bot, Plus, Trash2, MessageSquare, Play, Square, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Bot,
+  Plus,
+  Trash2,
+  MessageSquare,
+  Play,
+  Square,
+  AlertCircle,
+  RefreshCw,
+  Code,
+  FileText,
+  Globe,
+  Briefcase,
+} from "lucide-react";
+
+// --- Agent Templates ---
+interface AgentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  defaultName: string;
+  recommendedModel: string;
+  icon: React.ReactNode;
+}
+
+const AGENT_TEMPLATES: AgentTemplate[] = [
+  {
+    id: "blank",
+    name: "Blank Agent",
+    description: "Start from scratch with a custom configuration",
+    defaultName: "",
+    recommendedModel: "",
+    icon: <Plus className="h-5 w-5" />,
+  },
+  {
+    id: "coder",
+    name: "Code Assistant",
+    description: "Write, review, and debug code across languages",
+    defaultName: "Code Buddy",
+    recommendedModel: "deepseek-chat",
+    icon: <Code className="h-5 w-5" />,
+  },
+  {
+    id: "writer",
+    name: "Writing Assistant",
+    description: "Draft, edit, and polish articles and documents",
+    defaultName: "Writing Pro",
+    recommendedModel: "qwen-max",
+    icon: <FileText className="h-5 w-5" />,
+  },
+  {
+    id: "research",
+    name: "Research Agent",
+    description: "Analyze data, summarize papers, and find insights",
+    defaultName: "Research Hub",
+    recommendedModel: "deepseek-reasoner",
+    icon: <Globe className="h-5 w-5" />,
+  },
+  {
+    id: "business",
+    name: "Business Analyst",
+    description: "Create reports, analyze metrics, and plan strategies",
+    defaultName: "Biz Analyst",
+    recommendedModel: "qwen-plus",
+    icon: <Briefcase className="h-5 w-5" />,
+  },
+];
 
 function AgentsSkeleton() {
   return (
@@ -38,6 +104,7 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("blank");
   const [name, setName] = useState("");
   const [modelName, setModelName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -71,6 +138,19 @@ export default function AgentsPage() {
     fetchData();
   }, []);
 
+  const applyTemplate = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    const template = AGENT_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+
+    if (template.defaultName) {
+      setName(template.defaultName);
+    }
+    if (template.recommendedModel && models.some((m) => m.id === template.recommendedModel)) {
+      setModelName(template.recommendedModel);
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -80,6 +160,7 @@ export default function AgentsPage() {
       await apiPost("/agents", { name: name.trim(), model_name: modelName });
       setName("");
       setShowCreate(false);
+      setSelectedTemplate("blank");
       fetchAgents();
       toast.success("Agent created");
     } catch (err) {
@@ -149,6 +230,44 @@ export default function AgentsPage() {
       {showCreate && (
         <Card className="mb-8">
           <h2 className="mb-4 text-lg font-semibold">New Agent</h2>
+
+          {/* Template selector */}
+          <div className="mb-6">
+            <label className="mb-2 block text-sm text-muted-foreground">
+              Start from a template
+            </label>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {AGENT_TEMPLATES.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => applyTemplate(template.id)}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all hover:border-primary ${
+                    selectedTemplate === template.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border"
+                  }`}
+                >
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                      selectedTemplate === template.id
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {template.icon}
+                  </div>
+                  <span className="text-xs font-medium">{template.name}</span>
+                </button>
+              ))}
+            </div>
+            {selectedTemplate !== "blank" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {AGENT_TEMPLATES.find((t) => t.id === selectedTemplate)?.description}
+              </p>
+            )}
+          </div>
+
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm text-muted-foreground">
@@ -185,7 +304,10 @@ export default function AgentsPage() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setShowCreate(false)}
+                onClick={() => {
+                  setShowCreate(false);
+                  setSelectedTemplate("blank");
+                }}
               >
                 Cancel
               </Button>
