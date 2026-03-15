@@ -77,6 +77,7 @@ export interface Skill {
   version: string | null;
   install_count: number;
   is_featured: boolean;
+  security_status: string;
   created_at: string;
 }
 
@@ -90,6 +91,7 @@ export interface SkillBrief {
   icon_url: string | null;
   install_count: number;
   is_featured: boolean;
+  security_status: string;
 }
 
 export interface AgentSkill {

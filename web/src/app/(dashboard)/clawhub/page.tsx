@@ -25,6 +25,8 @@ import {
   Package,
   AlertCircle,
   RefreshCw,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -169,7 +171,10 @@ export default function ClawHubPage() {
                       <SkillIcon category={skill.category} className="h-4 w-4 text-foreground" />
                     </div>
                   </div>
-                  <h3 className="font-semibold mb-1">{skill.name}</h3>
+                  <h3 className="font-semibold mb-1 flex items-center gap-1.5">
+                    {skill.name}
+                    <SecurityBadge status={skill.security_status} />
+                  </h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                     {skill.summary}
                   </p>
@@ -280,6 +285,7 @@ export default function ClawHubPage() {
                     {skill.is_featured && (
                       <Star className="h-3.5 w-3.5 text-yellow-400" />
                     )}
+                    <SecurityBadge status={skill.security_status} />
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
                     {skill.summary}
@@ -326,4 +332,22 @@ function formatCount(n: number): string {
   if (n >= 10000) return `${(n / 1000).toFixed(0)}K`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return String(n);
+}
+
+function SecurityBadge({ status }: { status: string }) {
+  if (status === "verified") {
+    return (
+      <span className="flex items-center gap-0.5 text-green-400" title="Security verified">
+        <ShieldCheck className="h-3 w-3" />
+      </span>
+    );
+  }
+  if (status === "warning") {
+    return (
+      <span className="flex items-center gap-0.5 text-yellow-400" title="Security warning — use with caution">
+        <ShieldAlert className="h-3 w-3" />
+      </span>
+    );
+  }
+  return null; // unreviewed — no badge
 }

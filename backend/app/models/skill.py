@@ -23,6 +23,7 @@ class Skill(Base):
     version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     install_count: Mapped[int] = mapped_column(Integer, default=0, index=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
+    security_status: Mapped[str] = mapped_column(String(20), default="unreviewed")  # verified, warning, unreviewed
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

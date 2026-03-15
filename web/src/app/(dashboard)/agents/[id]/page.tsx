@@ -597,14 +597,26 @@ export default function AgentDetailPage() {
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     )}
-                    {msg.timestamp && (
-                      <p className={`mt-1 text-[10px] ${
+                    {(msg.timestamp || msg.usage) && (
+                      <div className={`mt-1 flex items-center gap-2 text-[10px] ${
                         msg.role === "user"
                           ? "text-primary-foreground/50"
                           : "text-muted-foreground/60"
                       }`}>
-                        {formatTime(msg.timestamp)}
-                      </p>
+                        {msg.timestamp && <span>{formatTime(msg.timestamp)}</span>}
+                        {msg.usage && (
+                          <>
+                            <span title={`Input: ${msg.usage.tokens_input} / Output: ${msg.usage.tokens_output} tokens`}>
+                              {msg.usage.credits_used} cr
+                            </span>
+                            {msg.usage.routed && (
+                              <span className="text-green-400" title="Smart routed to cheaper model to save credits">
+                                {msg.usage.model}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

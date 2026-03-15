@@ -13,6 +13,7 @@ from app.config import settings
 from app.models.agent import Agent, AgentStatus
 from app.models.chat import Conversation, Message, MessageRole
 from app.services.credits_service import deduct_credits, InsufficientCreditsError
+from app.services.smart_router import smart_route
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,16 @@ async def stream_chat_completion(
     # Build message history for context
     history = await get_conversation_history(db, conversation_id)
 
+    # Smart model routing — auto-downgrade simple tasks to cheaper models
+    effective_model, was_downgraded = smart_route(
+        agent.model_name, user_content, history_len=len(history)
+    )
+    if was_downgraded:
+        logger.info(
+            "Smart route: downgraded %s → %s for agent %s",
+            agent.model_name, effective_model, agent.id,
+        )
+
     # Build ordered list of endpoints to try.
     # Priority: per-user OpenClaw container → shared OpenClaw gateway.
     # All chat goes through OpenClaw — no direct LiteLLM fallback.
@@ -130,7 +141,7 @@ async def stream_chat_completion(
         return
 
     payload = {
-        "model": agent.model_name,
+        "model": effective_model,
         "messages": history,
         "max_tokens": 4096,
         "stream": True,
@@ -228,7 +239,7 @@ async def stream_chat_completion(
     # Deduct credits
     try:
         credits_used = await deduct_credits(
-            db, user_id, agent.model_name,
+            db, user_id, effective_model,
             tokens_input, tokens_output, agent.id,
         )
     except InsufficientCreditsError:
@@ -243,7 +254,7 @@ async def stream_chat_completion(
     # Save assistant message
     await save_message(
         db, conversation_id, MessageRole.assistant, full_content,
-        model_name=agent.model_name,
+        model_name=effective_model,
         tokens_input=tokens_input,
         tokens_output=tokens_output,
         credits_used=credits_used,
@@ -275,6 +286,7 @@ async def stream_chat_completion(
             "balance": balance,
             "tokens_input": tokens_input,
             "tokens_output": tokens_output,
-            "model": agent.model_name,
+            "model": effective_model,
+            "routed": was_downgraded,
         },
     })

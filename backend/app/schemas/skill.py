@@ -17,6 +17,7 @@ class SkillResponse(BaseModel):
     version: str | None = None
     install_count: int = 0
     is_featured: bool = False
+    security_status: str = "unreviewed"
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -33,6 +34,7 @@ class SkillBriefResponse(BaseModel):
     icon_url: str | None = None
     install_count: int = 0
     is_featured: bool = False
+    security_status: str = "unreviewed"
 
     model_config = {"from_attributes": True}
 

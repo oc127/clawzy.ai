@@ -1,10 +1,20 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { getAccessToken } from "@/lib/auth";
 
+export interface MessageUsage {
+  credits_used: number;
+  tokens_input: number;
+  tokens_output: number;
+  model: string;
+  balance: number;
+  routed?: boolean;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp?: string;
+  usage?: MessageUsage;
 }
 
 interface UseChatOptions {
@@ -74,10 +84,11 @@ export function useChat({
         } else if (data.type === "done") {
           setIsStreaming(false);
           streamBufferRef.current = "";
+          const usage = data.usage as MessageUsage | undefined;
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === "assistant" && !last.timestamp) {
-              return [...prev.slice(0, -1), { ...last, timestamp: new Date().toISOString() }];
+              return [...prev.slice(0, -1), { ...last, timestamp: new Date().toISOString(), usage }];
             }
             return prev;
           });
