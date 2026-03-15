@@ -6,6 +6,8 @@ import { getSkills, getTrendingSkills, getSkillCategories } from "@/lib/api";
 import type { SkillBrief } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 import {
   Search,
@@ -21,6 +23,8 @@ import {
   Monitor,
   Zap,
   Package,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -39,6 +43,29 @@ const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
 ];
 
+function ClawHubSkeleton() {
+  return (
+    <div>
+      <div className="mb-8">
+        <Skeleton className="mb-1 h-8 w-40" />
+        <Skeleton className="h-5 w-64" />
+      </div>
+      <Skeleton className="mb-8 h-10 w-full" />
+      <Skeleton className="mb-4 h-6 w-36" />
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-44 w-full" />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Skeleton key={i} className="h-32 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ClawHubPage() {
   const [trending, setTrending] = useState<SkillBrief[]>([]);
   const [skills, setSkills] = useState<SkillBrief[]>([]);
@@ -47,8 +74,11 @@ export default function ClawHubPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("install_count");
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
 
-  useEffect(() => {
+  const fetchData = () => {
+    setLoading(true);
+    setFetchError("");
     Promise.all([
       getTrendingSkills(10),
       getSkills(),
@@ -59,8 +89,12 @@ export default function ClawHubPage() {
         setSkills(s);
         setCategories(c);
       })
-      .catch(() => {})
+      .catch((err) => setFetchError(err.message || "Failed to load ClawHub"))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -75,8 +109,19 @@ export default function ClawHubPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, searchQuery, sortBy]);
 
-  if (loading) {
-    return <p className="text-muted-foreground">Loading ClawHub...</p>;
+  if (loading) return <ClawHubSkeleton />;
+
+  if (fetchError) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3" role="alert">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="text-sm text-muted-foreground">{fetchError}</p>
+        <Button variant="outline" size="sm" onClick={fetchData}>
+          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   return (

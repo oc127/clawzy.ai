@@ -44,6 +44,10 @@ const config: Config = {
         md: "0.5rem",
         sm: "0.375rem",
       },
+      animation: {
+        shimmer: "shimmer 1.5s infinite",
+        "page-enter": "page-enter 200ms ease-out",
+      },
     },
   },
   plugins: [],

@@ -6,22 +6,59 @@ import { apiGet } from "@/lib/api";
 import type { ModelInfo } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Cpu, Plus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Cpu, Plus, AlertCircle, RefreshCw } from "lucide-react";
+
+function ModelsSkeleton() {
+  return (
+    <div>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <Skeleton className="mb-1 h-8 w-32" />
+          <Skeleton className="h-5 w-56" />
+        </div>
+        <Skeleton className="h-10 w-36" />
+      </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Skeleton key={i} className="h-36 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function ModelsPage() {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const fetchData = () => {
+    setLoading(true);
+    setError("");
     apiGet<ModelInfo[]>("/models")
       .then(setModels)
       .catch((err) => setError(err.message || "Failed to load models"))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
-  if (loading) {
-    return <p className="text-muted-foreground">Loading models...</p>;
+  if (loading) return <ModelsSkeleton />;
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3" role="alert">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" size="sm" onClick={fetchData}>
+          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -40,12 +77,6 @@ export default function ModelsPage() {
           </Button>
         </Link>
       </div>
-
-      {error && (
-        <div className="mb-6 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
-      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {models.map((model) => (

@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/logo";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -17,6 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -49,7 +52,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
               {error}
             </div>
           )}
@@ -61,8 +64,17 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => {
+                if (email && !EMAIL_RE.test(email)) setEmailError("Invalid email format");
+                else setEmailError("");
+              }}
+              className={emailError ? "border-destructive focus:ring-destructive" : ""}
+              aria-describedby={emailError ? "login-email-error" : undefined}
               required
             />
+            {emailError && (
+              <p id="login-email-error" className="mt-1 text-xs text-destructive">{emailError}</p>
+            )}
           </div>
 
           <div>
@@ -78,8 +90,8 @@ export default function LoginPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Signing in..." : "Sign In"}
+          <Button type="submit" className="w-full" loading={submitting}>
+            Sign In
           </Button>
         </form>
 

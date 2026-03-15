@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { getAccessToken } from "@/lib/auth";
 
-interface ChatMessage {
+export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  timestamp?: string;
 }
 
 interface UseChatOptions {
@@ -73,6 +74,13 @@ export function useChat({
         } else if (data.type === "done") {
           setIsStreaming(false);
           streamBufferRef.current = "";
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === "assistant" && !last.timestamp) {
+              return [...prev.slice(0, -1), { ...last, timestamp: new Date().toISOString() }];
+            }
+            return prev;
+          });
           if (data.conversation_id && onConversationCreatedRef.current) {
             onConversationCreatedRef.current(data.conversation_id);
           }
@@ -115,7 +123,7 @@ export function useChat({
     (content: string) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
-      setMessages((prev) => [...prev, { role: "user", content }]);
+      setMessages((prev) => [...prev, { role: "user", content, timestamp: new Date().toISOString() }]);
       setIsStreaming(true);
       streamBufferRef.current = "";
 

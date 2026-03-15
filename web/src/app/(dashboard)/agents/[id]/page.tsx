@@ -8,9 +8,69 @@ import { useChat } from "@/hooks/use-chat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ChatMarkdown } from "@/components/chat-markdown";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
-import { Bot, Send, Plus, MessageSquare, Play, Square, PanelLeftOpen, PanelLeftClose, Package, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { toast } from "sonner";
+import { Bot, Send, Plus, MessageSquare, Play, Square, PanelLeftOpen, PanelLeftClose, Package, Trash2, ToggleLeft, ToggleRight, AlertCircle, RefreshCw } from "lucide-react";
+
+function formatTime(iso?: string) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : `${d.getMonth() + 1}/${d.getDate()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="flex items-center gap-1 rounded-lg bg-accent px-4 py-3">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground"
+            style={{
+              animation: "typing-dot 1.2s infinite",
+              animationDelay: `${i * 150}ms`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChatSkeleton() {
+  return (
+    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-4rem)] gap-4">
+      <div className="hidden w-64 shrink-0 flex-col gap-4 md:flex">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-6 w-32" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-3/4" />
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col">
+        <div className="flex-1 rounded-lg border border-border bg-card p-4">
+          <div className="space-y-4">
+            <div className="flex justify-end"><Skeleton className="h-10 w-48" /></div>
+            <div className="flex justify-start"><Skeleton className="h-16 w-64" /></div>
+            <div className="flex justify-end"><Skeleton className="h-10 w-36" /></div>
+            <div className="flex justify-start"><Skeleton className="h-20 w-56" /></div>
+          </div>
+        </div>
+        <Skeleton className="mt-4 h-10 w-full" />
+      </div>
+    </div>
+  );
+}
 
 export default function AgentDetailPage() {
   const params = useParams();
@@ -21,8 +81,11 @@ export default function AgentDetailPage() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [agentSkills, setAgentSkills] = useState<AgentSkill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [showSidebar, setShowSidebar] = useState(false);
+  const [uninstallTarget, setUninstallTarget] = useState<AgentSkill | null>(null);
+  const [uninstalling, setUninstalling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, setMessages, isStreaming, error, sendMessage } = useChat({
@@ -40,7 +103,9 @@ export default function AgentDetailPage() {
       .catch(() => {});
   };
 
-  useEffect(() => {
+  const fetchData = () => {
+    setLoading(true);
+    setFetchError(null);
     Promise.all([
       apiGet<Agent>(`/agents/${agentId}`),
       apiGet<Conversation[]>(`/agents/${agentId}/conversations`),
@@ -51,14 +116,18 @@ export default function AgentDetailPage() {
         setConversations(c);
         setAgentSkills(s);
       })
-      .catch(() => {})
+      .catch((err) => setFetchError(err.message || "Failed to load agent"))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [agentId]);
 
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isStreaming]);
 
   const loadConversation = async (convId: string) => {
     setActiveConvId(convId);
@@ -74,7 +143,7 @@ export default function AgentDetailPage() {
         })),
       );
     } catch {
-      // ignore
+      toast.error("Failed to load conversation");
     }
   };
 
@@ -91,12 +160,42 @@ export default function AgentDetailPage() {
     setInput("");
   };
 
-  if (loading) {
-    return <p className="text-muted-foreground">Loading agent...</p>;
+  const handleUninstallSkill = async () => {
+    if (!uninstallTarget) return;
+    setUninstalling(true);
+    try {
+      await uninstallSkill(agentId, uninstallTarget.skill.id);
+      setAgentSkills((prev) => prev.filter((s) => s.id !== uninstallTarget.id));
+      toast.success(`${uninstallTarget.skill.name} uninstalled`);
+    } catch {
+      toast.error("Failed to uninstall skill");
+    } finally {
+      setUninstalling(false);
+      setUninstallTarget(null);
+    }
+  };
+
+  if (loading) return <ChatSkeleton />;
+
+  if (fetchError) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3" role="alert">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="text-sm text-muted-foreground">{fetchError}</p>
+        <Button variant="outline" size="sm" onClick={fetchData}>
+          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   if (!agent) {
-    return <p className="text-red-400">Agent not found.</p>;
+    return (
+      <div className="flex h-64 items-center justify-center" role="alert">
+        <p className="text-sm text-muted-foreground">Agent not found.</p>
+      </div>
+    );
   }
 
   return (
@@ -105,6 +204,8 @@ export default function AgentDetailPage() {
       <button
         className="fixed bottom-20 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg md:hidden"
         onClick={() => setShowSidebar(!showSidebar)}
+        aria-label={showSidebar ? "Close sidebar" : "Open sidebar"}
+        aria-expanded={showSidebar}
       >
         {showSidebar ? (
           <PanelLeftClose className="h-5 w-5" />
@@ -148,13 +249,15 @@ export default function AgentDetailPage() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label={agent.status === "running" ? "Stop agent" : "Start agent"}
                 onClick={async () => {
                   const action = agent.status === "running" ? "stop" : "start";
                   try {
                     const updated = await apiPost<Agent>(`/agents/${agentId}/${action}`);
                     setAgent(updated);
+                    toast.success(`Agent ${action === "start" ? "started" : "stopped"}`);
                   } catch {
-                    // ignore
+                    toast.error(`Failed to ${action} agent`);
                   }
                 }}
                 className={
@@ -234,10 +337,14 @@ export default function AgentDetailPage() {
                             s.id === as.id ? { ...s, enabled: !s.enabled } : s
                           )
                         );
-                      } catch {}
+                        toast.success(`Skill ${as.enabled ? "disabled" : "enabled"}`);
+                      } catch {
+                        toast.error("Failed to toggle skill");
+                      }
                     }}
                     className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                     title={as.enabled ? "Disable" : "Enable"}
+                    aria-label={as.enabled ? `Disable ${as.skill.name}` : `Enable ${as.skill.name}`}
                   >
                     {as.enabled ? (
                       <ToggleRight className="h-4 w-4 text-green-400" />
@@ -246,14 +353,10 @@ export default function AgentDetailPage() {
                     )}
                   </button>
                   <button
-                    onClick={async () => {
-                      try {
-                        await uninstallSkill(agentId, as.skill.id);
-                        setAgentSkills((prev) => prev.filter((s) => s.id !== as.id));
-                      } catch {}
-                    }}
+                    onClick={() => setUninstallTarget(as)}
                     className="rounded p-0.5 text-muted-foreground hover:text-red-400"
                     title="Uninstall"
+                    aria-label={`Uninstall ${as.skill.name}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -284,7 +387,7 @@ export default function AgentDetailPage() {
       <div className="flex flex-1 flex-col">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto rounded-lg border border-border bg-card p-4">
-          {messages.length === 0 ? (
+          {messages.length === 0 && !isStreaming ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
                 <Bot className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
@@ -309,10 +412,26 @@ export default function AgentDetailPage() {
                         : "bg-accent text-accent-foreground"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    {msg.role === "assistant" ? (
+                      <ChatMarkdown content={msg.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )}
+                    {msg.timestamp && (
+                      <p className={`mt-1 text-[10px] ${
+                        msg.role === "user"
+                          ? "text-primary-foreground/50"
+                          : "text-muted-foreground/60"
+                      }`}>
+                        {formatTime(msg.timestamp)}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
+              {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+                <TypingIndicator />
+              )}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -320,7 +439,10 @@ export default function AgentDetailPage() {
 
         {/* Error */}
         {error && (
-          <p className="mt-2 text-sm text-red-400">{error}</p>
+          <div className="mt-2 flex items-center gap-2 text-sm text-destructive" role="alert" aria-live="polite">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>{error}</span>
+          </div>
         )}
 
         {/* Input */}
@@ -332,11 +454,23 @@ export default function AgentDetailPage() {
             disabled={isStreaming}
             className="flex-1"
           />
-          <Button type="submit" disabled={isStreaming || !input.trim()}>
+          <Button type="submit" disabled={isStreaming || !input.trim()} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
         </form>
       </div>
+
+      {/* Uninstall confirmation */}
+      <ConfirmDialog
+        open={!!uninstallTarget}
+        title="Uninstall Skill"
+        message={`Are you sure you want to uninstall "${uninstallTarget?.skill.name}"? This action cannot be undone.`}
+        confirmLabel="Uninstall"
+        variant="danger"
+        loading={uninstalling}
+        onConfirm={handleUninstallSkill}
+        onCancel={() => setUninstallTarget(null)}
+      />
     </div>
   );
 }

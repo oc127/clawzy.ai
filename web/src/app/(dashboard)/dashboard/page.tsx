@@ -6,6 +6,8 @@ import { useAuth } from "@/context/auth-context";
 import { apiGet } from "@/lib/api";
 import type { Agent, ModelInfo } from "@/lib/types";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Coins,
   Bot,
@@ -14,24 +16,72 @@ import {
   ArrowRight,
   CreditCard,
   Settings,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
+
+function DashboardSkeleton() {
+  return (
+    <div>
+      <Skeleton className="mb-1 h-8 w-64" />
+      <Skeleton className="mb-8 h-5 w-48" />
+      <div className="mb-8 grid gap-6 md:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+      <Skeleton className="mb-4 h-6 w-32" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-20 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [agentCount, setAgentCount] = useState(0);
   const [modelCount, setModelCount] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const fetchData = () => {
+    setLoading(true);
+    setError("");
+    Promise.all([
+      apiGet<Agent[]>("/agents"),
+      apiGet<ModelInfo[]>("/models"),
+    ])
+      .then(([a, m]) => {
+        setAgentCount(a.length);
+        setModelCount(m.length);
+      })
+      .catch((err) => setError(err.message || "Failed to load data"))
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
-    apiGet<Agent[]>("/agents")
-      .then((a) => setAgentCount(a.length))
-      .catch((err) => setError(err.message || "Failed to load data"));
-    apiGet<ModelInfo[]>("/models")
-      .then((m) => setModelCount(m.length))
-      .catch((err) => setError(err.message || "Failed to load data"));
+    fetchData();
   }, []);
 
   if (!user) return null;
+
+  if (loading) return <DashboardSkeleton />;
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3" role="alert">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" size="sm" onClick={fetchData}>
+          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -41,12 +91,6 @@ export default function DashboardPage() {
       <p className="mb-8 text-muted-foreground">
         Here&apos;s an overview of your account.
       </p>
-
-      {error && (
-        <div className="mb-6 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
-      )}
 
       {/* Stat cards with links */}
       <div className="mb-8 grid gap-6 md:grid-cols-3">

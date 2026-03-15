@@ -6,29 +6,28 @@ import { apiPatch } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? "");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
 
   if (!user) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage("");
     try {
       await apiPatch("/users/me", {
         name: name || undefined,
         avatar_url: avatarUrl || undefined,
       });
       await refreshUser();
-      setMessage("Settings saved.");
+      toast.success("Settings saved");
     } catch {
-      setMessage("Failed to save settings.");
+      toast.error("Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -63,11 +62,8 @@ export default function SettingsPage() {
                 placeholder="https://example.com/avatar.png"
               />
             </div>
-            {message && (
-              <p className="text-sm text-muted-foreground">{message}</p>
-            )}
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+            <Button type="submit" loading={saving}>
+              Save
             </Button>
           </form>
         </Card>
