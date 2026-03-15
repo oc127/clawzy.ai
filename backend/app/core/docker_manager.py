@@ -124,6 +124,40 @@ class DockerManager:
         """Backward-compatible wrapper."""
         return self.generate_agent_config(model_name, litellm_key)
 
+    def restart_container(self, container_id: str, timeout: int = 10) -> None:
+        """Restart a running container."""
+        try:
+            container = self.client.containers.get(container_id)
+            container.restart(timeout=timeout)
+        except NotFound as e:
+            raise ValueError(f"Container {container_id} not found") from e
+
+    def get_container_logs(self, container_id: str, tail: int = 50) -> str:
+        """Get recent container logs."""
+        try:
+            container = self.client.containers.get(container_id)
+            return container.logs(tail=tail, timestamps=True).decode("utf-8", errors="replace")
+        except NotFound:
+            return ""
+
+    def get_container_health(self, container_id: str) -> dict:
+        """Get detailed container health info."""
+        try:
+            container = self.client.containers.get(container_id)
+            attrs = container.attrs
+            state = attrs.get("State", {})
+            health = state.get("Health", {})
+            return {
+                "status": container.status,
+                "running": state.get("Running", False),
+                "started_at": state.get("StartedAt"),
+                "health_status": health.get("Status", "unknown"),
+                "health_log": (health.get("Log") or [])[-3:],  # last 3 health checks
+                "restart_count": attrs.get("RestartCount", 0),
+            }
+        except NotFound:
+            return {"status": "not_found", "running": False}
+
     def stop_container(self, container_id: str) -> None:
         try:
             container = self.client.containers.get(container_id)

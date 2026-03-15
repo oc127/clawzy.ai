@@ -14,7 +14,28 @@ import { ChatMarkdown } from "@/components/chat-markdown";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Bot, Send, Plus, MessageSquare, Play, Square, PanelLeftOpen, PanelLeftClose, Package, Trash2, ToggleLeft, ToggleRight, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Bot,
+  Send,
+  Plus,
+  MessageSquare,
+  Play,
+  Square,
+  PanelLeftOpen,
+  PanelLeftClose,
+  Package,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  AlertCircle,
+  RefreshCw,
+  RotateCcw,
+  Heart,
+  Terminal,
+  StopCircle,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 function formatTime(iso?: string) {
   if (!iso) return null;
@@ -72,6 +93,162 @@ function ChatSkeleton() {
   );
 }
 
+// --- Agent Ops Panel ---
+function AgentOpsPanel({ agentId, agent, setAgent }: {
+  agentId: string;
+  agent: Agent;
+  setAgent: (a: Agent) => void;
+}) {
+  const [showOps, setShowOps] = useState(false);
+  const [health, setHealth] = useState<{
+    status?: string;
+    running?: boolean;
+    started_at?: string;
+    health_status?: string;
+    restart_count?: number;
+  } | null>(null);
+  const [logs, setLogs] = useState<string | null>(null);
+  const [loadingHealth, setLoadingHealth] = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+
+  const fetchHealth = async () => {
+    setLoadingHealth(true);
+    try {
+      const h = await apiGet<typeof health>(`/agents/${agentId}/health`);
+      setHealth(h);
+    } catch {
+      toast.error("Failed to fetch health");
+    } finally {
+      setLoadingHealth(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const res = await apiGet<{ logs: string }>(`/agents/${agentId}/logs`);
+      setLogs(res.logs);
+    } catch {
+      toast.error("Failed to fetch logs");
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleRestart = async () => {
+    setRestarting(true);
+    try {
+      const updated = await apiPost<Agent>(`/agents/${agentId}/restart`);
+      setAgent(updated);
+      toast.success("Agent restarted");
+    } catch {
+      toast.error("Failed to restart agent");
+    } finally {
+      setRestarting(false);
+    }
+  };
+
+  const healthStatus = health?.health_status;
+
+  return (
+    <div className="border-t border-border pt-3 mt-3">
+      <button
+        onClick={() => setShowOps(!showOps)}
+        className="flex w-full items-center justify-between text-sm font-semibold"
+      >
+        <span className="flex items-center gap-1.5">
+          <Terminal className="h-3.5 w-3.5" />
+          Ops Panel
+        </span>
+        {showOps ? (
+          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+      </button>
+
+      {showOps && (
+        <div className="mt-3 space-y-3">
+          {/* Quick actions */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestart}
+              disabled={restarting || agent.status === "creating"}
+              className="h-7 text-xs"
+            >
+              <RotateCcw className={cn("mr-1 h-3 w-3", restarting && "animate-spin")} />
+              {restarting ? "Restarting..." : "Restart"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchHealth}
+              disabled={loadingHealth}
+              className="h-7 text-xs"
+            >
+              <Heart className="mr-1 h-3 w-3" />
+              Health
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchLogs}
+              disabled={loadingLogs}
+              className="h-7 text-xs"
+            >
+              <Terminal className="mr-1 h-3 w-3" />
+              Logs
+            </Button>
+          </div>
+
+          {/* Health display */}
+          {health && (
+            <div className="rounded-lg bg-muted/50 p-2 text-xs">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="text-muted-foreground">Status:</span>
+                <span className={cn(
+                  "rounded px-1.5 py-0.5 font-medium",
+                  healthStatus === "healthy"
+                    ? "bg-green-500/20 text-green-400"
+                    : healthStatus === "unhealthy"
+                      ? "bg-red-500/20 text-red-400"
+                      : "bg-yellow-500/20 text-yellow-400"
+                )}>
+                  {healthStatus || health.status}
+                </span>
+              </div>
+              {health.restart_count !== undefined && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Restarts:</span>
+                  <span>{health.restart_count}</span>
+                </div>
+              )}
+              {health.started_at && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Up since:</span>
+                  <span>{formatTime(health.started_at) || "—"}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Logs display */}
+          {logs !== null && (
+            <div className="max-h-40 overflow-y-auto rounded-lg bg-black/50 p-2">
+              <pre className="whitespace-pre-wrap text-[10px] leading-tight text-green-400/80 font-mono">
+                {logs || "(no logs)"}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AgentDetailPage() {
   const params = useParams();
   const agentId = params.id as string;
@@ -88,7 +265,7 @@ export default function AgentDetailPage() {
   const [uninstalling, setUninstalling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages, setMessages, isStreaming, error, sendMessage } = useChat({
+  const { messages, setMessages, isStreaming, error, sendMessage, cancelStream } = useChat({
     agentId,
     conversationId: activeConvId,
     onConversationCreated: (id) => {
@@ -217,7 +394,7 @@ export default function AgentDetailPage() {
       {/* Left sidebar: agent info + conversations */}
       <div
         className={cn(
-          "w-64 shrink-0 flex-col gap-4",
+          "w-64 shrink-0 flex-col gap-4 overflow-y-auto",
           showSidebar
             ? "fixed inset-y-0 left-0 z-30 flex bg-background p-4 pt-18 shadow-xl md:relative md:p-0 md:pt-0 md:shadow-none"
             : "hidden md:flex"
@@ -373,6 +550,9 @@ export default function AgentDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Ops Panel — inspired by 秋芝 Qclaw */}
+        <AgentOpsPanel agentId={agentId} agent={agent} setAgent={setAgent} />
       </div>
 
       {/* Overlay for mobile sidebar */}
@@ -454,9 +634,22 @@ export default function AgentDetailPage() {
             disabled={isStreaming}
             className="flex-1"
           />
-          <Button type="submit" disabled={isStreaming || !input.trim()} aria-label="Send message">
-            <Send className="h-4 w-4" />
-          </Button>
+          {isStreaming ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelStream}
+              aria-label="Stop generating"
+              title="Stop generating"
+              className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              <StopCircle className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={!input.trim()} aria-label="Send message">
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
         </form>
       </div>
 

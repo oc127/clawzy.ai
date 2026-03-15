@@ -159,3 +159,28 @@ async def stop_agent(db: AsyncSession, agent: Agent) -> Agent:
     await db.commit()
     await db.refresh(agent)
     return agent
+
+
+async def restart_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Restart an agent's container (quick recovery)."""
+    if not agent.container_id:
+        raise ValueError("Agent has no container")
+    docker_manager.restart_container(agent.container_id)
+    agent.status = AgentStatus.running
+    await db.commit()
+    await db.refresh(agent)
+    return agent
+
+
+def get_agent_health(agent: Agent) -> dict:
+    """Get agent container health details."""
+    if not agent.container_id:
+        return {"status": "no_container", "running": False}
+    return docker_manager.get_container_health(agent.container_id)
+
+
+def get_agent_logs(agent: Agent, tail: int = 50) -> str:
+    """Get agent container logs."""
+    if not agent.container_id:
+        return ""
+    return docker_manager.get_container_logs(agent.container_id, tail=tail)

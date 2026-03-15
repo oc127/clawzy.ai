@@ -138,5 +138,21 @@ export function useChat({
     [conversationId],
   );
 
-  return { messages, setMessages, isStreaming, error, sendMessage };
+  const cancelStream = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "cancel" }));
+    }
+    setIsStreaming(false);
+    streamBufferRef.current = "";
+    // Finalize the last assistant message with a timestamp
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && last.role === "assistant" && !last.timestamp) {
+        return [...prev.slice(0, -1), { ...last, timestamp: new Date().toISOString() }];
+      }
+      return prev;
+    });
+  }, []);
+
+  return { messages, setMessages, isStreaming, error, sendMessage, cancelStream };
 }
