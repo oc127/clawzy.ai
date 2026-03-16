@@ -1,6 +1,6 @@
 # =============================================================================
 # Clawzy.ai — CI/CD Pipeline
-# Triggers: push to main, pull requests to main
+# Triggers: push to master, pull requests to master
 # Jobs:
 #   1. backend-lint    — Python code quality (ruff)
 #   2. backend-test    — pytest with coverage
@@ -14,9 +14,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 env:
   REGISTRY: ghcr.io
@@ -148,7 +148,7 @@ jobs:
     name: Docker Build & Push
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     strategy:
       matrix:
         include:
@@ -197,7 +197,7 @@ jobs:
     name: Deploy to ECS
     runs-on: ubuntu-latest
     needs: [docker-build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     environment: production
     concurrency:
       group: deploy-production
@@ -215,7 +215,7 @@ jobs:
             cd /opt/clawzy
 
             echo "=== Pull latest code ==="
-            git pull origin main
+            git pull origin master
 
             echo "=== Pull pre-built images ==="
             docker compose pull backend webapp 2>/dev/null || true
