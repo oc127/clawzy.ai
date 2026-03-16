@@ -1,17 +1,16 @@
 """Unit tests for JWT token creation/validation and password hashing."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-import pytest
 from jose import jwt
 
 from app.config import settings
 from app.core.security import (
-    hash_password,
-    verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
+    verify_password,
 )
 
 
@@ -53,7 +52,7 @@ class TestJWT:
 
     def test_expired_token_returns_none(self):
         expired = jwt.encode(
-            {"sub": "user-1", "exp": datetime.now(timezone.utc) - timedelta(hours=1), "type": "access"},
+            {"sub": "user-1", "exp": datetime.now(UTC) - timedelta(hours=1), "type": "access"},
             settings.jwt_secret,
             algorithm=settings.jwt_algorithm,
         )
@@ -70,7 +69,7 @@ class TestJWT:
 
     def test_wrong_secret_returns_none(self):
         token = jwt.encode(
-            {"sub": "user-1", "exp": datetime.now(timezone.utc) + timedelta(hours=1), "type": "access"},
+            {"sub": "user-1", "exp": datetime.now(UTC) + timedelta(hours=1), "type": "access"},
             "wrong-secret",
             algorithm="HS256",
         )
@@ -80,6 +79,6 @@ class TestJWT:
         token = create_access_token("user-1")
         payload = decode_token(token)
         assert "exp" in payload
-        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
         # Should expire within ~15 minutes
-        assert exp - datetime.now(timezone.utc) < timedelta(minutes=16)
+        assert exp - datetime.now(UTC) < timedelta(minutes=16)

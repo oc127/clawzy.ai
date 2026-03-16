@@ -47,7 +47,11 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults (FastAPI Depends)
+    "B904",   # raise from in except — HTTPException re-raises are intentional in FastAPI
     "SIM108", # use ternary operator (readability preference)
+    "SIM117", # nested with — async with client + stream cannot be combined
+    "UP042",  # str+Enum → StrEnum — breaks SQLAlchemy SAEnum compatibility
+    "E712",   # == True — required by SQLAlchemy filter expressions
 ]
 
 [tool.ruff.lint.isort]

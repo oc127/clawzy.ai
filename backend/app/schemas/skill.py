@@ -25,6 +25,7 @@ class SkillResponse(BaseModel):
 
 class SkillBriefResponse(BaseModel):
     """Compact skill info for list views."""
+
     id: str
     slug: str
     name: str

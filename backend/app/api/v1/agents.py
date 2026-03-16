@@ -4,19 +4,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
-from app.schemas.agent import AgentCreate, AgentUpdate, AgentResponse
+from app.schemas.agent import AgentCreate, AgentResponse, AgentUpdate
 from app.services.agent_service import (
+    AgentLimitError,
     create_agent,
-    list_agents,
-    get_agent,
-    update_agent,
     delete_agent,
-    start_agent,
-    stop_agent,
-    restart_agent,
+    get_agent,
     get_agent_health,
     get_agent_logs,
-    AgentLimitError,
+    list_agents,
+    restart_agent,
+    start_agent,
+    stop_agent,
+    update_agent,
 )
 
 router = APIRouter(prefix="/agents", tags=["agents"])

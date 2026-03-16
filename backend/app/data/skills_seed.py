@@ -90,7 +90,6 @@ Access Wikipedia's vast knowledge base directly from your agent.
         "install_count": 6321,
         "is_featured": False,
     },
-
     # --- Productivity ---
     {
         "slug": "calculator",
@@ -175,7 +174,6 @@ Keep track of tasks and projects with your AI assistant.
         "install_count": 4567,
         "is_featured": False,
     },
-
     # --- Development ---
     {
         "slug": "code-execution",
@@ -264,7 +262,6 @@ Enable your agent to use git version control.
         "install_count": 6234,
         "is_featured": False,
     },
-
     # --- Data ---
     {
         "slug": "file-parser",
@@ -351,7 +348,6 @@ Work with JSON data efficiently.
         "install_count": 2890,
         "is_featured": False,
     },
-
     # --- AI ---
     {
         "slug": "image-gen",
@@ -440,7 +436,6 @@ High-quality translation powered by multiple translation engines.
         "install_count": 7654,
         "is_featured": True,
     },
-
     # --- Communication ---
     {
         "slug": "email",
@@ -498,7 +493,6 @@ Integrate your agent with Slack for team communication.
         "install_count": 4890,
         "is_featured": False,
     },
-
     # --- Browser ---
     {
         "slug": "browser-automation",
@@ -589,7 +583,6 @@ Extract data from websites in a structured format.
         "install_count": 4567,
         "is_featured": False,
     },
-
     # --- CLI & System ---
     {
         "slug": "shell",

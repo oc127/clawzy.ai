@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Integer, DateTime
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -18,13 +18,11 @@ class User(Base):
     credit_balance: Mapped[int] = mapped_column(Integer, default=500)
     daily_credit_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = unlimited
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     agents = relationship("Agent", back_populates="user", cascade="all, delete-orphan")

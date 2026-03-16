@@ -4,8 +4,8 @@ Uses Redis when available, falls back to in-memory dict.
 Per-IP rate limiting for general endpoints and stricter limits for auth.
 """
 
-import time
 import logging
+import time
 from collections import defaultdict
 
 from starlette.middleware.base import BaseHTTPMiddleware

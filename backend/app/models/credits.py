@@ -1,8 +1,9 @@
-import uuid
-from datetime import datetime, timezone
 import enum
+import uuid
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Enum as SAEnum
+from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -27,10 +28,10 @@ class CreditTransaction(Base):
     model_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     tokens_input: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_output: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    agent_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    agent_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("agents.id", ondelete="SET NULL"), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True)
 
     user = relationship("User", back_populates="credit_transactions")
     agent = relationship("Agent", back_populates="credit_transactions")

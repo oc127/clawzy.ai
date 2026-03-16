@@ -5,13 +5,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api.router import api_router
-from app.config import settings
-from app.core.database import engine, Base
-from app.core.rate_limit import RateLimitMiddleware
-
 # Import all models so Base.metadata knows about them
 import app.models  # noqa: F401
+from app.api.router import api_router
+from app.config import settings
+from app.core.database import Base, engine
+from app.core.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
 

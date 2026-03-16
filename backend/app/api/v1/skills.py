@@ -5,10 +5,10 @@ from app.core.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
 from app.schemas.skill import (
-    SkillResponse,
-    SkillBriefResponse,
     AgentSkillResponse,
+    SkillBriefResponse,
     SkillInstallRequest,
+    SkillResponse,
     SkillToggleRequest,
 )
 from app.services import skill_service
@@ -60,6 +60,7 @@ async def get_skill(
 
 # --- Agent skill management ---
 
+
 @router.get("/agents/{agent_id}/installed", response_model=list[AgentSkillResponse])
 async def get_agent_skills(
     agent_id: str,
@@ -77,7 +78,7 @@ async def install_skill(
     user: User = Depends(get_current_user),
 ):
     try:
-        agent_skill = await skill_service.install_skill(db, agent_id, body.skill_id, user.id)
+        await skill_service.install_skill(db, agent_id, body.skill_id, user.id)
         # Reload with skill relationship
         skills = await skill_service.get_agent_skills(db, agent_id)
         return next(s for s in skills if s.skill_id == body.skill_id)

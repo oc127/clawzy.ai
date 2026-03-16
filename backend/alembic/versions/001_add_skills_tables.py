@@ -4,15 +4,17 @@ Revision ID: 001_add_skills
 Revises:
 Create Date: 2026-03-14
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 
+from alembic import op
+
 revision: str = "001_add_skills"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -38,8 +40,12 @@ def upgrade() -> None:
     op.create_table(
         "agent_skills",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("agent_id", sa.String(36), sa.ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("skill_id", sa.String(36), sa.ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "agent_id", sa.String(36), sa.ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
+        ),
+        sa.Column(
+            "skill_id", sa.String(36), sa.ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True
+        ),
         sa.Column("enabled", sa.Boolean(), nullable=False, default=True),
         sa.Column("installed_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.UniqueConstraint("agent_id", "skill_id", name="uq_agent_skill"),

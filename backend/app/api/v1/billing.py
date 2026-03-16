@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -6,17 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.deps import get_current_user
+from app.models.credits import CreditReason, CreditTransaction
+from app.models.subscription import PlanType, Subscription, SubStatus
 from app.models.user import User
-from app.models.credits import CreditTransaction, CreditReason
-from app.models.subscription import Subscription, PlanType, SubStatus
 from app.schemas.billing import (
+    CheckoutRequest,
     CreditsResponse,
     CreditTransactionResponse,
     PlanResponse,
-    CheckoutRequest,
 )
 from app.services.agent_service import get_user_plan
-from app.services.credits_service import get_usage_this_period, get_usage_today, get_usage_last_7_days
+from app.services.credits_service import get_usage_last_7_days, get_usage_this_period, get_usage_today
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -100,14 +100,13 @@ async def subscribe_plan(
 
     # Deactivate any existing active subscription
     result = await db.execute(
-        select(Subscription)
-        .where(Subscription.user_id == user.id, Subscription.status == SubStatus.active)
+        select(Subscription).where(Subscription.user_id == user.id, Subscription.status == SubStatus.active)
     )
     for sub in result.scalars().all():
         sub.status = SubStatus.canceled
 
     # Create new subscription
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     new_sub = Subscription(
         user_id=user.id,
         plan=PlanType(body.plan),

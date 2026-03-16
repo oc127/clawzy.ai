@@ -1,10 +1,10 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class MessageRoleSchema(str, Enum):
+class MessageRoleSchema(StrEnum):
     user = "user"
     assistant = "assistant"
     system = "system"

@@ -2,13 +2,13 @@ import json
 import logging
 import os
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.models.skill import Skill, AgentSkill
 from app.models.agent import Agent
+from app.models.skill import AgentSkill, Skill
 
 logger = logging.getLogger(__name__)
 
@@ -54,26 +54,18 @@ async def get_skill_by_slug(db: AsyncSession, slug: str) -> Skill | None:
 
 
 async def get_categories(db: AsyncSession) -> list[str]:
-    result = await db.execute(
-        select(Skill.category).distinct().order_by(Skill.category)
-    )
+    result = await db.execute(select(Skill.category).distinct().order_by(Skill.category))
     return list(result.scalars().all())
 
 
 async def get_trending_skills(db: AsyncSession, limit: int = 10) -> list[Skill]:
-    result = await db.execute(
-        select(Skill).order_by(Skill.install_count.desc()).limit(limit)
-    )
+    result = await db.execute(select(Skill).order_by(Skill.install_count.desc()).limit(limit))
     return list(result.scalars().all())
 
 
-async def install_skill(
-    db: AsyncSession, agent_id: str, skill_id: str, user_id: str
-) -> AgentSkill:
+async def install_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id: str) -> AgentSkill:
     # Verify agent belongs to user
-    agent = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-    )
+    agent = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     agent = agent.scalar_one_or_none()
     if agent is None:
         raise ValueError("Agent not found")
@@ -85,9 +77,7 @@ async def install_skill(
 
     # Check if already installed
     existing = await db.execute(
-        select(AgentSkill).where(
-            AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id
-        )
+        select(AgentSkill).where(AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id)
     )
     if existing.scalar_one_or_none():
         raise ValueError("Skill already installed on this agent")
@@ -108,20 +98,14 @@ async def install_skill(
     return agent_skill
 
 
-async def uninstall_skill(
-    db: AsyncSession, agent_id: str, skill_id: str, user_id: str
-) -> None:
+async def uninstall_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id: str) -> None:
     # Verify agent belongs to user
-    agent = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-    )
+    agent = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     if agent.scalar_one_or_none() is None:
         raise ValueError("Agent not found")
 
     result = await db.execute(
-        select(AgentSkill).where(
-            AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id
-        )
+        select(AgentSkill).where(AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id)
     )
     agent_skill = result.scalar_one_or_none()
     if agent_skill is None:
@@ -139,20 +123,14 @@ async def uninstall_skill(
     await _sync_agent_skills_config(db, agent_id)
 
 
-async def toggle_skill(
-    db: AsyncSession, agent_id: str, skill_id: str, user_id: str, enabled: bool
-) -> AgentSkill:
+async def toggle_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id: str, enabled: bool) -> AgentSkill:
     # Verify agent belongs to user
-    agent = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-    )
+    agent = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     if agent.scalar_one_or_none() is None:
         raise ValueError("Agent not found")
 
     result = await db.execute(
-        select(AgentSkill).where(
-            AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id
-        )
+        select(AgentSkill).where(AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id)
     )
     agent_skill = result.scalar_one_or_none()
     if agent_skill is None:
@@ -199,6 +177,7 @@ async def _sync_agent_skills_config(db: AsyncSession, agent_id: str) -> None:
 
     # Build the config
     from app.core.docker_manager import docker_manager
+
     skill_slugs = [as_.skill.slug for as_ in agent_skills]
     config = docker_manager.generate_agent_config(
         model_name=agent.model_name,

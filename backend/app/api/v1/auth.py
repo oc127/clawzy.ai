@@ -5,10 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import decode_token, create_access_token, create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.models.user import User
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest
-from app.services.auth_service import register_user, login_user, AuthError
+from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
+from app.services.auth_service import AuthError, login_user, register_user
 
 logger = logging.getLogger(__name__)
 

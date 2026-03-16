@@ -2,8 +2,7 @@
 
 import json
 import logging
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
@@ -12,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.agent import Agent, AgentStatus
 from app.models.chat import Conversation, Message, MessageRole
-from app.services.credits_service import deduct_credits, InsufficientCreditsError
+from app.services.credits_service import InsufficientCreditsError, deduct_credits
 from app.services.smart_router import smart_route
 
 logger = logging.getLogger(__name__)
@@ -64,9 +63,7 @@ async def save_message(
     return msg
 
 
-async def get_conversation_history(
-    db: AsyncSession, conversation_id: str, limit: int = 20
-) -> list[dict]:
+async def get_conversation_history(db: AsyncSession, conversation_id: str, limit: int = 20) -> list[dict]:
     """Get recent messages for context."""
     result = await db.execute(
         select(Message)
@@ -101,10 +98,9 @@ async def stream_chat_completion(
     history = await get_conversation_history(db, conversation_id)
 
     # Smart model routing — auto-downgrade simple tasks to cheaper models
-    effective_model, was_downgraded = smart_route(
-        agent.model_name, user_content, history_len=len(history)
-    )
+    effective_model, was_downgraded = smart_route(agent.model_name, user_content, history_len=len(history))
     from app.services.credits_service import CREDIT_RATES
+
     if effective_model not in CREDIT_RATES:
         logger.error("smart_route returned unknown model %s, falling back to %s", effective_model, agent.model_name)
         effective_model = agent.model_name
@@ -112,7 +108,9 @@ async def stream_chat_completion(
     if was_downgraded:
         logger.info(
             "Smart route: downgraded %s → %s for agent %s",
-            agent.model_name, effective_model, agent.id,
+            agent.model_name,
+            effective_model,
+            agent.id,
         )
 
     # Build ordered list of endpoints to try.
@@ -123,26 +121,32 @@ async def stream_chat_completion(
     if agent.ws_port and agent.gateway_token and agent.status == AgentStatus.running:
         # Use Docker network container name (not 127.0.0.1, which is the backend itself)
         container_name = f"clawzy-agent-{agent.id}"
-        endpoints.append((
-            f"http://{container_name}:18789/v1/chat/completions",
-            f"Bearer {agent.gateway_token}",
-            "per-user OpenClaw",
-        ))
+        endpoints.append(
+            (
+                f"http://{container_name}:18789/v1/chat/completions",
+                f"Bearer {agent.gateway_token}",
+                "per-user OpenClaw",
+            )
+        )
 
     if settings.openclaw_gateway_url and settings.openclaw_gateway_token:
-        endpoints.append((
-            f"{settings.openclaw_gateway_url}/v1/chat/completions",
-            f"Bearer {settings.openclaw_gateway_token}",
-            "shared OpenClaw gateway",
-        ))
+        endpoints.append(
+            (
+                f"{settings.openclaw_gateway_url}/v1/chat/completions",
+                f"Bearer {settings.openclaw_gateway_token}",
+                "shared OpenClaw gateway",
+            )
+        )
 
     if not endpoints:
         logger.error("No OpenClaw endpoints configured — check OPENCLAW_GATEWAY_URL and OPENCLAW_GATEWAY_TOKEN")
-        yield json.dumps({
-            "type": "error",
-            "code": "configuration_error",
-            "message": "OpenClaw gateway not configured",
-        })
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "configuration_error",
+                "message": "OpenClaw gateway not configured",
+            }
+        )
         return
 
     payload = {
@@ -169,11 +173,13 @@ async def stream_chat_completion(
                     if response.status_code != 200:
                         body = await response.aread()
                         logger.error("LiteLLM error %s: %s", response.status_code, body)
-                        yield json.dumps({
-                            "type": "error",
-                            "code": "model_error",
-                            "message": f"Model returned HTTP {response.status_code}",
-                        })
+                        yield json.dumps(
+                            {
+                                "type": "error",
+                                "code": "model_error",
+                                "message": f"Model returned HTTP {response.status_code}",
+                            }
+                        )
                         return
 
                     async for line in response.aiter_lines():
@@ -211,28 +217,34 @@ async def stream_chat_completion(
             last_error = exc
             continue
         except httpx.TimeoutException:
-            yield json.dumps({
-                "type": "error",
-                "code": "timeout",
-                "message": "Model request timed out",
-            })
+            yield json.dumps(
+                {
+                    "type": "error",
+                    "code": "timeout",
+                    "message": "Model request timed out",
+                }
+            )
             return
     else:
         # All endpoints failed with ConnectError
         logger.error("All model endpoints unreachable: %s", last_error)
-        yield json.dumps({
-            "type": "error",
-            "code": "connection_error",
-            "message": "Cannot connect to model service",
-        })
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "connection_error",
+                "message": "Cannot connect to model service",
+            }
+        )
         return
 
     if not full_content:
-        yield json.dumps({
-            "type": "error",
-            "code": "empty_response",
-            "message": "Model returned empty response",
-        })
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "empty_response",
+                "message": "Model returned empty response",
+            }
+        )
         return
 
     # Estimate tokens if not provided by API
@@ -244,21 +256,30 @@ async def stream_chat_completion(
     # Deduct credits
     try:
         credits_used = await deduct_credits(
-            db, user_id, effective_model,
-            tokens_input, tokens_output, agent.id,
+            db,
+            user_id,
+            effective_model,
+            tokens_input,
+            tokens_output,
+            agent.id,
         )
     except InsufficientCreditsError:
         # Still save the message but warn user
         credits_used = 0
-        yield json.dumps({
-            "type": "error",
-            "code": "insufficient_credits",
-            "message": "Credits insufficient, please top up",
-        })
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "insufficient_credits",
+                "message": "Credits insufficient, please top up",
+            }
+        )
 
     # Save assistant message
     await save_message(
-        db, conversation_id, MessageRole.assistant, full_content,
+        db,
+        conversation_id,
+        MessageRole.assistant,
+        full_content,
         model_name=effective_model,
         tokens_input=tokens_input,
         tokens_output=tokens_output,
@@ -266,32 +287,33 @@ async def stream_chat_completion(
     )
 
     # Update conversation title from first message
-    result = await db.execute(
-        select(Conversation).where(Conversation.id == conversation_id)
-    )
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
     conv = result.scalar_one_or_none()
     if conv and conv.title == "New conversation":
         conv.title = user_content[:80]
 
     # Update agent last_active_at
-    agent.last_active_at = datetime.now(timezone.utc)
+    agent.last_active_at = datetime.now(UTC)
     await db.commit()
 
     # Refresh user balance
     from app.models.user import User
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     balance = user.credit_balance if user else 0
 
-    yield json.dumps({
-        "type": "done",
-        "conversation_id": conversation_id,
-        "usage": {
-            "credits_used": credits_used,
-            "balance": balance,
-            "tokens_input": tokens_input,
-            "tokens_output": tokens_output,
-            "model": effective_model,
-            "routed": was_downgraded,
-        },
-    })
+    yield json.dumps(
+        {
+            "type": "done",
+            "conversation_id": conversation_id,
+            "usage": {
+                "credits_used": credits_used,
+                "balance": balance,
+                "tokens_input": tokens_input,
+                "tokens_output": tokens_output,
+                "model": effective_model,
+                "routed": was_downgraded,
+            },
+        }
+    )

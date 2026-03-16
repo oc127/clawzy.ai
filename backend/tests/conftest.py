@@ -4,21 +4,18 @@ Uses SQLite in-memory via aiosqlite so tests run without PostgreSQL/Redis/Docker
 """
 
 import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base, get_db
 from app.core.security import create_access_token, hash_password
-from app.models.user import User
 from app.models.agent import Agent, AgentStatus
 from app.models.skill import Skill
-from app.models.credits import CreditTransaction, CreditReason
-from app.models.subscription import Subscription, PlanType, SubStatus
-
+from app.models.user import User
 
 # Use SQLite in-memory for tests
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -61,18 +58,21 @@ async def client(db: AsyncSession):
 
     # Disable rate limiting for tests
     from app.config import settings as _settings
+
     _settings.rate_limit_per_minute = 10000
     _settings.rate_limit_auth_per_minute = 10000
 
     # Import modules first so patch string paths resolve
-    import app.services.agent_service as _agent_svc  # noqa: F811
     import app.core.docker_manager as _dm_mod  # noqa: F811
+    import app.services.agent_service as _agent_svc  # noqa: F811
     from app.main import app as fastapi_app
 
-    with patch.object(_agent_svc, "docker_manager", mock_dm), \
-         patch.object(_dm_mod, "docker_manager", mock_dm), \
-         patch("os.makedirs"), \
-         patch("builtins.open", MagicMock()):
+    with (
+        patch.object(_agent_svc, "docker_manager", mock_dm),
+        patch.object(_dm_mod, "docker_manager", mock_dm),
+        patch("os.makedirs"),
+        patch("builtins.open", MagicMock()),
+    ):
 
         async def override_get_db():
             yield db
@@ -87,6 +87,7 @@ async def client(db: AsyncSession):
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
+
 
 @pytest_asyncio.fixture
 async def test_user(db: AsyncSession) -> User:

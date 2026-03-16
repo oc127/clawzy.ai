@@ -33,10 +33,14 @@ class TestListAgents:
 @pytest.mark.asyncio
 class TestCreateAgent:
     async def test_create_success(self, client, auth_headers, test_user):
-        resp = await client.post("/api/v1/agents", json={
-            "name": "My Agent",
-            "model_name": "deepseek-chat",
-        }, headers=auth_headers)
+        resp = await client.post(
+            "/api/v1/agents",
+            json={
+                "name": "My Agent",
+                "model_name": "deepseek-chat",
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "My Agent"
@@ -45,9 +49,13 @@ class TestCreateAgent:
 
     async def test_plan_limit_enforced(self, client, auth_headers, test_agent, test_user):
         """Free plan allows 1 agent. Creating a second should fail."""
-        resp = await client.post("/api/v1/agents", json={
-            "name": "Second Agent",
-        }, headers=auth_headers)
+        resp = await client.post(
+            "/api/v1/agents",
+            json={
+                "name": "Second Agent",
+            },
+            headers=auth_headers,
+        )
         assert resp.status_code == 403
         assert "max" in resp.json()["detail"].lower() or "limit" in resp.json()["detail"].lower()
 

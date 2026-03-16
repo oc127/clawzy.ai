@@ -1,17 +1,15 @@
 """Unit tests for credits calculation and deduction logic."""
 
 import pytest
-import pytest_asyncio
 
+from app.models.credits import CreditReason, CreditTransaction
 from app.services.credits_service import (
+    CREDIT_RATES,
+    InsufficientCreditsError,
     calculate_credits,
     deduct_credits,
     get_usage_this_period,
-    InsufficientCreditsError,
-    CREDIT_RATES,
 )
-from app.models.user import User
-from app.models.credits import CreditTransaction, CreditReason
 
 
 class TestCalculateCredits:
@@ -39,10 +37,15 @@ class TestCalculateCredits:
 
     def test_all_known_models_have_rates(self):
         expected = [
-            "deepseek-chat", "deepseek-reasoner",
-            "qwen-turbo", "qwen-plus", "qwen-max",
-            "claude-sonnet", "claude-haiku",
-            "gpt-4o", "gpt-4o-mini",
+            "deepseek-chat",
+            "deepseek-reasoner",
+            "qwen-turbo",
+            "qwen-plus",
+            "qwen-max",
+            "claude-sonnet",
+            "claude-haiku",
+            "gpt-4o",
+            "gpt-4o-mini",
             "gemini-flash",
         ]
         for model in expected:
@@ -52,9 +55,7 @@ class TestCalculateCredits:
 @pytest.mark.asyncio
 class TestDeductCredits:
     async def test_successful_deduction(self, db, test_user):
-        credits_used = await deduct_credits(
-            db, test_user.id, "deepseek-chat", 5000, 5000
-        )
+        credits_used = await deduct_credits(db, test_user.id, "deepseek-chat", 5000, 5000)
         assert credits_used >= 1
         await db.refresh(test_user)
         assert test_user.credit_balance == 500 - credits_used
@@ -62,6 +63,7 @@ class TestDeductCredits:
     async def test_creates_transaction_record(self, db, test_user):
         await deduct_credits(db, test_user.id, "deepseek-chat", 1000, 1000)
         from sqlalchemy import select
+
         result = await db.execute(
             select(CreditTransaction).where(
                 CreditTransaction.user_id == test_user.id,
@@ -75,9 +77,7 @@ class TestDeductCredits:
     async def test_insufficient_credits_raises(self, db, test_user):
         # Use a premium model with massive tokens to exceed 500 credits
         with pytest.raises(InsufficientCreditsError):
-            await deduct_credits(
-                db, test_user.id, "claude-sonnet", 100000, 100000
-            )
+            await deduct_credits(db, test_user.id, "claude-sonnet", 100000, 100000)
 
     async def test_user_not_found_raises(self, db):
         with pytest.raises(ValueError, match="User not found"):

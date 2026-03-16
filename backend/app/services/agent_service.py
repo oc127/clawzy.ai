@@ -1,13 +1,13 @@
 import logging
 import secrets
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
-from app.models.subscription import Subscription, PlanType, SubStatus
+from app.models.subscription import Subscription, SubStatus
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,7 @@ async def get_user_plan(db: AsyncSession, user_id: str) -> str:
 
 
 async def count_user_agents(db: AsyncSession, user_id: str) -> int:
-    result = await db.execute(
-        select(func.count()).where(Agent.user_id == user_id)
-    )
+    result = await db.execute(select(func.count()).where(Agent.user_id == user_id))
     return result.scalar_one()
 
 
@@ -101,11 +99,7 @@ async def allocate_port(db: AsyncSession) -> int:
     max(port)+1 when there are no gaps.
     """
     # Get all currently allocated ports
-    result = await db.execute(
-        select(Agent.ws_port)
-        .where(Agent.ws_port.isnot(None))
-        .order_by(Agent.ws_port.asc())
-    )
+    result = await db.execute(select(Agent.ws_port).where(Agent.ws_port.isnot(None)).order_by(Agent.ws_port.asc()))
     used_ports = set(result.scalars().all())
 
     if not used_ports:
@@ -120,16 +114,12 @@ async def allocate_port(db: AsyncSession) -> int:
 
 
 async def list_agents(db: AsyncSession, user_id: str) -> list[Agent]:
-    result = await db.execute(
-        select(Agent).where(Agent.user_id == user_id).order_by(Agent.created_at.desc())
-    )
+    result = await db.execute(select(Agent).where(Agent.user_id == user_id).order_by(Agent.created_at.desc()))
     return list(result.scalars().all())
 
 
 async def get_agent(db: AsyncSession, agent_id: str, user_id: str) -> Agent | None:
-    result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-    )
+    result = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     return result.scalar_one_or_none()
 
 

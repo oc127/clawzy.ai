@@ -2,14 +2,15 @@
 
 Usage: python -m app.data.seed_skills
 """
+
 import asyncio
 import logging
 
 from sqlalchemy import select
 
 from app.core.database import async_session
-from app.models.skill import Skill
 from app.data.skills_seed import SKILL_SEEDS
+from app.models.skill import Skill
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
