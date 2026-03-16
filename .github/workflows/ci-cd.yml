@@ -1,6 +1,6 @@
 # =============================================================================
 # Clawzy.ai — CI/CD Pipeline
-# Triggers: push to main, pull requests to main
+# Triggers: push to master, pull requests to master
 # Jobs:
 #   1. backend-lint    — Python code quality (ruff)
 #   2. backend-test    — pytest with coverage
