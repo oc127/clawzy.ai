@@ -1,16 +1,28 @@
 # Environment (contains secrets)
 .env
+.env.*
+!.env.example
 
 # Docker volumes
 postgres_data/
 
 # Python
-__pycache__/
-*.pyc
+**/__pycache__/
+**/*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
 
 # Node
 node_modules/
 .next/
+
+# Logs
+*.log
 
 # OS
 .DS_Store
@@ -21,4 +33,3 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
-backend/.coverage
