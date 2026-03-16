@@ -213,9 +213,7 @@ async def get_agent_skills(db: AsyncSession, agent_id: str) -> list[AgentSkill]:
 # ─── Reviews ───
 
 
-async def get_skill_reviews(
-    db: AsyncSession, skill_id: str, limit: int = 50, offset: int = 0
-) -> list[SkillReview]:
+async def get_skill_reviews(db: AsyncSession, skill_id: str, limit: int = 50, offset: int = 0) -> list[SkillReview]:
     result = await db.execute(
         select(SkillReview)
         .where(SkillReview.skill_id == skill_id)
@@ -311,9 +309,7 @@ async def delete_review(db: AsyncSession, skill_id: str, user_id: str) -> None:
 async def _recalculate_skill_rating(db: AsyncSession, skill: Skill) -> None:
     """Recalculate the average rating and review count for a skill."""
     result = await db.execute(
-        select(func.avg(SkillReview.rating), func.count(SkillReview.id)).where(
-            SkillReview.skill_id == skill.id
-        )
+        select(func.avg(SkillReview.rating), func.count(SkillReview.id)).where(SkillReview.skill_id == skill.id)
     )
     row = result.one()
     skill.avg_rating = round(float(row[0] or 0), 2)
@@ -366,9 +362,7 @@ async def create_submission(
 
 async def get_user_submissions(db: AsyncSession, user_id: str) -> list[SkillSubmission]:
     result = await db.execute(
-        select(SkillSubmission)
-        .where(SkillSubmission.user_id == user_id)
-        .order_by(SkillSubmission.created_at.desc())
+        select(SkillSubmission).where(SkillSubmission.user_id == user_id).order_by(SkillSubmission.created_at.desc())
     )
     return list(result.scalars().all())
 
