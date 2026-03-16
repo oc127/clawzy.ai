@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { submitSkill, getMySubmissions, getSkillCategories } from "@/lib/api";
 import type { SkillSubmission } from "@/lib/types";
@@ -20,7 +19,6 @@ import {
 } from "lucide-react";
 
 export default function SubmitSkillPage() {
-  const router = useRouter();
   const [categories, setCategories] = useState<string[]>([]);
   const [submissions, setSubmissions] = useState<SkillSubmission[]>([]);
   const [loading, setLoading] = useState(false);

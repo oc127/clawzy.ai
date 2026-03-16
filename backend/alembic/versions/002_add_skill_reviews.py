@@ -30,9 +30,7 @@ def upgrade() -> None:
         sa.Column(
             "skill_id", sa.String(36), sa.ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True
         ),
-        sa.Column(
-            "user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-        ),
+        sa.Column("user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("rating", sa.Integer(), nullable=False),  # 1-5
         sa.Column("title", sa.String(200), nullable=True),
         sa.Column("content", sa.Text(), nullable=True),
@@ -45,9 +43,7 @@ def upgrade() -> None:
     op.create_table(
         "skill_submissions",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column(
-            "user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-        ),
+        sa.Column("user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("name", sa.String(200), nullable=False),
         sa.Column("slug", sa.String(100), nullable=False),
         sa.Column("summary", sa.String(500), nullable=False),
