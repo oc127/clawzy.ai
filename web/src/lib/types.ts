@@ -78,6 +78,8 @@ export interface Skill {
   install_count: number;
   is_featured: boolean;
   security_status: string;
+  avg_rating: number;
+  review_count: number;
   created_at: string;
 }
 
@@ -92,6 +94,8 @@ export interface SkillBrief {
   install_count: number;
   is_featured: boolean;
   security_status: string;
+  avg_rating: number;
+  review_count: number;
 }
 
 export interface AgentSkill {
@@ -99,4 +103,37 @@ export interface AgentSkill {
   skill: SkillBrief;
   enabled: boolean;
   installed_at: string;
+}
+
+export interface ReviewUser {
+  id: string;
+  name: string | null;
+}
+
+export interface SkillReview {
+  id: string;
+  skill_id: string;
+  user: ReviewUser;
+  rating: number;
+  title: string | null;
+  content: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillSubmission {
+  id: string;
+  user_id: string;
+  name: string;
+  slug: string;
+  summary: string;
+  description: string;
+  category: string;
+  tags: string[] | null;
+  version: string | null;
+  source_url: string | null;
+  status: string;
+  review_notes: string | null;
+  created_at: string;
+  updated_at: string;
 }

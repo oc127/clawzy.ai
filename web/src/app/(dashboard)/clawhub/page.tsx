@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getSkills, getTrendingSkills, getSkillCategories } from "@/lib/api";
+import { getSkills, getTrendingSkills, getSkillCategories, getSkillTags } from "@/lib/api";
 import type { SkillBrief } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,10 +22,13 @@ import {
   RefreshCw,
   ShieldCheck,
   ShieldAlert,
+  Plus,
+  X,
 } from "lucide-react";
 
 const SORT_OPTIONS = [
   { value: "install_count", label: "Most Popular" },
+  { value: "rating", label: "Top Rated" },
   { value: "newest", label: "Newest" },
   { value: "featured", label: "Featured" },
 ];
@@ -53,15 +56,29 @@ function ClawHubSkeleton() {
   );
 }
 
+function StarRating({ rating, count }: { rating: number; count: number }) {
+  if (count === 0) return null;
+  return (
+    <span className="flex items-center gap-1 text-xs text-yellow-400">
+      <Star className="h-3 w-3 fill-current" />
+      {rating.toFixed(1)}
+      <span className="text-muted-foreground">({count})</span>
+    </span>
+  );
+}
+
 export default function ClawHubPage() {
   const [trending, setTrending] = useState<SkillBrief[]>([]);
   const [skills, setSkills] = useState<SkillBrief[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("install_count");
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
+  const [showTagFilter, setShowTagFilter] = useState(false);
 
   const fetchData = () => {
     setLoading(true);
@@ -70,11 +87,13 @@ export default function ClawHubPage() {
       getTrendingSkills(10),
       getSkills(),
       getSkillCategories(),
+      getSkillTags(),
     ])
-      .then(([t, s, c]) => {
+      .then(([t, s, c, tags]) => {
         setTrending(t);
         setSkills(s);
         setCategories(c);
+        setAllTags(tags);
       })
       .catch((err) => setFetchError(err.message || "Failed to load ClawHub"))
       .finally(() => setLoading(false));
@@ -90,11 +109,12 @@ export default function ClawHubPage() {
       category: activeCategory || undefined,
       search: searchQuery || undefined,
       sort_by: sortBy,
+      tag: activeTag || undefined,
     })
       .then(setSkills)
       .catch(() => toast.error("Failed to load skills"));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, searchQuery, sortBy]);
+  }, [activeCategory, searchQuery, sortBy, activeTag]);
 
   if (loading) return <ClawHubSkeleton />;
 
@@ -114,18 +134,26 @@ export default function ClawHubPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <Package className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold">ClawHub</h1>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <Package className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl font-bold">ClawHub</h1>
+          </div>
+          <p className="text-muted-foreground">
+            Discover and install skills to supercharge your agents.
+          </p>
         </div>
-        <p className="text-muted-foreground">
-          Discover and install skills to supercharge your agents.
-        </p>
+        <Link href="/clawhub/submit">
+          <Button variant="outline" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Submit Skill
+          </Button>
+        </Link>
       </div>
 
       {/* Search bar */}
-      <div className="relative mb-8">
+      <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={searchQuery}
@@ -135,8 +163,50 @@ export default function ClawHubPage() {
         />
       </div>
 
+      {/* Tag filter */}
+      {allTags.length > 0 && (
+        <div className="mb-6">
+          <button
+            onClick={() => setShowTagFilter(!showTagFilter)}
+            className="mb-2 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            Filter by tag {showTagFilter ? "▾" : "▸"}
+            {activeTag && (
+              <span className="ml-2 flex items-center gap-1 rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">
+                {activeTag}
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTag(null);
+                  }}
+                />
+              </span>
+            )}
+          </button>
+          {showTagFilter && (
+            <div className="flex flex-wrap gap-1.5">
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs transition-colors",
+                    activeTag === tag
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-accent text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Trending Skills */}
-      {!searchQuery && !activeCategory && (
+      {!searchQuery && !activeCategory && !activeTag && (
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="h-5 w-5 text-primary" />
@@ -168,14 +238,10 @@ export default function ClawHubPage() {
                       <Download className="h-3 w-3" />
                       {formatCount(skill.install_count)}
                     </span>
+                    <StarRating rating={skill.avg_rating} count={skill.review_count} />
                     <span className="rounded bg-accent px-1.5 py-0.5">
                       {skill.category}
                     </span>
-                    {skill.is_featured && (
-                      <span className="flex items-center gap-1 text-yellow-400">
-                        <Star className="h-3 w-3" /> Featured
-                      </span>
-                    )}
                   </div>
                 </Card>
               </Link>
@@ -195,6 +261,7 @@ export default function ClawHubPage() {
                     <div className="min-w-0 flex-1">
                       <span className="text-sm font-medium">{skill.name}</span>
                     </div>
+                    <StarRating rating={skill.avg_rating} count={skill.review_count} />
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Download className="h-3 w-3" />
                       {formatCount(skill.install_count)}
@@ -280,6 +347,7 @@ export default function ClawHubPage() {
                       <Download className="h-3 w-3" />
                       {formatCount(skill.install_count)}
                     </span>
+                    <StarRating rating={skill.avg_rating} count={skill.review_count} />
                     <span className="rounded bg-accent px-1.5 py-0.5 capitalize">
                       {skill.category}
                     </span>

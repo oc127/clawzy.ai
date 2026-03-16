@@ -3,10 +3,22 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { getSkillBySlug, getSkills, apiGet, installSkill } from "@/lib/api";
-import type { Skill, SkillBrief, Agent } from "@/lib/types";
+import {
+  getSkillBySlug,
+  getSkillRecommendations,
+  getSkillReviews,
+  getMyReview,
+  createReview,
+  updateReview,
+  deleteReview,
+  apiGet,
+  installSkill,
+} from "@/lib/api";
+import type { Skill, SkillBrief, SkillReview, Agent } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CATEGORY_ICONS } from "@/lib/skill-icons";
 import { toast } from "sonner";
@@ -20,6 +32,9 @@ import {
   Check,
   ChevronDown,
   Zap,
+  MessageSquare,
+  Trash2,
+  Edit3,
 } from "lucide-react";
 
 export default function SkillDetailPage() {
@@ -27,7 +42,9 @@ export default function SkillDetailPage() {
   const slug = params.slug as string;
 
   const [skill, setSkill] = useState<Skill | null>(null);
-  const [related, setRelated] = useState<SkillBrief[]>([]);
+  const [recommended, setRecommended] = useState<SkillBrief[]>([]);
+  const [reviews, setReviews] = useState<SkillReview[]>([]);
+  const [myReview, setMyReview] = useState<SkillReview | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAgentPicker, setShowAgentPicker] = useState(false);
@@ -35,15 +52,31 @@ export default function SkillDetailPage() {
   const [installed, setInstalled] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
 
+  // Review form
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [editingReview, setEditingReview] = useState(false);
+
   useEffect(() => {
     setLoading(true);
     getSkillBySlug(slug)
       .then((s) => {
         setSkill(s);
-        // Fetch related skills from same category
-        getSkills({ category: s.category, limit: 5 })
-          .then((r) => setRelated(r.filter((rs) => rs.slug !== slug)))
-          .catch(() => toast.error("Failed to load related skills"));
+        // Fetch recommendations instead of basic related
+        getSkillRecommendations(slug, 6)
+          .then(setRecommended)
+          .catch(() => {});
+        // Fetch reviews
+        getSkillReviews(slug)
+          .then(setReviews)
+          .catch(() => {});
+        // Check for my review
+        getMyReview(slug)
+          .then(setMyReview)
+          .catch(() => {});
       })
       .catch(() => setError("Skill not found"))
       .finally(() => setLoading(false));
@@ -51,7 +84,7 @@ export default function SkillDetailPage() {
     // Fetch user's agents for install picker
     apiGet<Agent[]>("/agents")
       .then(setAgents)
-      .catch(() => toast.error("Failed to load agents"));
+      .catch(() => {});
   }, [slug]);
 
   const handleInstall = async (agentId: string) => {
@@ -60,12 +93,67 @@ export default function SkillDetailPage() {
     try {
       await installSkill(agentId, skill.id);
       setInstalled((prev) => new Set(prev).add(agentId));
+      toast.success(`Installed ${skill.name}`);
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : "Failed to install skill";
-      setError(detail);
+      toast.error(detail);
     } finally {
       setInstalling(null);
     }
+  };
+
+  const handleSubmitReview = async () => {
+    setReviewSubmitting(true);
+    try {
+      if (editingReview && myReview) {
+        const updated = await updateReview(slug, {
+          rating: reviewRating,
+          title: reviewTitle || undefined,
+          content: reviewContent || undefined,
+        });
+        setMyReview(updated);
+        setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+        toast.success("Review updated");
+      } else {
+        const created = await createReview(slug, {
+          rating: reviewRating,
+          title: reviewTitle || undefined,
+          content: reviewContent || undefined,
+        });
+        setMyReview(created);
+        setReviews((prev) => [created, ...prev]);
+        toast.success("Review submitted");
+      }
+      setShowReviewForm(false);
+      setEditingReview(false);
+      // Refresh skill to get updated rating
+      getSkillBySlug(slug).then(setSkill).catch(() => {});
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit review");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    try {
+      await deleteReview(slug);
+      setReviews((prev) => prev.filter((r) => r.id !== myReview?.id));
+      setMyReview(null);
+      toast.success("Review deleted");
+      getSkillBySlug(slug).then(setSkill).catch(() => {});
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete review");
+    }
+  };
+
+  const startEditReview = () => {
+    if (!myReview) return;
+    setReviewRating(myReview.rating);
+    setReviewTitle(myReview.title || "");
+    setReviewContent(myReview.content || "");
+    setEditingReview(true);
+    setShowReviewForm(true);
   };
 
   if (loading) {
@@ -125,6 +213,13 @@ export default function SkillDetailPage() {
                   <Download className="h-4 w-4" />
                   {skill.install_count.toLocaleString()} installs
                 </span>
+                {skill.review_count > 0 && (
+                  <span className="flex items-center gap-1 text-yellow-400">
+                    <Star className="h-4 w-4 fill-current" />
+                    {skill.avg_rating.toFixed(1)}
+                    <span className="text-muted-foreground">({skill.review_count} reviews)</span>
+                  </span>
+                )}
                 {skill.author && (
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
@@ -145,12 +240,13 @@ export default function SkillDetailPage() {
               {skill.tags && skill.tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {skill.tags.map((tag) => (
-                    <span
+                    <Link
                       key={tag}
-                      className="rounded bg-accent px-2 py-0.5 text-xs text-muted-foreground"
+                      href={`/clawhub?tag=${encodeURIComponent(tag)}`}
+                      className="rounded bg-accent px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {tag}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -214,7 +310,7 @@ export default function SkillDetailPage() {
         </div>
       )}
 
-      {/* Description (Markdown-like rendering) */}
+      {/* Description */}
       <Card className="mb-6">
         <div className="prose prose-invert max-w-none">
           <MarkdownContent content={skill.description} />
@@ -233,12 +329,213 @@ export default function SkillDetailPage() {
         </a>
       )}
 
-      {/* Related skills */}
-      {related.length > 0 && (
+      {/* Reviews Section */}
+      <section className="mt-8 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">
+              Reviews {skill.review_count > 0 && `(${skill.review_count})`}
+            </h2>
+          </div>
+          {!myReview && !showReviewForm && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowReviewForm(true);
+                setEditingReview(false);
+                setReviewRating(5);
+                setReviewTitle("");
+                setReviewContent("");
+              }}
+            >
+              Write a Review
+            </Button>
+          )}
+        </div>
+
+        {/* Review form */}
+        {showReviewForm && (
+          <Card className="mb-6">
+            <h3 className="font-medium mb-3">
+              {editingReview ? "Edit Your Review" : "Write a Review"}
+            </h3>
+            <div className="space-y-3">
+              {/* Star selector */}
+              <div>
+                <label className="mb-1 block text-sm text-muted-foreground">Rating</label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setReviewRating(star)}
+                      className="transition-colors"
+                    >
+                      <Star
+                        className={`h-6 w-6 ${
+                          star <= reviewRating
+                            ? "text-yellow-400 fill-current"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-muted-foreground">
+                  Title (optional)
+                </label>
+                <Input
+                  value={reviewTitle}
+                  onChange={(e) => setReviewTitle(e.target.value)}
+                  placeholder="Summarize your experience"
+                  maxLength={200}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-muted-foreground">
+                  Review (optional)
+                </label>
+                <Textarea
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  placeholder="Share your experience with this skill..."
+                  rows={3}
+                  maxLength={2000}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSubmitReview}
+                  disabled={reviewSubmitting}
+                  size="sm"
+                >
+                  {reviewSubmitting
+                    ? "Submitting..."
+                    : editingReview
+                      ? "Update Review"
+                      : "Submit Review"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowReviewForm(false);
+                    setEditingReview(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* My review highlight */}
+        {myReview && !showReviewForm && (
+          <Card className="mb-4 border-primary/30">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium">Your Review</span>
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-3.5 w-3.5 ${
+                          star <= myReview.rating
+                            ? "text-yellow-400 fill-current"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {myReview.title && (
+                  <p className="text-sm font-medium">{myReview.title}</p>
+                )}
+                {myReview.content && (
+                  <p className="mt-1 text-sm text-muted-foreground">{myReview.content}</p>
+                )}
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={startEditReview}
+                  className="rounded p-1 text-muted-foreground hover:text-foreground"
+                  title="Edit review"
+                >
+                  <Edit3 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleDeleteReview}
+                  className="rounded p-1 text-muted-foreground hover:text-red-400"
+                  title="Delete review"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Other reviews */}
+        {reviews.filter((r) => r.id !== myReview?.id).length > 0 ? (
+          <div className="space-y-3">
+            {reviews
+              .filter((r) => r.id !== myReview?.id)
+              .map((review) => (
+                <div
+                  key={review.id}
+                  className="rounded-lg border border-border p-4"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium">
+                      {review.user.name || "Anonymous"}
+                    </span>
+                    <div className="flex">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-3 w-3 ${
+                            star <= review.rating
+                              ? "text-yellow-400 fill-current"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {review.title && (
+                    <p className="text-sm font-medium">{review.title}</p>
+                  )}
+                  {review.content && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {review.content}
+                    </p>
+                  )}
+                </div>
+              ))}
+          </div>
+        ) : (
+          !myReview && (
+            <p className="text-sm text-muted-foreground">
+              No reviews yet. Be the first to review this skill!
+            </p>
+          )
+        )}
+      </section>
+
+      {/* Recommended skills */}
+      {recommended.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-4 text-lg font-semibold">Related Skills</h2>
+          <h2 className="mb-4 text-lg font-semibold">Recommended Skills</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            {related.slice(0, 4).map((rs) => {
+            {recommended.slice(0, 6).map((rs) => {
               const RIcon = CATEGORY_ICONS[rs.category] || Zap;
               return (
                 <Link key={rs.id} href={`/clawhub/${rs.slug}`}>
@@ -252,12 +549,20 @@ export default function SkillDetailPage() {
                         {rs.summary}
                       </p>
                     </div>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Download className="h-3 w-3" />
-                      {rs.install_count >= 1000
-                        ? `${(rs.install_count / 1000).toFixed(1)}K`
-                        : rs.install_count}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      {rs.review_count > 0 && (
+                        <span className="flex items-center gap-0.5 text-xs text-yellow-400">
+                          <Star className="h-3 w-3 fill-current" />
+                          {rs.avg_rating.toFixed(1)}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Download className="h-3 w-3" />
+                        {rs.install_count >= 1000
+                          ? `${(rs.install_count / 1000).toFixed(1)}K`
+                          : rs.install_count}
+                      </span>
+                    </div>
                   </div>
                 </Link>
               );
@@ -271,7 +576,6 @@ export default function SkillDetailPage() {
 
 /**
  * Simple Markdown-like renderer for skill descriptions.
- * Handles headers, bold, lists, and code blocks.
  */
 function MarkdownContent({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -332,7 +636,6 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Handle **bold** and `code`
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {

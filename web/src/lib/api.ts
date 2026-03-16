@@ -71,12 +71,13 @@ export function apiDelete(path: string): Promise<void> {
 
 // --- Skills / ClawHub API ---
 
-import type { SkillBrief, Skill, AgentSkill } from "./types";
+import type { SkillBrief, Skill, AgentSkill, SkillReview, SkillSubmission } from "./types";
 
 export function getSkills(params?: {
   category?: string;
   search?: string;
   sort_by?: string;
+  tag?: string;
   limit?: number;
   offset?: number;
 }): Promise<SkillBrief[]> {
@@ -84,6 +85,7 @@ export function getSkills(params?: {
   if (params?.category) q.set("category", params.category);
   if (params?.search) q.set("search", params.search);
   if (params?.sort_by) q.set("sort_by", params.sort_by);
+  if (params?.tag) q.set("tag", params.tag);
   if (params?.limit) q.set("limit", String(params.limit));
   if (params?.offset) q.set("offset", String(params.offset));
   const qs = q.toString();
@@ -94,12 +96,20 @@ export function getSkillCategories(): Promise<string[]> {
   return apiGet<string[]>("/skills/categories");
 }
 
+export function getSkillTags(): Promise<string[]> {
+  return apiGet<string[]>("/skills/tags");
+}
+
 export function getTrendingSkills(limit = 10): Promise<SkillBrief[]> {
   return apiGet<SkillBrief[]>(`/skills/trending?limit=${limit}`);
 }
 
 export function getSkillBySlug(slug: string): Promise<Skill> {
   return apiGet<Skill>(`/skills/${slug}`);
+}
+
+export function getSkillRecommendations(slug: string, limit = 6): Promise<SkillBrief[]> {
+  return apiGet<SkillBrief[]>(`/skills/${slug}/recommendations?limit=${limit}`);
 }
 
 export function getAgentSkills(agentId: string): Promise<AgentSkill[]> {
@@ -116,4 +126,51 @@ export function uninstallSkill(agentId: string, skillId: string): Promise<void> 
 
 export function toggleAgentSkill(agentId: string, skillId: string, enabled: boolean): Promise<AgentSkill> {
   return apiPatch<AgentSkill>(`/skills/agents/${agentId}/toggle/${skillId}`, { enabled });
+}
+
+// --- Reviews ---
+
+export function getSkillReviews(slug: string, limit = 50, offset = 0): Promise<SkillReview[]> {
+  return apiGet<SkillReview[]>(`/skills/${slug}/reviews?limit=${limit}&offset=${offset}`);
+}
+
+export function getMyReview(slug: string): Promise<SkillReview | null> {
+  return apiGet<SkillReview | null>(`/skills/${slug}/reviews/mine`);
+}
+
+export function createReview(
+  slug: string,
+  data: { rating: number; title?: string; content?: string },
+): Promise<SkillReview> {
+  return apiPost<SkillReview>(`/skills/${slug}/reviews`, data);
+}
+
+export function updateReview(
+  slug: string,
+  data: { rating?: number; title?: string; content?: string },
+): Promise<SkillReview> {
+  return apiPatch<SkillReview>(`/skills/${slug}/reviews`, data);
+}
+
+export function deleteReview(slug: string): Promise<void> {
+  return apiDelete(`/skills/${slug}/reviews`);
+}
+
+// --- Skill Submissions ---
+
+export function submitSkill(data: {
+  name: string;
+  slug: string;
+  summary: string;
+  description: string;
+  category: string;
+  tags?: string[];
+  version?: string;
+  source_url?: string;
+}): Promise<SkillSubmission> {
+  return apiPost<SkillSubmission>("/skills/submissions", data);
+}
+
+export function getMySubmissions(): Promise<SkillSubmission[]> {
+  return apiGet<SkillSubmission[]>("/skills/submissions/mine");
 }
