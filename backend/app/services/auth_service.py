@@ -2,9 +2,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
+from app.models.credits import CreditReason, CreditTransaction
 from app.models.user import User
-from app.models.credits import CreditTransaction, CreditReason
 
 
 class AuthError(Exception):

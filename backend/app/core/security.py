@@ -1,23 +1,21 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def create_access_token(user_id: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_expire_minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_expire_minutes)
     return jwt.encode(
         {"sub": user_id, "exp": expire, "type": "access"},
         settings.jwt_secret,
@@ -26,7 +24,7 @@ def create_access_token(user_id: str) -> str:
 
 
 def create_refresh_token(user_id: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_expire_days)
+    expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_expire_days)
     return jwt.encode(
         {"sub": user_id, "exp": expire, "type": "refresh"},
         settings.jwt_secret,

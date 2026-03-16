@@ -141,7 +141,7 @@ check_service() {
 }
 
 check_service "LiteLLM"  "http://127.0.0.1:4000/health/liveliness"
-check_service "OpenClaw"  "http://127.0.0.1:18789/health"
+check_service "OpenClaw"  "http://127.0.0.1:18789/healthz"
 
 # ---------------------------------------------------------------------------
 # 8. Print summary

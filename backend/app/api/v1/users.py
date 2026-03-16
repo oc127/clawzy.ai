@@ -24,6 +24,9 @@ async def update_me(
         user.name = body.name
     if body.avatar_url is not None:
         user.avatar_url = body.avatar_url
+    if body.daily_credit_limit is not None:
+        # 0 means remove the limit (set to None)
+        user.daily_credit_limit = body.daily_credit_limit if body.daily_credit_limit > 0 else None
     await db.commit()
     await db.refresh(user)
     return user
