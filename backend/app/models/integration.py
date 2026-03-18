@@ -17,9 +17,7 @@ class Platform(str, enum.Enum):
 
 class Integration(Base):
     __tablename__ = "integrations"
-    __table_args__ = (
-        UniqueConstraint("agent_id", "platform", name="uq_agent_platform"),
-    )
+    __table_args__ = (UniqueConstraint("agent_id", "platform", name="uq_agent_platform"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     agent_id: Mapped[str] = mapped_column(String(36), ForeignKey("agents.id", ondelete="CASCADE"), index=True)
@@ -36,7 +34,9 @@ class Integration(Base):
 
     enabled: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
     agent = relationship("Agent", back_populates="integrations")
     user = relationship("User")

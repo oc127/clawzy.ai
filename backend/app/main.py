@@ -56,9 +56,7 @@ if settings.cors_origins.strip() == "*":
     else:
         # In production, don't allow wildcard CORS
         _cors_origins = ["*"]
-        logger.warning(
-            "CORS_ORIGINS is set to '*'. Consider restricting to specific domains in production."
-        )
+        logger.warning("CORS_ORIGINS is set to '*'. Consider restricting to specific domains in production.")
 else:
     _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 

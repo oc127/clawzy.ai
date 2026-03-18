@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,9 +50,7 @@ async def list_integrations(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    result = await db.execute(
-        select(Integration).where(Integration.agent_id == agent_id)
-    )
+    result = await db.execute(select(Integration).where(Integration.agent_id == agent_id))
     return [_to_response(i) for i in result.scalars().all()]
 
 
@@ -84,9 +82,8 @@ async def create_integration(
     elif body.platform == "discord":
         if not body.bot_token:
             raise HTTPException(status_code=422, detail="Discord requires bot_token")
-    elif body.platform == "telegram":
-        if not body.bot_token:
-            raise HTTPException(status_code=422, detail="Telegram requires bot_token")
+    elif body.platform == "telegram" and not body.bot_token:
+        raise HTTPException(status_code=422, detail="Telegram requires bot_token")
 
     integration = Integration(
         agent_id=agent_id,

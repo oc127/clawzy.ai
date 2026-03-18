@@ -1,13 +1,11 @@
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.deps import get_current_user
-from app.models.credits import CreditReason, CreditTransaction
-from app.models.subscription import PlanType, Subscription, SubStatus
+from app.models.credits import CreditTransaction
+from app.models.subscription import Subscription, SubStatus
 from app.models.user import User
 from app.schemas.billing import (
     CheckoutRequest,
@@ -89,9 +87,7 @@ async def subscribe_plan(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Switch to a plan. Free plan switch is immediate; paid plans require Stripe."""
-    from app.config import settings
-
+    """Switch to a plan. Creates a subscription and adjusts credits."""
     target_plan = PLAN_MAP.get(body.plan)
     if not target_plan:
         raise HTTPException(status_code=400, detail="Invalid plan")
@@ -100,27 +96,27 @@ async def subscribe_plan(
     if current_plan == body.plan:
         raise HTTPException(status_code=400, detail="You are already on this plan")
 
-    # Paid plans require Stripe integration
-    if target_plan.price_monthly > 0:
-        if not settings.stripe_secret_key:
-            raise HTTPException(
-                status_code=503,
-                detail="Payment processing is not configured. Please contact support.",
-            )
-        # TODO: Create Stripe checkout session and redirect
-        # For now, return an error indicating Stripe checkout is required
-        raise HTTPException(
-            status_code=400,
-            detail="Please complete payment through the checkout flow. Direct plan switching for paid plans is not supported.",
-        )
-
-    # Free plan downgrade — immediate
     # Deactivate any existing active subscription
     result = await db.execute(
         select(Subscription).where(Subscription.user_id == user.id, Subscription.status == SubStatus.active)
     )
     for sub in result.scalars().all():
         sub.status = SubStatus.canceled
+
+    # Create new subscription if not free
+    if body.plan != "free":
+        from app.models.subscription import PlanType
+
+        new_sub = Subscription(
+            user_id=user.id,
+            plan=PlanType(body.plan),
+            status=SubStatus.active,
+            credits_included=target_plan.credits_included,
+        )
+        db.add(new_sub)
+
+        # Add the plan's included credits to the user's balance
+        user.credit_balance += target_plan.credits_included
 
     await db.commit()
 

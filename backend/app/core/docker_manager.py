@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import os
@@ -192,10 +193,8 @@ class DockerManager:
                 logger.warning("Skipping cleanup for invalid agent_id: %s", agent_id)
                 return
             config_dir = os.path.join(settings.openclaw_agent_config_dir, agent_id)
-            try:
+            with contextlib.suppress(OSError):
                 shutil.rmtree(config_dir, ignore_errors=True)
-            except OSError:
-                pass
 
     def get_container_status(self, container_id: str) -> str | None:
         try:

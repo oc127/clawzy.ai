@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   createIntegration,
@@ -113,8 +113,9 @@ export function IntegrationPanel({ agentId }: { agentId: string }) {
       setSelectedPlatform(null);
       setFormData({});
       toast.success(`${selectedPlatform} integration added`);
-    } catch (err: any) {
-      toast.error(err.detail || "Failed to create integration");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to create integration";
+      toast.error(message);
     } finally {
       setSaving(false);
     }

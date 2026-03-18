@@ -54,9 +54,7 @@ async def pre_authorize_credits(db: AsyncSession, user_id: str, model_name: str)
     # Minimum balance check (at least 1 credit)
     min_required = max(1, estimated // 4)
 
-    result = await db.execute(
-        select(User).where(User.id == user_id).with_for_update()
-    )
+    result = await db.execute(select(User).where(User.id == user_id).with_for_update())
     user = result.scalar_one_or_none()
     if user is None:
         raise ValueError("User not found")
@@ -80,6 +78,11 @@ async def deduct_credits(
     Returns credits used.
     """
     credits_used = calculate_credits(model_name, tokens_input, tokens_output)
+
+    # Check if user exists first
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    if user_result.scalar_one_or_none() is None:
+        raise ValueError("User not found")
 
     # Atomic deduction: UPDATE ... SET balance = balance - N WHERE balance >= N
     result = await db.execute(

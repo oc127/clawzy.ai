@@ -4,19 +4,16 @@ import hashlib
 import hmac
 import json
 import logging
-from base64 import b64decode, b64encode
+from base64 import b64encode
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.agent import Agent
-from app.models.chat import Conversation, MessageRole
-from app.models.integration import Integration, Platform
+from app.models.chat import Conversation
+from app.models.integration import Integration
 from app.models.user import User
 from app.services.chat_service import (
-    get_or_create_conversation,
-    save_message,
     stream_chat_completion,
 )
 
@@ -76,9 +73,7 @@ async def _get_user(db: AsyncSession, user_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
-async def _get_or_create_platform_conversation(
-    db: AsyncSession, agent_id: str, conv_key: str
-) -> Conversation:
+async def _get_or_create_platform_conversation(db: AsyncSession, agent_id: str, conv_key: str) -> Conversation:
     """Find or create a conversation using a platform-specific key stored in the title."""
     result = await db.execute(
         select(Conversation).where(
@@ -172,6 +167,7 @@ def verify_discord_signature(body: bytes, signature: str, timestamp: str, public
     """Verify Discord interaction signature using Ed25519."""
     try:
         from nacl.signing import VerifyKey
+
         verify_key = VerifyKey(bytes.fromhex(public_key))
         verify_key.verify(timestamp.encode() + body, bytes.fromhex(signature))
         return True

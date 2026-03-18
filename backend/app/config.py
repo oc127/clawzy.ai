@@ -67,19 +67,11 @@ _INSECURE_SECRETS = {"change-me-jwt-secret", "", "secret", "test"}
 if settings.jwt_secret in _INSECURE_SECRETS:
     if settings.debug:
         logger.warning(
-            "WARNING: Using insecure JWT_SECRET in debug mode. "
-            "Set JWT_SECRET environment variable for production."
+            "WARNING: Using insecure JWT_SECRET in debug mode. Set JWT_SECRET environment variable for production."
         )
     else:
-        logger.critical(
-            "FATAL: JWT_SECRET is not set or using default value. "
-            "Generate one with: openssl rand -hex 32"
-        )
+        logger.critical("FATAL: JWT_SECRET is not set or using default value. Generate one with: openssl rand -hex 32")
         sys.exit(1)
 
-if settings.litellm_master_key in {"sk-clawzy-change-me", ""}:
-    if not settings.debug:
-        logger.warning(
-            "WARNING: LITELLM_MASTER_KEY is using default value. "
-            "Generate one with: openssl rand -hex 16"
-        )
+if settings.litellm_master_key in {"sk-clawzy-change-me", ""} and not settings.debug:
+    logger.warning("WARNING: LITELLM_MASTER_KEY is using default value. Generate one with: openssl rand -hex 16")

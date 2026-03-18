@@ -7,9 +7,8 @@ signature verification, not JWT.
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import async_session
@@ -89,9 +88,7 @@ async def line_webhook(webhook_secret: str, request: Request):
         async with async_session() as db:
             # Re-fetch integration with agent loaded
             result = await db.execute(
-                select(Integration)
-                .options(selectinload(Integration.agent))
-                .where(Integration.id == integration.id)
+                select(Integration).options(selectinload(Integration.agent)).where(Integration.id == integration.id)
             )
             fresh = result.scalar_one()
             reply = await process_platform_message(db, fresh, sender_id, text)
@@ -152,9 +149,7 @@ async def discord_webhook(webhook_secret: str, request: Request):
 
     async with async_session() as db:
         result = await db.execute(
-            select(Integration)
-            .options(selectinload(Integration.agent))
-            .where(Integration.id == integration.id)
+            select(Integration).options(selectinload(Integration.agent)).where(Integration.id == integration.id)
         )
         fresh = result.scalar_one()
         reply = await process_platform_message(db, fresh, sender_id, msg_content)
@@ -215,9 +210,7 @@ async def telegram_webhook(webhook_secret: str, request: Request):
 
     async with async_session() as db:
         result = await db.execute(
-            select(Integration)
-            .options(selectinload(Integration.agent))
-            .where(Integration.id == integration.id)
+            select(Integration).options(selectinload(Integration.agent)).where(Integration.id == integration.id)
         )
         fresh = result.scalar_one()
         reply = await process_platform_message(db, fresh, sender_id, text)

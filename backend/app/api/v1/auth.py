@@ -120,10 +120,12 @@ async def github_callback(
         return RedirectResponse(url=f"/login?{params}")
 
     # Redirect to frontend with tokens in URL fragment (not query params for security)
-    params = urlencode({
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-    })
+    params = urlencode(
+        {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
+    )
     return RedirectResponse(url=f"/auth/callback?{params}")
 
 
@@ -171,8 +173,10 @@ async def google_callback(
         params = urlencode({"error": e.detail})
         return RedirectResponse(url=f"/login?{params}")
 
-    params = urlencode({
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-    })
+    params = urlencode(
+        {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
+    )
     return RedirectResponse(url=f"/auth/callback?{params}")
