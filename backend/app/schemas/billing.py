@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CreditsResponse(BaseModel):
@@ -31,7 +31,7 @@ class PlanResponse(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    plan: str  # starter, pro, business
+    plan: str = Field(pattern=r"^(free|starter|pro|business)$")
 
 
 class CheckoutResponse(BaseModel):

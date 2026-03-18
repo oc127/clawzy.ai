@@ -35,3 +35,4 @@ class Agent(Base):
     conversations = relationship("Conversation", back_populates="agent", cascade="all, delete-orphan")
     agent_skills = relationship("AgentSkill", back_populates="agent", cascade="all, delete-orphan")
     credit_transactions = relationship("CreditTransaction", back_populates="agent")
+    integrations = relationship("Integration", back_populates="agent", cascade="all, delete-orphan")

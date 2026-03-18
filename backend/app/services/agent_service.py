@@ -42,6 +42,11 @@ async def count_user_agents(db: AsyncSession, user_id: str) -> int:
 
 async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: str) -> Agent:
     """Create a new agent record and provision an OpenClaw container."""
+    from app.services.credits_service import CREDIT_RATES
+
+    if model_name not in CREDIT_RATES:
+        raise ValueError(f"Unknown model: {model_name}. Available models: {', '.join(sorted(CREDIT_RATES.keys()))}")
+
     plan = await get_user_plan(db, user_id)
     count = await count_user_agents(db, user_id)
     limit = PLAN_AGENT_LIMITS.get(plan, 1)
@@ -127,6 +132,10 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
     if name is not None:
         agent.name = name
     if model_name is not None:
+        from app.services.credits_service import CREDIT_RATES
+
+        if model_name not in CREDIT_RATES:
+            raise ValueError(f"Unknown model: {model_name}")
         agent.model_name = model_name
     await db.commit()
     await db.refresh(agent)

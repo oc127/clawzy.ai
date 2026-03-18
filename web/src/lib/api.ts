@@ -1,4 +1,4 @@
-import { getAccessToken, clearTokens } from "./auth";
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from "./auth";
 
 const API_BASE = "/api/v1";
 
@@ -8,6 +8,30 @@ export class ApiError extends Error {
     public detail: string,
   ) {
     super(detail);
+  }
+}
+
+// Prevent multiple concurrent token refreshes
+let refreshPromise: Promise<boolean> | null = null;
+// Prevent multiple concurrent 401 redirects
+let isRedirecting = false;
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -31,8 +55,34 @@ async function request<T>(
   });
 
   if (res.status === 401) {
+    // Try to refresh token (deduplicate concurrent refreshes)
+    if (!refreshPromise) {
+      refreshPromise = tryRefreshToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+    const refreshed = await refreshPromise;
+
+    if (refreshed) {
+      // Retry the original request with new token
+      const newToken = getAccessToken();
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+      }
+      const retryRes = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers,
+      });
+      if (retryRes.ok) {
+        if (retryRes.status === 204) return undefined as T;
+        return retryRes.json();
+      }
+    }
+
+    // Refresh failed — redirect to login (only once)
     clearTokens();
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !isRedirecting) {
+      isRedirecting = true;
       window.location.href = "/login";
     }
     throw new ApiError(401, "Unauthorized");
@@ -67,6 +117,42 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
 
 export function apiDelete(path: string): Promise<void> {
   return request<void>(path, { method: "DELETE" });
+}
+
+// --- Integrations API ---
+
+import type { Integration } from "./types";
+
+export function getIntegrations(agentId: string): Promise<Integration[]> {
+  return apiGet<Integration[]>(`/integrations/agents/${agentId}`);
+}
+
+export function createIntegration(
+  agentId: string,
+  data: {
+    platform: string;
+    bot_token?: string;
+    channel_secret?: string;
+    channel_access_token?: string;
+  },
+): Promise<Integration> {
+  return apiPost<Integration>(`/integrations/agents/${agentId}`, data);
+}
+
+export function updateIntegration(
+  integrationId: string,
+  data: {
+    bot_token?: string;
+    channel_secret?: string;
+    channel_access_token?: string;
+    enabled?: boolean;
+  },
+): Promise<Integration> {
+  return apiPatch<Integration>(`/integrations/${integrationId}`, data);
+}
+
+export function deleteIntegration(integrationId: string): Promise<void> {
+  return apiDelete(`/integrations/${integrationId}`);
 }
 
 // --- Skills / ClawHub API ---
@@ -105,11 +191,11 @@ export function getTrendingSkills(limit = 10): Promise<SkillBrief[]> {
 }
 
 export function getSkillBySlug(slug: string): Promise<Skill> {
-  return apiGet<Skill>(`/skills/${slug}`);
+  return apiGet<Skill>(`/skills/${encodeURIComponent(slug)}`);
 }
 
 export function getSkillRecommendations(slug: string, limit = 6): Promise<SkillBrief[]> {
-  return apiGet<SkillBrief[]>(`/skills/${slug}/recommendations?limit=${limit}`);
+  return apiGet<SkillBrief[]>(`/skills/${encodeURIComponent(slug)}/recommendations?limit=${limit}`);
 }
 
 export function getAgentSkills(agentId: string): Promise<AgentSkill[]> {
@@ -131,29 +217,29 @@ export function toggleAgentSkill(agentId: string, skillId: string, enabled: bool
 // --- Reviews ---
 
 export function getSkillReviews(slug: string, limit = 50, offset = 0): Promise<SkillReview[]> {
-  return apiGet<SkillReview[]>(`/skills/${slug}/reviews?limit=${limit}&offset=${offset}`);
+  return apiGet<SkillReview[]>(`/skills/${encodeURIComponent(slug)}/reviews?limit=${limit}&offset=${offset}`);
 }
 
 export function getMyReview(slug: string): Promise<SkillReview | null> {
-  return apiGet<SkillReview | null>(`/skills/${slug}/reviews/mine`);
+  return apiGet<SkillReview | null>(`/skills/${encodeURIComponent(slug)}/reviews/mine`);
 }
 
 export function createReview(
   slug: string,
   data: { rating: number; title?: string; content?: string },
 ): Promise<SkillReview> {
-  return apiPost<SkillReview>(`/skills/${slug}/reviews`, data);
+  return apiPost<SkillReview>(`/skills/${encodeURIComponent(slug)}/reviews`, data);
 }
 
 export function updateReview(
   slug: string,
   data: { rating?: number; title?: string; content?: string },
 ): Promise<SkillReview> {
-  return apiPatch<SkillReview>(`/skills/${slug}/reviews`, data);
+  return apiPatch<SkillReview>(`/skills/${encodeURIComponent(slug)}/reviews`, data);
 }
 
 export function deleteReview(slug: string): Promise<void> {
-  return apiDelete(`/skills/${slug}/reviews`);
+  return apiDelete(`/skills/${encodeURIComponent(slug)}/reviews`);
 }
 
 // --- Skill Submissions ---

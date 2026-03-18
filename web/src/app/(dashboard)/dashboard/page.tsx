@@ -100,7 +100,7 @@ function RecentActivity({ transactions }: { transactions: CreditTransaction[] })
               }`}
             />
             <span className="text-muted-foreground capitalize">
-              {tx.reason.replace("_", " ")}
+              {tx.reason.replaceAll("_", " ")}
             </span>
             {tx.model_name && (
               <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -131,7 +131,7 @@ export default function DashboardPage() {
   const fetchData = () => {
     setLoading(true);
     setError("");
-    Promise.all([
+    Promise.allSettled([
       apiGet<Agent[]>("/agents"),
       apiGet<ModelInfo[]>("/models"),
       apiGet<TodayUsage>("/billing/credits/today"),
@@ -139,13 +139,15 @@ export default function DashboardPage() {
       apiGet<CreditTransaction[]>("/billing/credits/transactions?limit=5"),
     ])
       .then(([a, m, today, chart, tx]) => {
-        setAgents(a);
-        setModelCount(m.length);
-        setTodayUsage(today);
-        setChartData(chart);
-        setRecentTx(tx);
+        if (a.status === "fulfilled") setAgents(a.value);
+        if (m.status === "fulfilled") setModelCount(m.value.length);
+        if (today.status === "fulfilled") setTodayUsage(today.value);
+        if (chart.status === "fulfilled") setChartData(chart.value);
+        if (tx.status === "fulfilled") setRecentTx(tx.value);
+        // Only show error if all failed
+        const allFailed = [a, m, today, chart, tx].every((r) => r.status === "rejected");
+        if (allFailed) setError("Failed to load data");
       })
-      .catch((err) => setError(err.message || "Failed to load data"))
       .finally(() => setLoading(false));
   };
 

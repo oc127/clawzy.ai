@@ -121,6 +121,19 @@ export interface SkillReview {
   updated_at: string;
 }
 
+export interface Integration {
+  id: string;
+  agent_id: string;
+  platform: "line" | "discord" | "telegram";
+  enabled: boolean;
+  webhook_url: string | null;
+  has_bot_token: boolean;
+  has_channel_secret: boolean;
+  has_channel_access_token: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SkillSubmission {
   id: string;
   user_id: string;

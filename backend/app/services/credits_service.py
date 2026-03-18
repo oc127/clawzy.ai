@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import Date, cast, func, select
+from sqlalchemy import Date, cast, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.credits import CreditReason, CreditTransaction
@@ -35,6 +35,38 @@ def calculate_credits(model_name: str, tokens_input: int, tokens_output: int) ->
     return max(1, round(cost))
 
 
+def estimate_max_credits(model_name: str, max_output_tokens: int = 4096) -> int:
+    """Estimate maximum possible credits for a request (for pre-authorization)."""
+    rate = CREDIT_RATES.get(model_name, DEFAULT_RATE)
+    # Rough estimate: assume ~2K input tokens + max output tokens
+    cost = (2000 / 1000) * rate["input"] + (max_output_tokens / 1000) * rate["output"]
+    return max(1, round(cost))
+
+
+async def pre_authorize_credits(db: AsyncSession, user_id: str, model_name: str) -> int:
+    """Check if user has enough credits for a request before making the LLM call.
+
+    Uses SELECT ... FOR UPDATE to prevent race conditions.
+    Returns estimated credits needed.
+    Raises InsufficientCreditsError if balance is too low.
+    """
+    estimated = estimate_max_credits(model_name)
+    # Minimum balance check (at least 1 credit)
+    min_required = max(1, estimated // 4)
+
+    result = await db.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise ValueError("User not found")
+    if user.credit_balance < min_required:
+        raise InsufficientCreditsError(
+            f"Insufficient credits. Balance: {user.credit_balance}, minimum required: {min_required}"
+        )
+    return estimated
+
+
 async def deduct_credits(
     db: AsyncSession,
     user_id: str,
@@ -43,22 +75,29 @@ async def deduct_credits(
     tokens_output: int,
     agent_id: str | None = None,
 ) -> int:
-    """Deduct credits from user balance. Returns credits used."""
+    """Deduct credits from user balance using atomic SQL UPDATE.
+
+    Returns credits used.
+    """
     credits_used = calculate_credits(model_name, tokens_input, tokens_output)
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise ValueError("User not found")
-    if user.credit_balance < credits_used:
+    # Atomic deduction: UPDATE ... SET balance = balance - N WHERE balance >= N
+    result = await db.execute(
+        update(User)
+        .where(User.id == user_id, User.credit_balance >= credits_used)
+        .values(credit_balance=User.credit_balance - credits_used)
+        .returning(User.credit_balance)
+    )
+    row = result.first()
+    if row is None:
         raise InsufficientCreditsError()
 
-    user.credit_balance -= credits_used
+    new_balance = row[0]
 
     txn = CreditTransaction(
         user_id=user_id,
         amount=-credits_used,
-        balance_after=user.credit_balance,
+        balance_after=new_balance,
         reason=CreditReason.usage,
         model_name=model_name,
         tokens_input=tokens_input,
@@ -71,11 +110,13 @@ async def deduct_credits(
 
 
 async def get_usage_this_period(db: AsyncSession, user_id: str) -> int:
-    """Get total credits used in current billing period."""
+    """Get total credits used in current billing period (last 30 days)."""
+    period_start = datetime.now(UTC) - timedelta(days=30)
     result = await db.execute(
         select(func.coalesce(func.sum(func.abs(CreditTransaction.amount)), 0)).where(
             CreditTransaction.user_id == user_id,
             CreditTransaction.reason == CreditReason.usage,
+            CreditTransaction.created_at >= period_start,
         )
     )
     return result.scalar_one()

@@ -1,4 +1,9 @@
+import logging
+import sys
+
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -45,7 +50,36 @@ class Settings(BaseSettings):
     # --- Credits ---
     signup_bonus_credits: int = 500
 
+    # --- OAuth ---
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    oauth_redirect_base_url: str = ""  # e.g. https://clawzy.ai
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()
+
+# Startup security checks
+_INSECURE_SECRETS = {"change-me-jwt-secret", "", "secret", "test"}
+if settings.jwt_secret in _INSECURE_SECRETS:
+    if settings.debug:
+        logger.warning(
+            "WARNING: Using insecure JWT_SECRET in debug mode. "
+            "Set JWT_SECRET environment variable for production."
+        )
+    else:
+        logger.critical(
+            "FATAL: JWT_SECRET is not set or using default value. "
+            "Generate one with: openssl rand -hex 32"
+        )
+        sys.exit(1)
+
+if settings.litellm_master_key in {"sk-clawzy-change-me", ""}:
+    if not settings.debug:
+        logger.warning(
+            "WARNING: LITELLM_MASTER_KEY is using default value. "
+            "Generate one with: openssl rand -hex 16"
+        )

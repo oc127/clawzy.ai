@@ -44,7 +44,7 @@ async def get_credits(
 async def get_transactions(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    limit: int = Query(default=50, le=100),
+    limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
     result = await db.execute(
@@ -89,7 +89,9 @@ async def subscribe_plan(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Switch to a plan. Grants credits included in the plan."""
+    """Switch to a plan. Free plan switch is immediate; paid plans require Stripe."""
+    from app.config import settings
+
     target_plan = PLAN_MAP.get(body.plan)
     if not target_plan:
         raise HTTPException(status_code=400, detail="Invalid plan")
@@ -98,33 +100,27 @@ async def subscribe_plan(
     if current_plan == body.plan:
         raise HTTPException(status_code=400, detail="You are already on this plan")
 
+    # Paid plans require Stripe integration
+    if target_plan.price_monthly > 0:
+        if not settings.stripe_secret_key:
+            raise HTTPException(
+                status_code=503,
+                detail="Payment processing is not configured. Please contact support.",
+            )
+        # TODO: Create Stripe checkout session and redirect
+        # For now, return an error indicating Stripe checkout is required
+        raise HTTPException(
+            status_code=400,
+            detail="Please complete payment through the checkout flow. Direct plan switching for paid plans is not supported.",
+        )
+
+    # Free plan downgrade — immediate
     # Deactivate any existing active subscription
     result = await db.execute(
         select(Subscription).where(Subscription.user_id == user.id, Subscription.status == SubStatus.active)
     )
     for sub in result.scalars().all():
         sub.status = SubStatus.canceled
-
-    # Create new subscription
-    now = datetime.now(UTC)
-    new_sub = Subscription(
-        user_id=user.id,
-        plan=PlanType(body.plan),
-        status=SubStatus.active,
-        current_period_start=now,
-        credits_included=target_plan.credits_included,
-    )
-    db.add(new_sub)
-
-    # Grant plan credits
-    user.credit_balance += target_plan.credits_included
-    tx = CreditTransaction(
-        user_id=user.id,
-        amount=target_plan.credits_included,
-        balance_after=user.credit_balance,
-        reason=CreditReason.subscription,
-    )
-    db.add(tx)
 
     await db.commit()
 
