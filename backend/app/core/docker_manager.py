@@ -1,6 +1,9 @@
+import contextlib
 import json
 import logging
 import os
+import re
+import shutil
 import time
 
 import docker
@@ -8,6 +11,9 @@ import httpx
 from docker.errors import NotFound
 
 from app.config import settings
+
+# Validate agent_id to prevent path traversal
+_SAFE_ID_RE = re.compile(r"^[a-f0-9\-]{36}$")
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +37,9 @@ class DockerManager:
         ws_port: int,
     ) -> str:
         """Create and start an OpenClaw container for a user's agent."""
+        if not _SAFE_ID_RE.match(agent_id):
+            raise ValueError(f"Invalid agent_id format: {agent_id}")
+
         # Generate per-agent config and write to host directory
         config = self._generate_agent_config(model_name, litellm_key)
         config_dir = os.path.join(settings.openclaw_agent_config_dir, agent_id)
@@ -180,13 +189,12 @@ class DockerManager:
             pass
         # Clean up config directory
         if agent_id:
+            if not _SAFE_ID_RE.match(agent_id):
+                logger.warning("Skipping cleanup for invalid agent_id: %s", agent_id)
+                return
             config_dir = os.path.join(settings.openclaw_agent_config_dir, agent_id)
-            config_path = os.path.join(config_dir, "openclaw.json")
-            try:
-                os.remove(config_path)
-                os.rmdir(config_dir)
-            except OSError:
-                pass
+            with contextlib.suppress(OSError):
+                shutil.rmtree(config_dir, ignore_errors=True)
 
     def get_container_status(self, container_id: str) -> str | None:
         try:

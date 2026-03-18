@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.agent import Agent, AgentStatus
 from app.models.chat import Conversation, Message, MessageRole
-from app.services.credits_service import InsufficientCreditsError, deduct_credits
+from app.services.credits_service import (
+    InsufficientCreditsError,
+    deduct_credits,
+    pre_authorize_credits,
+)
 from app.services.smart_router import smart_route
 
 logger = logging.getLogger(__name__)
@@ -90,14 +94,14 @@ async def stream_chat_completion(
       {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
+    # Smart model routing — auto-downgrade simple tasks to cheaper models
+    # Build message history for context first to determine routing
     # Save user message
     await save_message(db, conversation_id, MessageRole.user, user_content)
     await db.commit()
 
-    # Build message history for context
     history = await get_conversation_history(db, conversation_id)
 
-    # Smart model routing — auto-downgrade simple tasks to cheaper models
     effective_model, was_downgraded = smart_route(agent.model_name, user_content, history_len=len(history))
     from app.services.credits_service import CREDIT_RATES
 
@@ -107,19 +111,30 @@ async def stream_chat_completion(
         was_downgraded = False
     if was_downgraded:
         logger.info(
-            "Smart route: downgraded %s → %s for agent %s",
+            "Smart route: downgraded %s -> %s for agent %s",
             agent.model_name,
             effective_model,
             agent.id,
         )
 
+    # Pre-authorize credits BEFORE making the LLM call
+    try:
+        await pre_authorize_credits(db, user_id, effective_model)
+        await db.commit()  # Release the FOR UPDATE lock
+    except InsufficientCreditsError:
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "insufficient_credits",
+                "message": "Insufficient credits. Please top up before sending messages.",
+            }
+        )
+        return
+
     # Build ordered list of endpoints to try.
-    # Priority: per-user OpenClaw container → shared OpenClaw gateway.
-    # All chat goes through OpenClaw — no direct LiteLLM fallback.
     endpoints = []
 
     if agent.ws_port and agent.gateway_token and agent.status == AgentStatus.running:
-        # Use Docker network container name (not 127.0.0.1, which is the backend itself)
         container_name = f"clawzy-agent-{agent.id}"
         endpoints.append(
             (
@@ -249,11 +264,14 @@ async def stream_chat_completion(
 
     # Estimate tokens if not provided by API
     if tokens_input == 0:
-        tokens_input = max(1, len(str(history)) // 4)  # rough estimate
+        # Estimate based on message content characters (not Python repr)
+        content_len = sum(len(m.get("content", "")) for m in history)
+        tokens_input = max(1, content_len // 4)
     if tokens_output == 0:
         tokens_output = max(1, len(full_content) // 4)
 
-    # Deduct credits
+    # Deduct actual credits (atomic SQL UPDATE)
+    credits_used = 0
     try:
         credits_used = await deduct_credits(
             db,
@@ -264,15 +282,9 @@ async def stream_chat_completion(
             agent.id,
         )
     except InsufficientCreditsError:
-        # Still save the message but warn user
+        # Response already delivered — log but don't fail
+        logger.warning("Credits insufficient after streaming for user %s", user_id)
         credits_used = 0
-        yield json.dumps(
-            {
-                "type": "error",
-                "code": "insufficient_credits",
-                "message": "Credits insufficient, please top up",
-            }
-        )
 
     # Save assistant message
     await save_message(

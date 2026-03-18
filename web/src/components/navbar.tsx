@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const router = useRouter();
 
   return (
     <nav className="border-b border-border bg-card/50 backdrop-blur-md">
@@ -26,7 +28,7 @@ export function Navbar() {
               <span className="hidden text-sm text-muted-foreground md:inline">
                 {user.name}
               </span>
-              <Button variant="outline" size="sm" onClick={logout}>
+              <Button variant="outline" size="sm" onClick={() => { logout(); router.push("/"); }}>
                 Logout
               </Button>
             </>

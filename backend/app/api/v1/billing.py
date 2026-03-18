@@ -1,13 +1,11 @@
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.deps import get_current_user
-from app.models.credits import CreditReason, CreditTransaction
-from app.models.subscription import PlanType, Subscription, SubStatus
+from app.models.credits import CreditTransaction
+from app.models.subscription import Subscription, SubStatus
 from app.models.user import User
 from app.schemas.billing import (
     CheckoutRequest,
@@ -44,7 +42,7 @@ async def get_credits(
 async def get_transactions(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    limit: int = Query(default=50, le=100),
+    limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
     result = await db.execute(
@@ -89,7 +87,7 @@ async def subscribe_plan(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Switch to a plan. Grants credits included in the plan."""
+    """Switch to a plan. Creates a subscription and adjusts credits."""
     target_plan = PLAN_MAP.get(body.plan)
     if not target_plan:
         raise HTTPException(status_code=400, detail="Invalid plan")
@@ -105,26 +103,20 @@ async def subscribe_plan(
     for sub in result.scalars().all():
         sub.status = SubStatus.canceled
 
-    # Create new subscription
-    now = datetime.now(UTC)
-    new_sub = Subscription(
-        user_id=user.id,
-        plan=PlanType(body.plan),
-        status=SubStatus.active,
-        current_period_start=now,
-        credits_included=target_plan.credits_included,
-    )
-    db.add(new_sub)
+    # Create new subscription if not free
+    if body.plan != "free":
+        from app.models.subscription import PlanType
 
-    # Grant plan credits
-    user.credit_balance += target_plan.credits_included
-    tx = CreditTransaction(
-        user_id=user.id,
-        amount=target_plan.credits_included,
-        balance_after=user.credit_balance,
-        reason=CreditReason.subscription,
-    )
-    db.add(tx)
+        new_sub = Subscription(
+            user_id=user.id,
+            plan=PlanType(body.plan),
+            status=SubStatus.active,
+            credits_included=target_plan.credits_included,
+        )
+        db.add(new_sub)
+
+        # Add the plan's included credits to the user's balance
+        user.credit_balance += target_plan.credits_included
 
     await db.commit()
 

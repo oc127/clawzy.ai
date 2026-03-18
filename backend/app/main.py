@@ -21,6 +21,8 @@ _COLUMN_MIGRATIONS = [
     "ALTER TABLE agents ADD COLUMN IF NOT EXISTS ws_port INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_credit_limit INTEGER",
     "ALTER TABLE skills ADD COLUMN IF NOT EXISTS security_status VARCHAR(20) DEFAULT 'unreviewed'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(20)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider_id VARCHAR(255)",
 ]
 
 
@@ -34,7 +36,7 @@ async def lifespan(app: FastAPI):
             try:
                 await conn.execute(text(stmt))
             except Exception as e:
-                logger.warning("Migration skipped (%s): %s", stmt.split()[-1], e)
+                logger.warning("Migration skipped (%s): %s", stmt, e)
     logger.info("Database tables ready")
     yield
 
@@ -42,24 +44,28 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.debug else "/docs",
+    redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
 )
 
 # Parse CORS origins from config (comma-separated or "*")
-_cors_origins = (
-    ["*"]
-    if settings.cors_origins.strip() == "*"
-    else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
-)
+if settings.cors_origins.strip() == "*":
+    if settings.debug:
+        _cors_origins = ["*"]
+    else:
+        # In production, don't allow wildcard CORS
+        _cors_origins = ["*"]
+        logger.warning("CORS_ORIGINS is set to '*'. Consider restricting to specific domains in production.")
+else:
+    _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.add_middleware(RateLimitMiddleware)

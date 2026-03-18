@@ -7,12 +7,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN adduser --disabled-password --gecos '' appuser
+
 # Install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app code
 COPY . .
+
+# Switch to non-root user (Docker socket access requires docker group)
+RUN groupadd -f docker && usermod -aG docker appuser
+USER appuser
 
 EXPOSE 8000
 

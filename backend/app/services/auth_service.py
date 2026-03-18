@@ -15,7 +15,8 @@ class AuthError(Exception):
 async def register_user(db: AsyncSession, email: str, password: str, name: str) -> tuple[User, str, str]:
     """Register a new user. Returns (user, access_token, refresh_token)."""
     result = await db.execute(select(User).where(User.email == email))
-    if result.scalar_one_or_none() is not None:
+    existing = result.scalar_one_or_none()
+    if existing is not None:
         raise AuthError("Email already registered")
 
     user = User(
@@ -47,7 +48,15 @@ async def login_user(db: AsyncSession, email: str, password: str) -> tuple[User,
     """Authenticate user. Returns (user, access_token, refresh_token)."""
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(password, user.password_hash):
+    if user is None:
+        raise AuthError("Invalid email or password")
+
+    # OAuth-only users cannot login with password
+    if user.password_hash is None:
+        provider = user.oauth_provider or "OAuth"
+        raise AuthError(f"This account uses {provider} login. Please sign in with {provider}.")
+
+    if not verify_password(password, user.password_hash):
         raise AuthError("Invalid email or password")
 
     access_token = create_access_token(user.id)

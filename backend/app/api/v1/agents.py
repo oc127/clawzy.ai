@@ -65,7 +65,10 @@ async def update_my_agent(
     agent = await get_agent(db, agent_id, user.id)
     if agent is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    return await update_agent(db, agent, body.name, body.model_name)
+    try:
+        return await update_agent(db, agent, body.name, body.model_name)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)

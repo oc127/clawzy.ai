@@ -65,6 +65,7 @@ export default function SettingsPage() {
       const limit = dailyLimit ? parseInt(dailyLimit, 10) : 0;
       if (dailyLimit && (isNaN(limit) || limit < 0)) {
         toast.error("Please enter a valid number");
+        setSavingLimit(false);
         return;
       }
       await apiPatch("/users/me", {

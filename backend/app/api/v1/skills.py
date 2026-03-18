@@ -207,6 +207,11 @@ async def get_agent_skills(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    from app.services.agent_service import get_agent
+
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     return await skill_service.get_agent_skills(db, agent_id)
 
 

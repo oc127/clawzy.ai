@@ -31,7 +31,7 @@ class PlanResponse(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    plan: str  # starter, pro, business
+    plan: str
 
 
 class CheckoutResponse(BaseModel):

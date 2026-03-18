@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { cn } from "@/lib/cn";
+import { IntegrationPanel } from "@/components/integration-panel";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -562,6 +563,9 @@ export default function AgentDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Messaging Integrations */}
+        <IntegrationPanel agentId={agentId} />
 
         {/* Ops Panel — inspired by 秋芝 Qclaw */}
         <AgentOpsPanel agentId={agentId} agent={agent} setAgent={setAgent} />

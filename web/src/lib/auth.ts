@@ -2,6 +2,7 @@ const ACCESS_TOKEN_KEY = "clawzy_access_token";
 const REFRESH_TOKEN_KEY = "clawzy_refresh_token";
 
 export function saveTokens(accessToken: string, refreshToken: string) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
@@ -17,6 +18,7 @@ export function getRefreshToken(): string | null {
 }
 
 export function clearTokens() {
+  if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
