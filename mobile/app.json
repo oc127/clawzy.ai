@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "NipponClaw",
+    "slug": "nipponclaw",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111114"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nipponclaw.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#111114"
+      },
+      "package": "com.nipponclaw.app"
+    },
+    "plugins": [
+      "react-native-webview"
+    ],
+    "extra": {
+      "webUrl": "https://www.nipponclaw.com"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import time
 
 import docker
@@ -95,7 +96,7 @@ class DockerManager:
                 "mode": "merge",
                 "providers": {
                     model_name: {
-                        "baseUrl": "http://clawzy-litellm:4000/v1",
+                        "baseUrl": f"{settings.litellm_url.rstrip('/')}/v1",
                         "apiKey": litellm_key,
                         "api": "openai-completions",
                         "models": [{"id": model_name}],
@@ -178,15 +179,14 @@ class DockerManager:
             container.remove(force=True)
         except NotFound:
             pass
-        # Clean up config directory
+        # Clean up config directory (includes openclaw.json + workspace/)
         if agent_id:
             config_dir = os.path.join(settings.openclaw_agent_config_dir, agent_id)
-            config_path = os.path.join(config_dir, "openclaw.json")
             try:
-                os.remove(config_path)
-                os.rmdir(config_dir)
-            except OSError:
-                pass
+                if os.path.isdir(config_dir):
+                    shutil.rmtree(config_dir)
+            except OSError as e:
+                logger.warning("Failed to remove agent config dir %s: %s", config_dir, e)
 
     def get_container_status(self, container_id: str) -> str | None:
         try:

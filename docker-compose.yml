@@ -30,25 +30,6 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # Redis — caching, rate limiting, Celery broker
-  # ---------------------------------------------------------------------------
-  redis:
-    image: redis:7-alpine
-    container_name: clawzy-redis
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - clawzy-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # ---------------------------------------------------------------------------
   # LiteLLM Proxy — unified model gateway
   # ---------------------------------------------------------------------------
   litellm:
@@ -93,16 +74,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       litellm:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://clawzy:${POSTGRES_PASSWORD}@postgres:5432/clawzy
-      REDIS_URL: redis://redis:6379/0
       LITELLM_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      DEPLOY_ENV: ${DEPLOY_ENV:-development}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       OPENCLAW_GATEWAY_URL: http://clawzy-openclaw:18800
@@ -155,6 +135,7 @@ services:
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: clawzy-openclaw
     restart: unless-stopped
+    user: root
     depends_on:
       litellm:
         condition: service_healthy
@@ -230,8 +211,12 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Mount SSL certs if using Let's Encrypt:
+      # - /etc/letsencrypt/live/nipponclaw.com/fullchain.pem:/etc/ssl/nipponclaw/cert.pem:ro
+      # - /etc/letsencrypt/live/nipponclaw.com/privkey.pem:/etc/ssl/nipponclaw/key.pem:ro
     ports:
       - "80:80"
+      - "443:443"
     networks:
       - clawzy-network
     healthcheck:
@@ -248,7 +233,6 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:
   openclaw_config:
   openclaw_workspace:
   openclaw_agent_configs:
