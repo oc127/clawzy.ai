@@ -1,22 +1,10 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
 import { Toaster } from "sonner";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
-
 export const metadata: Metadata = {
-  title: "Clawzy.ai — Your AI Lobster, Any Brain.",
+  title: "NipponClaw — Your AI Agent, Any Brain.",
   description:
     "AI agent platform powered by multiple LLM models. Create custom agents, chat with any AI model, pay only for what you use.",
   icons: {
@@ -30,20 +18,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
-      >
+    <html lang="en">
+      <body className="font-sans antialiased">
         <AuthProvider>{children}</AuthProvider>
         <Toaster
-          theme="dark"
           position="bottom-center"
           duration={4000}
           toastOptions={{
             style: {
-              background: "var(--card)",
-              border: "1px solid var(--border)",
-              color: "var(--foreground)",
+              background: "#ffffff",
+              border: "1px solid #dddddd",
+              color: "#222222",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+              borderRadius: "12px",
+              fontFamily: "var(--font-jakarta), sans-serif",
             },
           }}
         />

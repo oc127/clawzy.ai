@@ -1,66 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Clawzy.ai Brand — Warm Coral Dark Theme */
-  --background: #111114;
-  --foreground: #f0eeeb;
-  --card: #1c1c21;
-  --card-foreground: #f0eeeb;
-  --border: #2d2d33;
-  --input: #222228;
-  --primary: #ff5a5f;
-  --primary-hover: #ff4449;
+  /* Airbnb-inspired Light Theme */
+  --background: #ffffff;
+  --background-secondary: #f7f7f7;
+  --foreground: #222222;
+  --card: #ffffff;
+  --card-foreground: #222222;
+  --border: #dddddd;
+  --input: #ffffff;
+  --input-border: #b0b0b0;
+  --primary: #ff385c;
+  --primary-hover: #e31c5f;
   --primary-foreground: #ffffff;
-  --secondary: #ffab76;
-  --secondary-foreground: #1c1c21;
-  --muted: #222228;
-  --muted-foreground: #a8a5a0;
-  --accent: #2a2a31;
-  --accent-foreground: #f0eeeb;
-  --destructive: #ef4444;
+  --secondary: #ff5a5f;
+  --secondary-foreground: #ffffff;
+  --muted: #f7f7f7;
+  --muted-foreground: #717171;
+  --accent: #f7f7f7;
+  --accent-foreground: #222222;
+  --destructive: #c13515;
   --destructive-foreground: #ffffff;
-  --ring: #ff5a5f;
+  --ring: #ff385c;
   --radius: 0.75rem;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
+  --shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-lg: 0 6px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   border-color: var(--border);
 }
 
-/* Smooth scroll */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom selection color */
 ::selection {
-  background: rgba(255, 90, 95, 0.3);
+  background: rgba(255, 56, 92, 0.15);
   color: var(--foreground);
+}
+
+/* Page enter animation */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.25s ease-out both;
 }
 
 /* Skeleton shimmer */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }
 
-/* Typing indicator dots */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #ebebeb 25%,
+    #f5f5f5 50%,
+    #ebebeb 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* Typing dots */
 @keyframes typing-dot {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-4px); opacity: 1; }
 }
 
-/* Page enter transition */
-@keyframes page-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Float animation for hero icon */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #ff385c 0%, #ff8c69 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card hover lift effect */
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Gradient backgrounds for feature icons */
+.icon-gradient-red {
+  background: linear-gradient(135deg, #ff385c 0%, #ff8c69 100%);
+}
+.icon-gradient-blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+}
+.icon-gradient-green {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+}
+.icon-gradient-orange {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+}
+.icon-gradient-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+}
+.icon-gradient-teal {
+  background: linear-gradient(135deg, #14b8a6 0%, #22d3ee 100%);
 }
 
 @media (prefers-reduced-motion: reduce) {

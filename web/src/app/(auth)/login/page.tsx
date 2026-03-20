@@ -7,8 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Logo } from "@/components/logo";
+import { AlertCircle } from "lucide-react";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,68 +39,104 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <Logo size="lg" className="mb-4" />
-          <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sign in to your account
+    <div className="flex min-h-screen bg-white">
+      {/* Left decorative panel */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#ff385c] to-[#ff8c69] flex-col items-center justify-center p-12 text-white">
+        <div className="max-w-sm text-center">
+          <div className="mb-8 text-6xl font-black">🦞</div>
+          <h2 className="text-3xl font-extrabold mb-4">Welcome back!</h2>
+          <p className="text-white/80 text-lg leading-relaxed">
+            Sign in to your NipponClaw account and continue building with the world&apos;s best AI models.
           </p>
+          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+            {[["500", "Free Credits"], ["10+", "AI Models"], ["24/7", "Agent Uptime"]].map(([val, label]) => (
+              <div key={label} className="rounded-2xl bg-white/15 p-3">
+                <p className="text-2xl font-black">{val}</p>
+                <p className="text-xs text-white/70 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400" role="alert">
-              {error}
-            </div>
-          )}
+      {/* Right form panel */}
+      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center px-6 py-16">
+        <div className="w-full max-w-sm">
+          {/* Logo / Brand */}
+          <div className="mb-8 text-center">
+            <div className="mb-3 text-4xl">🦞</div>
+            <h1 className="text-2xl font-extrabold text-[#222222]">Sign in</h1>
+            <p className="mt-1 text-sm text-[#717171]">
+              Welcome back to NipponClaw
+            </p>
+          </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">Email</label>
-            <Input
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => {
-                if (email && !EMAIL_RE.test(email)) setEmailError("Invalid email format");
-                else setEmailError("");
-              }}
-              className={emailError ? "border-destructive focus:ring-destructive" : ""}
-              aria-describedby={emailError ? "login-email-error" : undefined}
-              required
-            />
-            {emailError && (
-              <p id="login-email-error" className="mt-1 text-xs text-destructive">{emailError}</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600" role="alert">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
             )}
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-[#222222]">Email</label>
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => {
+                  if (email && !EMAIL_RE.test(email)) setEmailError("Invalid email format");
+                  else setEmailError("");
+                }}
+                className={emailError ? "border-red-400 focus-visible:border-red-400 focus-visible:ring-red-200" : ""}
+                aria-describedby={emailError ? "login-email-error" : undefined}
+                required
+              />
+              {emailError && (
+                <p id="login-email-error" className="text-xs text-red-500">{emailError}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-semibold text-[#222222]">Password</label>
+              </div>
+              <Input
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-12 rounded-xl bg-[#ff385c] hover:bg-[#e31c5f] text-white font-bold text-base shadow-[0_4px_14px_rgba(255,56,92,0.30)] hover:shadow-[0_6px_20px_rgba(255,56,92,0.40)] transition-all"
+              loading={submitting}
+            >
+              Sign In
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-[#717171]">
+              Don&apos;t have an account?{" "}
+              <Link href="/register" className="font-semibold text-[#ff385c] hover:underline">
+                Sign up free
+              </Link>
+            </p>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              Password
-            </label>
-            <Input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <div className="mt-8 text-center">
+            <Link href="/" className="text-xs text-[#b0b0b0] hover:text-[#717171] transition-colors">
+              ← Back to homepage
+            </Link>
           </div>
-
-          <Button type="submit" className="w-full" loading={submitting}>
-            Sign In
-          </Button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            Register
-          </Link>
-        </p>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
