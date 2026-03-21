@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -44,12 +46,12 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#ff385c] to-[#ff8c69] flex-col items-center justify-center p-12 text-white">
         <div className="max-w-sm text-center">
           <div className="mb-8 text-6xl font-black">🦞</div>
-          <h2 className="text-3xl font-extrabold mb-4">Welcome back!</h2>
+          <h2 className="text-3xl font-extrabold mb-4">{t.auth.login.leftTitle}</h2>
           <p className="text-white/80 text-lg leading-relaxed">
-            Sign in to your NipponClaw account and continue building with the world&apos;s best AI models.
+            {t.auth.login.subtitle}
           </p>
           <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-            {[["500", "Free Credits"], ["10+", "AI Models"], ["24/7", "Agent Uptime"]].map(([val, label]) => (
+            {[["500", t.auth.login.leftStat1], ["10+", t.auth.login.leftStat2], ["24/7", t.auth.login.leftStat3]].map(([val, label]) => (
               <div key={label} className="rounded-2xl bg-white/15 p-3">
                 <p className="text-2xl font-black">{val}</p>
                 <p className="text-xs text-white/70 mt-0.5">{label}</p>
@@ -65,10 +67,8 @@ export default function LoginPage() {
           {/* Logo / Brand */}
           <div className="mb-8 text-center">
             <div className="mb-3 text-4xl">🦞</div>
-            <h1 className="text-2xl font-extrabold text-[#222222]">Sign in</h1>
-            <p className="mt-1 text-sm text-[#717171]">
-              Welcome back to NipponClaw
-            </p>
+            <h1 className="text-2xl font-extrabold text-[#222222]">{t.auth.login.title}</h1>
+            <p className="mt-1 text-sm text-[#717171]">{t.auth.login.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -80,7 +80,7 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-[#222222]">Email</label>
+              <label className="block text-sm font-semibold text-[#222222]">{t.auth.login.email}</label>
               <Input
                 type="email"
                 placeholder="you@example.com"
@@ -101,7 +101,7 @@ export default function LoginPage() {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-semibold text-[#222222]">Password</label>
+                <label className="block text-sm font-semibold text-[#222222]">{t.auth.login.password}</label>
               </div>
               <Input
                 type="password"
@@ -117,15 +117,15 @@ export default function LoginPage() {
               className="w-full h-12 rounded-xl bg-[#ff385c] hover:bg-[#e31c5f] text-white font-bold text-base shadow-[0_4px_14px_rgba(255,56,92,0.30)] hover:shadow-[0_6px_20px_rgba(255,56,92,0.40)] transition-all"
               loading={submitting}
             >
-              Sign In
+              {t.auth.login.submit}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-[#717171]">
-              Don&apos;t have an account?{" "}
+              {t.auth.login.noAccount}{" "}
               <Link href="/register" className="font-semibold text-[#ff385c] hover:underline">
-                Sign up free
+                {t.auth.login.signup}
               </Link>
             </p>
           </div>

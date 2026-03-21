@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { Logo } from "@/components/logo";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import {
   LayoutDashboard,
   Bot,
@@ -18,13 +21,13 @@ import {
   Package,
 } from "lucide-react";
 
-const sidebarLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, gradient: "icon-gradient-red" },
-  { href: "/agents", label: "Agents", icon: Bot, gradient: "icon-gradient-blue" },
-  { href: "/clawhub", label: "ClawHub", icon: Package, gradient: "icon-gradient-purple" },
-  { href: "/models", label: "Models", icon: Cpu, gradient: "icon-gradient-teal" },
-  { href: "/billing", label: "Billing", icon: CreditCard, gradient: "icon-gradient-green" },
-  { href: "/settings", label: "Settings", icon: Settings, gradient: "icon-gradient-orange" },
+const SIDEBAR_LINKS_CONFIG = [
+  { href: "/dashboard", key: "dashboard" as const, icon: LayoutDashboard, gradient: "icon-gradient-red" },
+  { href: "/agents", key: "agents" as const, icon: Bot, gradient: "icon-gradient-blue" },
+  { href: "/clawhub", key: "clawhub" as const, icon: Package, gradient: "icon-gradient-purple" },
+  { href: "/models", key: "models" as const, icon: Cpu, gradient: "icon-gradient-teal" },
+  { href: "/billing", key: "billing" as const, icon: CreditCard, gradient: "icon-gradient-green" },
+  { href: "/settings", key: "settings" as const, icon: Settings, gradient: "icon-gradient-orange" },
 ];
 
 export default function DashboardLayout({
@@ -33,9 +36,24 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, loading, logout } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const DASHBOARD_KEY_MAP: Record<string, string> = {
+    dashboard: t.dashboard.title,
+    agents: t.dashboard.agents,
+    clawhub: t.dashboard.clawhub,
+    models: t.dashboard.models,
+    billing: t.dashboard.billing,
+    settings: t.dashboard.settings,
+  };
+
+  const sidebarLinks = SIDEBAR_LINKS_CONFIG.map((link) => ({
+    ...link,
+    label: DASHBOARD_KEY_MAP[link.key] ?? link.key,
+  }));
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -76,7 +94,9 @@ export default function DashboardLayout({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <span className="ml-3 text-base font-bold text-[#222222]">NipponClaw</span>
+        <span className="ml-3 text-base font-extrabold text-[#222222]">
+          <span className="text-[#ff385c]">Nippon</span>Claw
+        </span>
       </div>
 
       {/* Overlay */}
@@ -97,9 +117,8 @@ export default function DashboardLayout({
       >
         {/* Brand */}
         <div className="flex h-16 items-center justify-between border-b border-[#ebebeb] px-5">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl">🦞</span>
-            <span className="text-base font-extrabold text-[#222222]">NipponClaw</span>
+          <Link href="/" className="flex items-center">
+            <Logo size="sm" />
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -152,6 +171,9 @@ export default function DashboardLayout({
               <p className="truncate text-xs text-[#717171]">{user.email}</p>
             </div>
           </div>
+          <div className="mb-2 flex justify-start">
+            <LanguageSwitcher compact />
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -159,7 +181,7 @@ export default function DashboardLayout({
             onClick={() => { logout(); router.push("/"); }}
           >
             <LogOut className="h-4 w-4" />
-            Log out
+            {t.nav.logout}
           </Button>
         </div>
       </aside>

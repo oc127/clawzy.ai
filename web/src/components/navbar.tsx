@@ -2,25 +2,30 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[#ebebeb] bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center">
-          <Logo size="md" />
+          <Logo size="sm" />
         </Link>
 
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+
           {user ? (
             <>
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm" className="text-[#222222] hover:bg-[#f7f7f7]">
-                  Dashboard
+                  {t.nav.dashboard}
                 </Button>
               </Link>
               <span className="hidden text-sm text-[#717171] md:inline">
@@ -32,14 +37,14 @@ export function Navbar() {
                 onClick={logout}
                 className="border-[#dddddd] text-[#222222] hover:border-[#b0b0b0]"
               >
-                Logout
+                {t.nav.logout}
               </Button>
             </>
           ) : (
             <>
               <Link href="/login">
                 <Button variant="ghost" size="sm" className="text-[#222222] hover:bg-[#f7f7f7]">
-                  Log in
+                  {t.nav.login}
                 </Button>
               </Link>
               <Link href="/register">
@@ -47,7 +52,7 @@ export function Navbar() {
                   size="sm"
                   className="bg-[#ff385c] hover:bg-[#e31c5f] text-white rounded-xl px-5 font-semibold shadow-sm"
                 >
-                  Sign up
+                  {t.nav.signup}
                 </Button>
               </Link>
             </>

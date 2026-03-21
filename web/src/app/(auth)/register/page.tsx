@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
+import { useLanguage } from "@/context/language-context";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,10 +70,9 @@ export default function RegisterPage() {
       : "";
 
   const perks = [
-    "500 free credits on sign up",
-    "10+ AI models available",
-    "Create unlimited agents",
-    "No credit card required",
+    t.auth.register.perk1,
+    t.auth.register.perk2,
+    t.auth.register.perk3,
   ];
 
   return (
@@ -80,9 +81,9 @@ export default function RegisterPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#ff385c] to-[#ff8c69] flex-col items-center justify-center p-12 text-white">
         <div className="max-w-sm">
           <div className="mb-8 text-6xl">🦞</div>
-          <h2 className="text-3xl font-extrabold mb-4">Get started free</h2>
+          <h2 className="text-3xl font-extrabold mb-4">{t.auth.register.leftTitle}</h2>
           <p className="text-white/80 text-lg leading-relaxed mb-8">
-            Join NipponClaw and start building powerful AI agents in minutes.
+            {t.auth.register.subtitle}
           </p>
           <ul className="space-y-3">
             {perks.map((perk) => (
@@ -100,10 +101,8 @@ export default function RegisterPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
             <div className="mb-3 text-4xl">🦞</div>
-            <h1 className="text-2xl font-extrabold text-[#222222]">Create account</h1>
-            <p className="mt-1 text-sm text-[#717171]">
-              500 free credits · No credit card needed
-            </p>
+            <h1 className="text-2xl font-extrabold text-[#222222]">{t.auth.register.title}</h1>
+            <p className="mt-1 text-sm text-[#717171]">{t.auth.register.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -115,7 +114,7 @@ export default function RegisterPage() {
             )}
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-[#222222]">Full name</label>
+              <label className="block text-sm font-semibold text-[#222222]">{t.auth.register.name}</label>
               <Input
                 type="text"
                 placeholder="Your name"
@@ -126,7 +125,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-[#222222]">Email</label>
+              <label className="block text-sm font-semibold text-[#222222]">{t.auth.register.email}</label>
               <Input
                 type="email"
                 placeholder="you@example.com"
@@ -142,7 +141,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-[#222222]">Password</label>
+              <label className="block text-sm font-semibold text-[#222222]">{t.auth.register.password}</label>
               <Input
                 type="password"
                 placeholder="At least 6 characters"
@@ -177,7 +176,7 @@ export default function RegisterPage() {
               className="w-full h-12 rounded-xl bg-[#ff385c] hover:bg-[#e31c5f] text-white font-bold text-base shadow-[0_4px_14px_rgba(255,56,92,0.30)] hover:shadow-[0_6px_20px_rgba(255,56,92,0.40)] transition-all"
               loading={submitting}
             >
-              Create Account
+              {t.auth.register.submit}
             </Button>
 
             <p className="text-xs text-center text-[#b0b0b0]">
@@ -187,9 +186,9 @@ export default function RegisterPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-[#717171]">
-              Already have an account?{" "}
+              {t.auth.register.haveAccount}{" "}
               <Link href="/login" className="font-semibold text-[#ff385c] hover:underline">
-                Sign in
+                {t.auth.register.login}
               </Link>
             </p>
           </div>
