@@ -20,8 +20,7 @@
       "package": "com.nipponclaw.app"
     },
     "plugins": [
-      "expo-router",
-      "expo-secure-store"
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true

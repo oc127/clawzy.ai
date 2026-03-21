@@ -1,32 +1,29 @@
-import * as SecureStore from "expo-secure-store";
-
-const ACCESS_TOKEN_KEY = "nc_access_token";
-const REFRESH_TOKEN_KEY = "nc_refresh_token";
+// Temporary in-memory storage for development
+// Replace with expo-secure-store once SDK compatibility is confirmed
+const store: Record<string, string> = {};
 
 export async function saveTokens(access: string, refresh: string) {
-  await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, access);
-  await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refresh);
+  store["access_token"] = access;
+  store["refresh_token"] = refresh;
 }
 
 export async function getAccessToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+  return store["access_token"] ?? null;
 }
 
 export async function getRefreshToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  return store["refresh_token"] ?? null;
 }
 
 export async function clearTokens() {
-  await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  delete store["access_token"];
+  delete store["refresh_token"];
 }
 
-const LOCALE_KEY = "nc_locale";
-
 export async function saveLocale(locale: string) {
-  await SecureStore.setItemAsync(LOCALE_KEY, locale);
+  store["locale"] = locale;
 }
 
 export async function getLocale(): Promise<string | null> {
-  return SecureStore.getItemAsync(LOCALE_KEY);
+  return store["locale"] ?? null;
 }
