@@ -1,21 +1,11 @@
-import { useEffect } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
-import { Redirect } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
-import { colors } from "@/lib/theme";
+import { View, Text, StyleSheet } from "react-native";
 
 export default function Index() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
-  return user ? <Redirect href="/(tabs)" /> : <Redirect href="/(auth)/login" />;
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>NipponClaw</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -23,6 +13,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.background,
+    backgroundColor: "#fff",
+  },
+  text: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#E63946",
   },
 });
