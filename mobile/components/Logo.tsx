@@ -1,6 +1,5 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Svg, { Rect, Path } from "react-native-svg";
 import { colors } from "@/lib/theme";
 
 interface LogoProps {
@@ -11,10 +10,14 @@ interface LogoProps {
 export function Logo({ size = "md", showText = true }: LogoProps) {
   const iconSize = { sm: 28, md: 36, lg: 52 }[size];
   const textSize = { sm: 15, md: 19, lg: 27 }[size];
+  const fontSize = { sm: 13, md: 17, lg: 24 }[size];
+  const borderRadius = { sm: 7, md: 9, lg: 13 }[size];
 
   return (
     <View style={styles.container}>
-      <LogoMark size={iconSize} />
+      <View style={[styles.mark, { width: iconSize, height: iconSize, borderRadius }]}>
+        <Text style={[styles.markText, { fontSize }]}>N</Text>
+      </View>
       {showText && (
         <Text style={[styles.text, { fontSize: textSize }]}>
           <Text style={styles.nippon}>Nippon</Text>
@@ -26,15 +29,12 @@ export function Logo({ size = "md", showText = true }: LogoProps) {
 }
 
 export function LogoMark({ size = 36 }: { size?: number }) {
-  const r = (size * 12) / 40;
+  const borderRadius = Math.round(size * 0.28);
+  const fontSize = Math.round(size * 0.48);
   return (
-    <Svg width={size} height={size} viewBox="0 0 40 40">
-      <Rect width="40" height="40" rx={r} fill={colors.primary} />
-      <Path
-        d="M10 30 L10 10 L14 10 L26 24 L26 10 L30 10 L30 30 L26 30 L14 16 L14 30 Z"
-        fill="white"
-      />
-    </Svg>
+    <View style={[styles.mark, { width: size, height: size, borderRadius }]}>
+      <Text style={[styles.markText, { fontSize }]}>N</Text>
+    </View>
   );
 }
 
@@ -44,6 +44,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  mark: {
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  markText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
   text: {
     fontWeight: "800",
     letterSpacing: -0.5,
@@ -52,6 +62,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   claw: {
-    color: colors.text,
+    color: "#222222",
   },
 });
