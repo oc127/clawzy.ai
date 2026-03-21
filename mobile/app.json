@@ -23,6 +23,7 @@
       "expo-router",
       "expo-secure-store"
     ],
+    "newArchEnabled": false,
     "experiments": {
       "typedRoutes": true
     }
