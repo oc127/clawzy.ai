@@ -1,0 +1,89 @@
+import React from "react";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useLanguage } from "@/context/LanguageContext";
+import { colors, spacing, radius, typography } from "@/lib/theme";
+import { Card } from "@/components/ui/Card";
+
+const MODELS = [
+  { name: "DeepSeek Chat", provider: "DeepSeek", emoji: "🔵", badge: "Free", badgeColor: colors.success },
+  { name: "Qwen Plus", provider: "Alibaba", emoji: "🟠", badge: "Free", badgeColor: colors.success },
+  { name: "Claude 3.5 Sonnet", provider: "Anthropic", emoji: "🟣", badge: "Pro", badgeColor: colors.primary },
+  { name: "GPT-4o", provider: "OpenAI", emoji: "🟢", badge: "Pro", badgeColor: colors.primary },
+  { name: "Gemini Pro", provider: "Google", emoji: "🔴", badge: "Starter", badgeColor: colors.warning },
+  { name: "Llama 3.1", provider: "Meta", emoji: "🔷", badge: "Free", badgeColor: colors.success },
+];
+
+export default function DiscoverScreen() {
+  const { t } = useLanguage();
+
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t.tabs.discover}</Text>
+        <Text style={styles.headerSubtitle}>Explore AI models & skills</Text>
+      </View>
+
+      {/* Models section */}
+      <Text style={styles.sectionTitle}>Available Models</Text>
+      <View style={styles.modelGrid}>
+        {MODELS.map((m) => (
+          <Card key={m.name} style={styles.modelCard}>
+            <Text style={{ fontSize: 28, marginBottom: 8 }}>{m.emoji}</Text>
+            <Text style={styles.modelName} numberOfLines={1}>{m.name}</Text>
+            <Text style={styles.modelProvider}>{m.provider}</Text>
+            <View style={[styles.badge, { backgroundColor: `${m.badgeColor}18` }]}>
+              <Text style={[styles.badgeText, { color: m.badgeColor }]}>{m.badge}</Text>
+            </View>
+          </Card>
+        ))}
+      </View>
+
+      {/* Coming soon */}
+      <View style={styles.comingSoon}>
+        <Text style={{ fontSize: 32 }}>🦞</Text>
+        <Text style={styles.comingSoonTitle}>ClawHub coming soon</Text>
+        <Text style={styles.comingSoonSubtitle}>Marketplace for AI agent skills</Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.backgroundSecondary },
+  content: { paddingBottom: 32 },
+  header: {
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.xl,
+    paddingTop: 60,
+    paddingBottom: spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: { ...typography.xl, ...typography.extrabold, color: colors.text },
+  headerSubtitle: { ...typography.base, color: colors.textSecondary, marginTop: 2 },
+  sectionTitle: {
+    ...typography.lg, ...typography.bold, color: colors.text,
+    paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: spacing.md,
+  },
+  modelGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  modelCard: {
+    width: "47%", alignItems: "flex-start", padding: spacing.lg,
+  },
+  modelName: { ...typography.sm, ...typography.bold, color: colors.text, marginBottom: 2 },
+  modelProvider: { ...typography.xs, color: colors.textMuted, marginBottom: 8 },
+  badge: {
+    borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2,
+  },
+  badgeText: { fontSize: 11, fontWeight: "700" },
+  comingSoon: {
+    margin: spacing.xl, padding: spacing.xxl,
+    backgroundColor: colors.white, borderRadius: radius.xl,
+    borderWidth: 1, borderColor: colors.border,
+    alignItems: "center", gap: spacing.sm,
+  },
+  comingSoonTitle: { ...typography.md, ...typography.bold, color: colors.text },
+  comingSoonSubtitle: { ...typography.sm, color: colors.textSecondary },
+});
