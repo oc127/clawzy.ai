@@ -39,21 +39,28 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(0, `${hint}\n(${msg})`);
   }
 
+  async function parseErrorBody(): Promise<string> {
+    const body = await res.json().catch(() => ({ detail: "Request failed" }));
+    const detail = body.detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail))
+      return detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(", ") || "Request failed";
+    return "Request failed";
+  }
+
   if (res.status === 401) {
-    await clearTokens();
-    router.replace("/(auth)/login");
-    throw new ApiError(401, "Unauthorized");
+    const msg = await parseErrorBody();
+    // 登录/注册失败也返回 401，不能把「会话过期」逻辑套上去，否则会吞掉真实错误信息
+    const isAuthForm = path === "/auth/login" || path === "/auth/register";
+    if (!isAuthForm) {
+      await clearTokens();
+      router.replace("/(auth)/login");
+    }
+    throw new ApiError(401, msg || "Unauthorized");
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: "Request failed" }));
-    const detail = body.detail;
-    const msg =
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(", ")
-          : "Request failed";
+    const msg = await parseErrorBody();
     throw new ApiError(res.status, msg || "Request failed");
   }
 
