@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { InteractionManager } from "react-native";
 import { router } from "expo-router";
 import { loginApi, registerApi, getMe, type User } from "@/lib/api";
 import { saveTokens, clearTokens, getAccessToken } from "@/lib/storage";
@@ -35,18 +36,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await loginApi(email, password);
+    if (!res.access_token || !res.refresh_token) {
+      throw new Error("Invalid login response: missing tokens");
+    }
     await saveTokens(res.access_token, res.refresh_token);
     const me = await getMe();
     setUser(me);
-    router.replace("/(tabs)");
+    // 必须等 React 提交 user 后再跳转，否则 (tabs) 首屏请求时上下文里可能还是 null，会触发异常请求链并回到登录页
+    InteractionManager.runAfterInteractions(() => {
+      router.replace("/(tabs)");
+    });
   };
 
   const register = async (email: string, password: string, name: string) => {
     const res = await registerApi(email, password, name);
+    if (!res.access_token || !res.refresh_token) {
+      throw new Error("Invalid register response: missing tokens");
+    }
     await saveTokens(res.access_token, res.refresh_token);
     const me = await getMe();
     setUser(me);
-    router.replace("/(tabs)");
+    InteractionManager.runAfterInteractions(() => {
+      router.replace("/(tabs)");
+    });
   };
 
   const logout = async () => {
