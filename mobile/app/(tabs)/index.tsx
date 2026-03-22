@@ -101,7 +101,7 @@ export default function DashboardScreen() {
       <View style={styles.statsRow}>
         <StatCard
           label={t.dashboard.credits}
-          value={user?.credits?.toLocaleString() ?? "0"}
+          value={user?.credit_balance?.toLocaleString() ?? "0"}
           emoji="💳"
           bg={colors.primaryLight}
         />

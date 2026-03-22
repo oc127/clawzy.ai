@@ -77,7 +77,7 @@ export default function SettingsScreen() {
         <SettingRow
           icon="💳"
           label={t.settings.credits}
-          value={user?.credits?.toLocaleString() ?? "0"}
+          value={user?.credit_balance?.toLocaleString() ?? "0"}
         />
         <View style={styles.divider} />
         <SettingRow

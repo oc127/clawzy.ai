@@ -63,7 +63,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  credits: number;
+  credit_balance: number;
   plan: string;
   created_at: string;
 }
