@@ -183,8 +183,18 @@ export default function AgentChatScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹</Text>
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/(tabs)/agents");
+          }}
+          style={styles.backBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t.common.back}
+        >
+          <Text style={styles.backChevron}>←</Text>
+          <Text style={styles.backLabel}>{t.common.back}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.agentName} numberOfLines={1}>{agent?.name}</Text>
@@ -270,8 +280,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  backText: { fontSize: 32, color: colors.primary, lineHeight: 36 },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingRight: 8,
+    maxWidth: "42%",
+  },
+  backChevron: { fontSize: 20, color: colors.primary, fontWeight: "600" },
+  backLabel: { ...typography.sm, color: colors.primary, fontWeight: "600" },
   agentName: { ...typography.md, ...typography.bold, color: colors.text },
   agentModel: { ...typography.xs, color: colors.textMuted },
   statusDot: { width: 8, height: 8, borderRadius: 4 },

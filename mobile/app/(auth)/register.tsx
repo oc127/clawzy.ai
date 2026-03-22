@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, StyleSheet,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { ApiError } from "@/lib/api";
@@ -44,6 +44,20 @@ export default function RegisterScreen() {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity
+          style={styles.topBack}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/(auth)/login");
+          }}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t.common.back}
+        >
+          <Text style={styles.topBackChevron}>←</Text>
+          <Text style={styles.topBackText}>{t.common.back}</Text>
+        </TouchableOpacity>
+
         <View style={styles.header}>
           <Logo size="lg" />
         </View>
@@ -123,8 +137,25 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: 80,
+    paddingTop: 56,
     paddingBottom: 40,
+  },
+  topBack: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginBottom: spacing.md,
+    gap: 4,
+  },
+  topBackChevron: {
+    fontSize: 20,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  topBackText: {
+    ...typography.base,
+    color: colors.primary,
+    fontWeight: "600",
   },
   header: { alignItems: "center", marginBottom: 40 },
   card: {
