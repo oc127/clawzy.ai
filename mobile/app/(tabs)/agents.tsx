@@ -72,14 +72,23 @@ export default function AgentsScreen() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", model: "" });
 
+  const DEFAULT_MODELS: Model[] = [
+    { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", description: "", context_length: 128000, cost_per_1k_tokens: 0.005, tier: "pro" },
+    { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", description: "", context_length: 128000, cost_per_1k_tokens: 0.00015, tier: "free" },
+    { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", description: "", context_length: 200000, cost_per_1k_tokens: 0.003, tier: "starter" },
+    { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "Google", description: "", context_length: 1000000, cost_per_1k_tokens: 0.0025, tier: "starter" },
+  ];
+
   const load = useCallback(async () => {
     try {
       const [a, m] = await Promise.all([getAgents(), getModels()]);
       setAgents(a);
-      setModels(m);
-      if (m.length > 0 && !form.model) setForm((f) => ({ ...f, model: m[0].id }));
+      const finalModels = m.length > 0 ? m : DEFAULT_MODELS;
+      setModels(finalModels);
+      if (finalModels.length > 0) setForm((f) => ({ ...f, model: f.model || finalModels[0].id }));
     } catch {
-      // ignore
+      setModels(DEFAULT_MODELS);
+      setForm((f) => ({ ...f, model: f.model || DEFAULT_MODELS[0].id }));
     } finally {
       setLoading(false);
       setRefreshing(false);
