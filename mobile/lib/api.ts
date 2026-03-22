@@ -1,9 +1,16 @@
+import Constants from "expo-constants";
 import { getAccessToken, clearTokens } from "./storage";
 import { router } from "expo-router";
 
-const API_BASE = __DEV__
-  ? "http://192.168.2.172/api/v1"
-  : "https://www.nipponclaw.com/api/v1";
+/** Dev: set `extra.apiBaseUrl` in app.json to your backend LAN IP (same Wi‑Fi as the phone/simulator Mac). */
+function getApiBase(): string {
+  if (!__DEV__) return "https://www.nipponclaw.com/api/v1";
+  const fromConfig = Constants.expoConfig?.extra?.apiBaseUrl as string | undefined;
+  if (fromConfig?.startsWith("http")) return fromConfig.replace(/\/$/, "");
+  return "http://192.168.2.172/api/v1";
+}
+
+const API_BASE = getApiBase();
 
 export class ApiError extends Error {
   constructor(
@@ -22,7 +29,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (e) {
+    const hint =
+      "无法连接服务器。请在 mobile/app.json 的 expo.extra.apiBaseUrl 填你后端电脑的局域网 IP（例如 http://192.168.x.x/api/v1），手机和电脑要同一 Wi‑Fi。";
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new ApiError(0, `${hint}\n(${msg})`);
+  }
 
   if (res.status === 401) {
     await clearTokens();
@@ -32,7 +47,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: "Request failed" }));
-    throw new ApiError(res.status, body.detail || "Request failed");
+    const detail = body.detail;
+    const msg =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(", ")
+          : "Request failed";
+    throw new ApiError(res.status, msg || "Request failed");
   }
 
   if (res.status === 204) return undefined as T;
