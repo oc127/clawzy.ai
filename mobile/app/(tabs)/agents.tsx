@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, Modal,
   RefreshControl, StyleSheet, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Link } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
@@ -179,7 +180,17 @@ export default function AgentsScreen() {
             <View style={{ width: 60 }} />
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalContent}>
+          <KeyboardAvoidingView
+            style={styles.modalKeyboard}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+          >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={styles.modalContent}
+            showsVerticalScrollIndicator={false}
+          >
             <Input
               label={t.agents.name}
               placeholder="My Coding Assistant"
@@ -222,6 +233,7 @@ export default function AgentsScreen() {
               {t.agents.create}
             </Button>
           </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -280,6 +292,7 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { fontSize: 18 },
   modal: { flex: 1, backgroundColor: colors.white },
+  modalKeyboard: { flex: 1 },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",

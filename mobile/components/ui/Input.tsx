@@ -24,6 +24,7 @@ export const Input = forwardRef<TextInput, InputProps>(
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
+          editable
           {...props}
         />
         {error && <Text style={styles.error}>{error}</Text>}
