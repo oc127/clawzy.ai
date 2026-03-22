@@ -33,7 +33,7 @@ function AgentRow({ agent }: { agent: Agent }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.agentName} numberOfLines={1}>{agent.name}</Text>
-          <Text style={styles.agentModel} numberOfLines={1}>{agent.model}</Text>
+          <Text style={styles.agentModel} numberOfLines={1}>{agent.model_name}</Text>
         </View>
         <View style={styles.statusDot(statusColor)} />
       </TouchableOpacity>

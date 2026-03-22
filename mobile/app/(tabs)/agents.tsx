@@ -41,7 +41,7 @@ function AgentCard({ agent, onDelete }: { agent: Agent; onDelete: () => void }) 
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.agentName} numberOfLines={1}>{agent.name}</Text>
-              <Text style={styles.agentModel} numberOfLines={1}>{agent.model}</Text>
+              <Text style={styles.agentModel} numberOfLines={1}>{agent.model_name}</Text>
             </View>
             <View style={styles.statusPill(statusColors[agent.status])}>
               <View style={styles.statusDot(statusColors[agent.status])} />
@@ -50,9 +50,6 @@ function AgentCard({ agent, onDelete }: { agent: Agent; onDelete: () => void }) 
               </Text>
             </View>
           </View>
-          {agent.description ? (
-            <Text style={styles.agentDesc} numberOfLines={2}>{agent.description}</Text>
-          ) : null}
         </TouchableOpacity>
       </Link>
       <TouchableOpacity style={styles.deleteBtn} onPress={confirmDelete}>
@@ -72,18 +69,25 @@ export default function AgentsScreen() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", model: "" });
 
+  /** 与后端 model_service 一致：仅 DeepSeek + 千问（Qwen） */
   const DEFAULT_MODELS: Model[] = [
-    { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", description: "", context_length: 128000, cost_per_1k_tokens: 0.005, tier: "pro" },
-    { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", description: "", context_length: 128000, cost_per_1k_tokens: 0.00015, tier: "free" },
-    { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", description: "", context_length: 200000, cost_per_1k_tokens: 0.003, tier: "starter" },
-    { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "Google", description: "", context_length: 1000000, cost_per_1k_tokens: 0.0025, tier: "starter" },
+    { id: "deepseek-chat", name: "DeepSeek V3", provider: "DeepSeek", description: "通用高性能", tier: "standard", credits_per_1k_input: 0.1, credits_per_1k_output: 0.2 },
+    { id: "deepseek-reasoner", name: "DeepSeek R1", provider: "DeepSeek", description: "推理增强", tier: "premium", credits_per_1k_input: 0.4, credits_per_1k_output: 2.0 },
+    { id: "qwen-turbo", name: "Qwen Turbo", provider: "Alibaba", description: "快速省积分", tier: "standard", credits_per_1k_input: 0.05, credits_per_1k_output: 0.1 },
+    { id: "qwen-plus", name: "Qwen Plus", provider: "Alibaba", description: "均衡", tier: "standard", credits_per_1k_input: 0.1, credits_per_1k_output: 0.2 },
+    { id: "qwen-max", name: "Qwen Max", provider: "Alibaba", description: "最强千问", tier: "standard", credits_per_1k_input: 0.3, credits_per_1k_output: 0.6 },
   ];
+
+  const filterDeepseekQwen = (list: Model[]) => {
+    const f = list.filter((m) => m.id.startsWith("deepseek") || m.id.startsWith("qwen"));
+    return f.length > 0 ? f : DEFAULT_MODELS;
+  };
 
   const load = useCallback(async () => {
     try {
       const [a, m] = await Promise.all([getAgents(), getModels()]);
       setAgents(a);
-      const finalModels = m.length > 0 ? m : DEFAULT_MODELS;
+      const finalModels = filterDeepseekQwen(m.length > 0 ? m : DEFAULT_MODELS);
       setModels(finalModels);
       if (finalModels.length > 0) setForm((f) => ({ ...f, model: f.model || finalModels[0].id }));
     } catch {
@@ -101,7 +105,7 @@ export default function AgentsScreen() {
     if (!form.name || !form.model) return;
     setCreating(true);
     try {
-      const agent = await createAgent({ name: form.name, description: form.description, model: form.model });
+      const agent = await createAgent({ name: form.name, model_name: form.model });
       setAgents((prev) => [agent, ...prev]);
       setModalVisible(false);
       setForm({ name: "", description: "", model: models[0]?.id ?? "" });
@@ -259,7 +263,6 @@ const styles = StyleSheet.create({
   },
   agentName: { ...typography.md, ...typography.bold, color: colors.text },
   agentModel: { ...typography.xs, color: colors.textMuted, marginTop: 2 },
-  agentDesc: { ...typography.sm, color: colors.textSecondary, lineHeight: 20 },
   statusPill: (color: string) => ({
     flexDirection: "row" as const,
     alignItems: "center" as const,

@@ -4,13 +4,13 @@ import { useLanguage } from "@/context/LanguageContext";
 import { colors, spacing, radius, typography } from "@/lib/theme";
 import { Card } from "@/components/ui/Card";
 
+/** 与后端实际接入的模型一致：DeepSeek + 千问（Qwen） */
 const MODELS = [
-  { name: "DeepSeek Chat", provider: "DeepSeek", emoji: "🔵", badge: "Free", badgeColor: colors.success },
-  { name: "Qwen Plus", provider: "Alibaba", emoji: "🟠", badge: "Free", badgeColor: colors.success },
-  { name: "Claude 3.5 Sonnet", provider: "Anthropic", emoji: "🟣", badge: "Pro", badgeColor: colors.primary },
-  { name: "GPT-4o", provider: "OpenAI", emoji: "🟢", badge: "Pro", badgeColor: colors.primary },
-  { name: "Gemini Pro", provider: "Google", emoji: "🔴", badge: "Starter", badgeColor: colors.warning },
-  { name: "Llama 3.1", provider: "Meta", emoji: "🔷", badge: "Free", badgeColor: colors.success },
+  { name: "DeepSeek V3", id: "deepseek-chat", provider: "DeepSeek", emoji: "🔵", badge: "Standard", badgeColor: colors.success },
+  { name: "DeepSeek R1", id: "deepseek-reasoner", provider: "DeepSeek", emoji: "🔷", badge: "Premium", badgeColor: colors.primary },
+  { name: "Qwen Turbo", id: "qwen-turbo", provider: "Alibaba", emoji: "🟠", badge: "Standard", badgeColor: colors.success },
+  { name: "Qwen Plus", id: "qwen-plus", provider: "Alibaba", emoji: "🟡", badge: "Standard", badgeColor: colors.warning },
+  { name: "Qwen Max", id: "qwen-max", provider: "Alibaba", emoji: "🔴", badge: "Standard", badgeColor: colors.primary },
 ];
 
 export default function DiscoverScreen() {
@@ -27,7 +27,7 @@ export default function DiscoverScreen() {
       <Text style={styles.sectionTitle}>Available Models</Text>
       <View style={styles.modelGrid}>
         {MODELS.map((m) => (
-          <Card key={m.name} style={styles.modelCard}>
+          <Card key={m.id} style={styles.modelCard}>
             <Text style={{ fontSize: 28, marginBottom: 8 }}>{m.emoji}</Text>
             <Text style={styles.modelName} numberOfLines={1}>{m.name}</Text>
             <Text style={styles.modelProvider}>{m.provider}</Text>

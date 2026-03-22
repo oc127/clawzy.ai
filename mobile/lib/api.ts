@@ -99,20 +99,19 @@ export interface User {
 export const getMe = () => apiGet<User>("/users/me");
 
 // ── Agents ────────────────────────────────────────────────────────────────────
+/** Matches backend AgentResponse */
 export interface Agent {
   id: string;
   name: string;
-  description: string;
-  model: string;
-  status: "running" | "stopped" | "error";
+  model_name: string;
+  status: string;
   created_at: string;
-  message_count?: number;
+  ws_port?: number | null;
+  last_active_at?: string | null;
 }
 export interface AgentCreate {
   name: string;
-  description?: string;
-  model: string;
-  system_prompt?: string;
+  model_name: string;
 }
 export const getAgents = () => apiGet<Agent[]>("/agents");
 export const getAgent = (id: string) => apiGet<Agent>(`/agents/${id}`);
@@ -141,14 +140,15 @@ export const createConversation = (agentId: string) =>
   apiPost<Conversation>(`/agents/${agentId}/conversations`);
 
 // ── Models ────────────────────────────────────────────────────────────────────
+/** Matches backend ModelInfo */
 export interface Model {
   id: string;
   name: string;
   provider: string;
   description: string;
-  context_length: number;
-  cost_per_1k_tokens: number;
-  tier: "free" | "starter" | "pro";
+  tier: string;
+  credits_per_1k_input: number;
+  credits_per_1k_output: number;
 }
 export const getModels = () => apiGet<Model[]>("/models");
 
