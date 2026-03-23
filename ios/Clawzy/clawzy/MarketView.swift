@@ -1,60 +1,41 @@
 import SwiftUI
 
+// MARK: - MarketView
+
 struct MarketView: View {
     @Environment(AgentService.self) var agentService
+    @State private var templates: [AppTemplate] = []
+    @State private var isLoading = true
     @State private var selectedCategory = "すべて"
     @State private var toastMessage: String? = nil
 
-    let categories = ["すべて", "ビジネス", "教育", "創作", "分析", "コード"]
+    var categories: [String] {
+        let cats = templates.map(\.category)
+        var seen = Set<String>()
+        let unique = cats.filter { seen.insert($0).inserted }
+        return ["すべて"] + unique
+    }
 
-    let templates: [AgentTemplate] = [
-        AgentTemplate(icon: "💼", name: "ビジネスアシスタント", desc: "メール・資料作成・会議サポート", model: "deepseek-chat", tag: "ビジネス"),
-        AgentTemplate(icon: "📚", name: "日本語家庭教師",     desc: "日本語学習をサポートします",   model: "qwen-plus",        tag: "教育"),
-        AgentTemplate(icon: "✍️", name: "コピーライター",     desc: "広告・SNS・ブログ文章を作成", model: "deepseek-chat",    tag: "創作"),
-        AgentTemplate(icon: "📊", name: "データアナリスト",   desc: "データ分析・レポート作成",     model: "deepseek-reasoner",tag: "分析"),
-        AgentTemplate(icon: "💻", name: "コードレビュアー",   desc: "コードレビュー・バグ修正サポート", model: "deepseek-chat", tag: "コード"),
-        AgentTemplate(icon: "🎨", name: "クリエイティブライター", desc: "小説・詩・脚本の執筆サポート", model: "qwen-max",    tag: "創作"),
-        AgentTemplate(icon: "🌐", name: "翻訳スペシャリスト", desc: "日英中韓の高精度翻訳",         model: "qwen-plus",        tag: "ビジネス"),
-        AgentTemplate(icon: "🔍", name: "リサーチアシスタント", desc: "調査・要約・情報整理",        model: "deepseek-reasoner",tag: "分析"),
-    ]
-
-    var filtered: [AgentTemplate] {
-        selectedCategory == "すべて" ? templates : templates.filter { $0.tag == selectedCategory }
+    var filtered: [AppTemplate] {
+        selectedCategory == "すべて" ? templates : templates.filter { $0.category == selectedCategory }
     }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(categories, id: \.self) { cat in
-                                    Button { selectedCategory = cat } label: {
-                                        Text(cat)
-                                            .font(.footnote).fontWeight(.medium)
-                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
-                                            .padding(.horizontal, 14).padding(.vertical, 8)
-                                            .background(selectedCategory == cat ? BrandConfig.brand : Color(white: 0.92))
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 16).padding(.vertical, 12)
-                        }
-
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                            ForEach(filtered) { t in
-                                TemplateCard(template: t, agentService: agentService) { msg in
-                                    showToast(msg)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16).padding(.bottom, 24)
+                Group {
+                    if isLoading {
+                        skeletonGrid
+                    } else if templates.isEmpty {
+                        emptyState
+                    } else {
+                        templateGrid
                     }
                 }
                 .background(BrandConfig.backgroundColor)
                 .navigationTitle("マーケット")
+                .task { await loadTemplates() }
+                .refreshable { await loadTemplates() }
 
                 if let msg = toastMessage {
                     Text(msg)
@@ -71,6 +52,79 @@ struct MarketView: View {
         }
     }
 
+    // MARK: - Template grid
+
+    private var templateGrid: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(categories, id: \.self) { cat in
+                            Button { withAnimation { selectedCategory = cat } } label: {
+                                Text(cat)
+                                    .font(.footnote).fontWeight(.medium)
+                                    .foregroundStyle(selectedCategory == cat ? .white : .primary)
+                                    .padding(.horizontal, 14).padding(.vertical, 8)
+                                    .background(selectedCategory == cat ? BrandConfig.brand : Color(white: 0.92))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                }
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    ForEach(filtered) { t in
+                        TemplateCard(template: t, agentService: agentService) { msg in
+                            showToast(msg)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16).padding(.bottom, 24)
+            }
+        }
+    }
+
+    // MARK: - Skeleton loader
+
+    private var skeletonGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ForEach(0..<6, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color(white: 0.92))
+                        .frame(height: 180)
+                        .shimmer()
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    // MARK: - Empty state
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "storefront")
+                .font(.system(size: 48))
+                .foregroundStyle(Color(white: 0.8))
+            Text("テンプレートがありません")
+                .foregroundStyle(.secondary)
+            Button("再読み込み") { Task { await loadTemplates() } }
+                .foregroundStyle(BrandConfig.brand)
+            Spacer()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func loadTemplates() async {
+        isLoading = true
+        templates = (try? await APIClient.shared.request(Constants.API.templates)) ?? []
+        isLoading = false
+    }
+
     private func showToast(_ msg: String) {
         withAnimation { toastMessage = msg }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -82,7 +136,7 @@ struct MarketView: View {
 // MARK: - Template card
 
 private struct TemplateCard: View {
-    let template: AgentTemplate
+    let template: AppTemplate
     let agentService: AgentService
     let onAdded: (String) -> Void
 
@@ -97,7 +151,7 @@ private struct TemplateCard: View {
             HStack {
                 Text(template.icon).font(.largeTitle)
                 Spacer()
-                Text(template.tag)
+                Text(template.category)
                     .font(.caption2).fontWeight(.semibold)
                     .foregroundStyle(BrandConfig.brand)
                     .padding(.horizontal, 6).padding(.vertical, 3)
@@ -108,7 +162,7 @@ private struct TemplateCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(template.name)
                     .font(.footnote).fontWeight(.semibold).lineLimit(1)
-                Text(template.desc)
+                Text(template.description)
                     .font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
 
@@ -118,7 +172,11 @@ private struct TemplateCard: View {
                 guard !alreadyAdded && !isLoading else { return }
                 isLoading = true
                 Task {
-                    let result = await agentService.createAgent(name: template.name, modelName: template.model)
+                    let result = await agentService.createAgent(
+                        name: template.name,
+                        modelName: template.modelName,
+                        systemPrompt: template.systemPrompt.isEmpty ? nil : template.systemPrompt
+                    )
                     isLoading = false
                     if result != nil {
                         onAdded("\(template.icon) \(template.name) を追加しました")
@@ -150,13 +208,32 @@ private struct TemplateCard: View {
     }
 }
 
-// MARK: - Model
+// MARK: - Shimmer effect
 
-struct AgentTemplate: Identifiable {
-    let id = UUID()
-    let icon: String
-    let name: String
-    let desc: String
-    let model: String
-    let tag: String
+private struct ShimmerModifier: ViewModifier {
+    @State private var phase: CGFloat = -1
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                GeometryReader { geo in
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.5), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geo.size.width * 2)
+                    .offset(x: geo.size.width * phase)
+                    .animation(.linear(duration: 1.2).repeatForever(autoreverses: false), value: phase)
+                }
+                .clipped()
+            )
+            .onAppear { phase = 1 }
+    }
+}
+
+private extension View {
+    func shimmer() -> some View {
+        modifier(ShimmerModifier())
+    }
 }

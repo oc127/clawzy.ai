@@ -22,10 +22,10 @@ final class AgentService {
         }
     }
 
-    /// 创建新 Agent
-    func createAgent(name: String, modelName: String) async -> Agent? {
+    /// 创建新 Agent（可选预设 system prompt）
+    func createAgent(name: String, modelName: String, systemPrompt: String? = nil) async -> Agent? {
         do {
-            let body = CreateAgentRequest(name: name, modelName: modelName)
+            let body = CreateAgentRequest(name: name, modelName: modelName, systemPrompt: systemPrompt)
             let agent: Agent = try await api.request(
                 Constants.API.agents,
                 method: "POST",

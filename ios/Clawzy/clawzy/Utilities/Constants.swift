@@ -19,6 +19,7 @@ enum Constants {
         static let me = "/api/v1/users/me"
         static let agents = "/api/v1/agents"
         static let models = "/api/v1/models"
+        static let templates = "/api/v1/templates"
         static let credits = "/api/v1/billing/credits"
         static let creditsTransactions = "/api/v1/billing/credits/transactions"
 

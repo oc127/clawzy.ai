@@ -34,9 +34,29 @@ enum AgentStatus: String, Codable {
 struct CreateAgentRequest: Codable {
     let name: String
     let modelName: String
+    let systemPrompt: String?
 
     enum CodingKeys: String, CodingKey {
         case name
         case modelName = "model_name"
+        case systemPrompt = "system_prompt"
+    }
+}
+
+struct AppTemplate: Codable, Identifiable {
+    let id: String
+    let name: String
+    let description: String
+    let icon: String
+    let category: String
+    let modelName: String
+    let systemPrompt: String
+    let sortOrder: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, icon, category
+        case modelName = "model_name"
+        case systemPrompt = "system_prompt"
+        case sortOrder = "sort_order"
     }
 }
