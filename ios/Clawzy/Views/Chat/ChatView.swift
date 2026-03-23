@@ -16,7 +16,7 @@ struct ChatView: View {
                                 .id(bubble.id)
                         }
 
-                        if chatService.isStreaming {
+                        if chatService.isStreaming && chatService.messages.last?.role != .assistant {
                             TypingIndicator()
                                 .id("typing")
                         }
@@ -117,7 +117,6 @@ struct ChatView: View {
 
     private var canSend: Bool {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && chatService.isConnected
             && !chatService.isStreaming
     }
 

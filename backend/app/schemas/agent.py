@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class AgentCreate(BaseModel):
     name: str
     model_name: str = "deepseek-chat"
+    system_prompt: str | None = None
 
 
 class AgentUpdate(BaseModel):

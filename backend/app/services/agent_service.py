@@ -41,7 +41,7 @@ async def count_user_agents(db: AsyncSession, user_id: str) -> int:
     return result.scalar_one()
 
 
-async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: str) -> Agent:
+async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: str, system_prompt: str | None = None) -> Agent:
     """Create a new agent record. Container provisioning is separate."""
     plan = await get_user_plan(db, user_id)
     count = await count_user_agents(db, user_id)
@@ -57,6 +57,7 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
         user_id=user_id,
         name=name,
         model_name=model_name,
+        system_prompt=system_prompt,
         status=AgentStatus.stopped,
         ws_port=ws_port,
     )

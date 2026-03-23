@@ -11,11 +11,19 @@ final class ChatService {
 
     private var webSocketTask: URLSessionWebSocketTask?
     private var currentStreamText = ""
+    private var currentAgentId: String?
 
     // MARK: - 连接
 
     func connect(agentId: String) {
-        guard let token = KeychainHelper.shared.readString(for: Constants.accessTokenKey) else { return }
+        currentAgentId = agentId
+        reconnect()
+    }
+
+    private func reconnect() {
+        guard let agentId = currentAgentId,
+              let token = KeychainHelper.shared.readString(for: Constants.accessTokenKey) else { return }
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
         let urlString = Constants.wsBaseURL + Constants.API.wsChat(agentId) + "?token=\(token)"
         guard let url = URL(string: urlString) else { return }
         webSocketTask = URLSession.shared.webSocketTask(with: url)
@@ -25,6 +33,7 @@ final class ChatService {
     }
 
     func disconnect() {
+        currentAgentId = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         isConnected = false
@@ -33,6 +42,7 @@ final class ChatService {
     // MARK: - 发送消息
 
     func sendMessage(_ content: String) {
+        if !isConnected { reconnect() }
         let userBubble = ChatBubble(role: .user, content: content)
         messages.append(userBubble)
         let msg = WSSendMessage(type: "message", content: content, model: nil)
@@ -59,6 +69,7 @@ final class ChatService {
                 case .failure(let error):
                     print("WebSocket 接收失败: \(error)")
                     self.isConnected = false
+                    self.isStreaming = false
                 }
             }
         }

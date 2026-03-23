@@ -89,23 +89,14 @@ struct SettingsView: View {
 
                 // Language
                 Section(currentLang.settingsLabel) {
-                    ForEach(AppLanguage.allCases) { lang in
-                        Button {
-                            selectedLanguage = lang.rawValue
-                        } label: {
-                            HStack(spacing: 12) {
-                                Text(lang.flag)
-                                    .font(.title3)
-                                Text(lang.localName)
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                if selectedLanguage == lang.rawValue {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(BrandConfig.brand)
-                                }
-                            }
+                    Picker(selection: $selectedLanguage) {
+                        ForEach(AppLanguage.allCases) { lang in
+                            Text("\(lang.flag) \(lang.localName)").tag(lang.rawValue)
                         }
+                    } label: {
+                        Label(currentLang.localName, systemImage: "globe")
                     }
+                    .pickerStyle(.navigationLink)
                 }
 
                 // About

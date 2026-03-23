@@ -60,8 +60,19 @@ enum WSReceivedMessage {
 }
 
 struct WSUsage: Codable {
-    let credits: Int
+    let creditsUsed: Int
     let balance: Int
+    let tokensInput: Int?
+    let tokensOutput: Int?
+    let model: String?
+
+    enum CodingKeys: String, CodingKey {
+        case creditsUsed = "credits_used"
+        case balance
+        case tokensInput = "tokens_input"
+        case tokensOutput = "tokens_output"
+        case model
+    }
 }
 
 struct WSRawMessage: Codable {

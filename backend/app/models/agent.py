@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Enum as SAEnum, JSON
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Enum as SAEnum, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -24,6 +24,7 @@ class Agent(Base):
     model_name: Mapped[str] = mapped_column(String(50), default="deepseek-chat")
     container_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[AgentStatus] = mapped_column(SAEnum(AgentStatus), default=AgentStatus.creating)
+    system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ws_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

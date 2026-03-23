@@ -34,7 +34,7 @@ async def create_my_agent(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        agent = await create_agent(db, user.id, body.name, body.model_name)
+        agent = await create_agent(db, user.id, body.name, body.model_name, body.system_prompt)
     except AgentLimitError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     return agent

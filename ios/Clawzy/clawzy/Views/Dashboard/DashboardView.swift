@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(AuthManager.self) var authManager
-    @State private var agentService = AgentService()
+    @Environment(AgentService.self) var agentService
     @State private var showCreateAgent = false
 
     var body: some View {
