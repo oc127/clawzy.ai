@@ -27,6 +27,8 @@
 		4EBD3CD92F71354F00F4A127 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB22F71354F00F4A127 /* APIClient.swift */; };
 		4EBD3CDA2F71354F00F4A127 /* AgentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB12F71354F00F4A127 /* AgentService.swift */; };
 		4EBD3CDB2F71354F00F4A127 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CA52F71354F00F4A127 /* MainTabView.swift */; };
+		4EBD3CDD2F7163EC00F4A127 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */; };
+		4EBD3CE12F717B5500F4A127 /* MarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CDF2F717B5500F4A127 /* MarketView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +53,8 @@
 		4EBD3CC02F71354F00F4A127 /* CreateAgentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateAgentView.swift; sourceTree = "<group>"; };
 		4EBD3CC12F71354F00F4A127 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		4EBD3CC32F71354F00F4A127 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		4EBD3CDF2F717B5500F4A127 /* MarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +79,8 @@
 		4E3C334E2F5EE10E00EC6244 = {
 			isa = PBXGroup;
 			children = (
+				4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */,
+				4EBD3CDF2F717B5500F4A127 /* MarketView.swift */,
 				4EBD3CA62F71354F00F4A127 /* App */,
 				4EBD3CAB2F71354F00F4A127 /* Brands */,
 				4EBD3CB02F71354F00F4A127 /* Models */,
@@ -288,6 +294,7 @@
 			files = (
 				4EBD3CC62F71354F00F4A127 /* Constants.swift in Sources */,
 				4EBD3CC72F71354F00F4A127 /* KeychainHelper.swift in Sources */,
+				4EBD3CE12F717B5500F4A127 /* MarketView.swift in Sources */,
 				4EBD3CC82F71354F00F4A127 /* DashboardView.swift in Sources */,
 				4EBD3CC92F71354F00F4A127 /* ContentView.swift in Sources */,
 				4EBD3CCA2F71354F00F4A127 /* RegisterView.swift in Sources */,
@@ -306,6 +313,7 @@
 				4EBD3CD92F71354F00F4A127 /* APIClient.swift in Sources */,
 				4EBD3CDA2F71354F00F4A127 /* AgentService.swift in Sources */,
 				4EBD3CDB2F71354F00F4A127 /* MainTabView.swift in Sources */,
+				4EBD3CDD2F7163EC00F4A127 /* SplashView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -10,9 +10,12 @@ struct BrandConfig {
     static let marketRegion   = "JP"
 
     // MARK: - Colors
-    static let primaryColor   = Color(red: 0.737, green: 0.0, blue: 0.176)  // Japanese red #BC002D
-    static let accentColor    = Color(red: 0.0, green: 0.4, blue: 1.0)      // Electric blue #0066FF
-    static let backgroundColor = Color.white
+    /// Japan crimson — #ED1A3A  (primary brand red)
+    static let brand          = Color(red: 0.93, green: 0.10, blue: 0.23)
+    static let brandDeep      = Color(red: 0.78, green: 0.04, blue: 0.17)
+    static let primaryColor   = brand
+    static let accentColor    = brand
+    static let backgroundColor = Color(white: 0.965)
 
     // MARK: - Strings
     static let tagline        = "AI Agents, Unleashed"
@@ -22,4 +25,80 @@ struct BrandConfig {
     static let appStoreID     = ""   // fill after App Store Connect submission
     static let privacyURL     = "https://clawzy.ai/privacy"
     static let termsURL       = "https://clawzy.ai/terms"
+}
+
+// MARK: - Shared brand components
+
+struct NipponLogo: View {
+    var size: CGFloat = 44
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.22)
+                .fill(
+                    LinearGradient(
+                        colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: size, height: size)
+            Text("N")
+                .font(.system(size: size * 0.48, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+        }
+    }
+}
+
+struct BrandButton: View {
+    let title: String
+    let isLoading: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isLoading {
+                    ProgressView().tint(.white)
+                } else {
+                    Text(title)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(
+                LinearGradient(
+                    colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
+struct LabeledField<Content: View>: View {
+    let label: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+            content()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(white: 0.84), lineWidth: 1)
+                )
+        }
+    }
 }

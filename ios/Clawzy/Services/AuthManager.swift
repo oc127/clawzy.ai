@@ -17,15 +17,17 @@ final class AuthManager {
     func tryAutoLogin() async {
         guard keychain.readString(for: Constants.accessTokenKey) != nil else { return }
         isLoading = true
-        defer { isLoading = false }
+        defer { Task { await MainActor.run { self.isLoading = false } } }
         do {
             let user: User = try await api.request(Constants.API.me)
             await MainActor.run {
                 self.currentUser = user
                 self.isAuthenticated = true
+                self.errorMessage = nil
             }
         } catch {
-            await MainActor.run { logout() }
+            // Token expired or invalid — log out silently, show no error
+            await MainActor.run { self.logout() }
         }
     }
 
@@ -38,7 +40,7 @@ final class AuthManager {
         }
         defer { Task { await MainActor.run { self.isLoading = false } } }
         do {
-            let body = LoginRequest(email: email, password: password)
+            let body = LoginRequest(email: email.lowercased().trimmingCharacters(in: .whitespaces), password: password)
             let response: AuthResponse = try await api.request(Constants.API.login, method: "POST", body: body)
             saveTokens(response)
             let user: User = try await api.request(Constants.API.me)
@@ -47,7 +49,7 @@ final class AuthManager {
                 self.isAuthenticated = true
             }
         } catch {
-            await MainActor.run { self.errorMessage = error.localizedDescription }
+            await MainActor.run { self.errorMessage = "[\(type(of: error))] \(error.localizedDescription)" }
         }
     }
 
@@ -60,7 +62,7 @@ final class AuthManager {
         }
         defer { Task { await MainActor.run { self.isLoading = false } } }
         do {
-            let body = RegisterRequest(email: email, password: password, name: name)
+            let body = RegisterRequest(email: email.lowercased().trimmingCharacters(in: .whitespaces), password: password, name: name)
             let response: AuthResponse = try await api.request(Constants.API.register, method: "POST", body: body)
             saveTokens(response)
             let user: User = try await api.request(Constants.API.me)
@@ -80,6 +82,7 @@ final class AuthManager {
         keychain.delete(for: Constants.refreshTokenKey)
         currentUser = nil
         isAuthenticated = false
+        errorMessage = nil
     }
 
     private func saveTokens(_ response: AuthResponse) {

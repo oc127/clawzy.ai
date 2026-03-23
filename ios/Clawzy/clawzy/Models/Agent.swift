@@ -2,7 +2,7 @@ import Foundation
 
 struct Agent: Codable, Identifiable {
     let id: String
-    let userId: String
+    let userId: String?
     let name: String
     let modelName: String
     let containerId: String?

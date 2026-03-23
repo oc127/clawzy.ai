@@ -8,12 +8,11 @@ struct ContentView: View {
             if authManager.isAuthenticated {
                 MainTabView()
             } else {
-                LoginView()
+                WelcomeView()
             }
         }
-        .animation(.easeInOut, value: authManager.isAuthenticated)
+        .animation(.easeInOut(duration: 0.4), value: authManager.isAuthenticated)
         .task {
-            // 尝试用 Keychain 中保存的 token 自动登录
             await authManager.tryAutoLogin()
         }
     }

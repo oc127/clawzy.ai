@@ -43,7 +43,7 @@ final class ChatService {
         }
         isStreaming = true
         currentStreamText = ""
-        messages.append(ChatBubble(role: .assistant, content: ""))
+        // Don't pre-append assistant bubble — it's added on first stream chunk
     }
 
     // MARK: - 接收消息
@@ -71,7 +71,11 @@ final class ChatService {
         case "stream":
             if let content = raw.content {
                 currentStreamText += content
-                if let lastIndex = messages.indices.last { messages[lastIndex].content = currentStreamText }
+                if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
+                    messages[lastIndex].content = currentStreamText
+                } else {
+                    messages.append(ChatBubble(role: .assistant, content: currentStreamText))
+                }
             }
         case "done":
             isStreaming = false

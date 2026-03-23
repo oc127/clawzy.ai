@@ -5,14 +5,19 @@ struct MainTabView: View {
         TabView {
             DashboardView()
                 .tabItem {
-                    Label("Agents", systemImage: "cpu")
+                    Label("ホーム", systemImage: "house")
+                }
+
+            MarketView()
+                .tabItem {
+                    Label("マーケット", systemImage: "storefront")
                 }
 
             SettingsView()
                 .tabItem {
-                    Label("设置", systemImage: "gearshape")
+                    Label("設定", systemImage: "gearshape")
                 }
         }
-        .tint(.orange)
+        .tint(BrandConfig.brand)
     }
 }

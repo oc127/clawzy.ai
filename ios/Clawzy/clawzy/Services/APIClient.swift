@@ -14,7 +14,7 @@ enum APIError: LocalizedError {
         case .invalidURL: return "无效的请求地址"
         case .unauthorized: return "登录已过期，请重新登录"
         case .insufficientCredits: return "积分不足"
-        case .serverError(let code, let msg): return "服务器错误 (\(code)): \(msg)"
+        case .serverError(_, let msg): return msg
         case .decodingError: return "数据解析失败"
         case .networkError(let error): return "网络错误: \(error.localizedDescription)"
         }
@@ -76,10 +76,17 @@ final class APIClient {
                     throw APIError.decodingError(error)
                 }
             case 401:
+                // Try to read the backend's detail message first
+                if let detail = (try? JSONDecoder().decode(APIErrorResponse.self, from: data))?.detail {
+                    throw APIError.serverError(401, detail)
+                }
                 throw APIError.unauthorized
             case 402:
                 throw APIError.insufficientCredits
             default:
+                if let detail = (try? JSONDecoder().decode(APIErrorResponse.self, from: data))?.detail {
+                    throw APIError.serverError(httpResponse.statusCode, detail)
+                }
                 let message = String(data: data, encoding: .utf8) ?? "未知错误"
                 throw APIError.serverError(httpResponse.statusCode, message)
             }
@@ -102,3 +109,8 @@ final class APIClient {
 
 /// 空响应（用于不需要返回内容的请求）
 struct EmptyResponse: Decodable {}
+
+/// 后端标准错误体
+struct APIErrorResponse: Decodable {
+    let detail: String
+}

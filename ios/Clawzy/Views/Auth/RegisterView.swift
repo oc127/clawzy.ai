@@ -13,76 +13,121 @@ struct RegisterView: View {
         !password.isEmpty && password == confirmPassword
     }
 
+    private var canSubmit: Bool {
+        !name.isEmpty && !email.isEmpty && passwordsMatch && !authManager.isLoading
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Text("创建账号")
-                    .font(.title)
-                    .fontWeight(.bold)
-
-                Text("注册即送 500 积分")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                VStack(spacing: 16) {
-                    TextField("昵称", text: $name)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.name)
-
-                    TextField("邮箱", text: $email)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.emailAddress)
-                        .autocorrectionDisabled()
-
-                    SecureField("密码", text: $password)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.newPassword)
-
-                    SecureField("确认密码", text: $confirmPassword)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.newPassword)
-
-                    if !confirmPassword.isEmpty && !passwordsMatch {
-                        Text("两次密码不一致")
-                            .font(.caption)
-                            .foregroundStyle(.red)
+            ScrollView {
+                VStack(spacing: 0) {
+                    HStack(spacing: 10) {
+                        NipponLogo(size: 44)
+                        Text(BrandConfig.appName)
+                            .font(.title2)
+                            .fontWeight(.bold)
                     }
-                }
-                .padding(.horizontal, 32)
+                    .padding(.top, 56)
+                    .padding(.bottom, 32)
 
-                if let error = authManager.errorMessage {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal)
-                }
+                    VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("アカウント作成")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                            Text("登録で 500 クレジットプレゼント")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.bottom, 4)
 
-                Button {
-                    Task {
-                        await authManager.register(name: name, email: email, password: password)
-                        if authManager.isAuthenticated { dismiss() }
+                        if let error = authManager.errorMessage {
+                            HStack {
+                                Text(error)
+                                    .font(.footnote)
+                                    .foregroundStyle(BrandConfig.brand)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(BrandConfig.brand.opacity(0.07))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(BrandConfig.brand.opacity(0.25), lineWidth: 1)
+                            )
+                        }
+
+                        LabeledField(label: "ニックネーム") {
+                            TextField("", text: $name)
+                                .textFieldStyle(.plain)
+                                .textContentType(.name)
+                                .autocorrectionDisabled()
+                        }
+
+                        LabeledField(label: "メール") {
+                            TextField("", text: $email)
+                                .textFieldStyle(.plain)
+                                .textContentType(.emailAddress)
+                                .autocorrectionDisabled()
+                                .onChange(of: email) { _, v in
+                                    let low = v.lowercased().trimmingCharacters(in: .whitespaces)
+                                    if low != v { email = low }
+                                }
+                        }
+
+                        LabeledField(label: "パスワード") {
+                            SecureField("", text: $password)
+                                .textFieldStyle(.plain)
+                                .textContentType(.newPassword)
+                        }
+
+                        LabeledField(label: "パスワード（確認）") {
+                            SecureField("", text: $confirmPassword)
+                                .textFieldStyle(.plain)
+                                .textContentType(.newPassword)
+                        }
+
+                        if !confirmPassword.isEmpty && !passwordsMatch {
+                            Text("パスワードが一致しません")
+                                .font(.caption)
+                                .foregroundStyle(BrandConfig.brand)
+                        }
+
+                        BrandButton(title: "新規登録", isLoading: authManager.isLoading) {
+                            Task {
+                                await authManager.register(name: name, email: email, password: password)
+                                if authManager.isAuthenticated { dismiss() }
+                            }
+                        }
+                        .disabled(!canSubmit)
+                        .padding(.top, 4)
+
+                        HStack {
+                            Spacer()
+                            Button {
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text("すでにアカウントがある？")
+                                        .foregroundStyle(.secondary)
+                                    Text("ログイン")
+                                        .foregroundStyle(BrandConfig.brand)
+                                }
+                                .font(.footnote)
+                            }
+                            Spacer()
+                        }
                     }
-                } label: {
-                    if authManager.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("注册")
-                            .frame(maxWidth: .infinity)
-                    }
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 48)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .controlSize(.large)
-                .padding(.horizontal, 32)
-                .disabled(name.isEmpty || email.isEmpty || !passwordsMatch || authManager.isLoading)
-
-                Spacer()
             }
-            .padding(.top, 40)
+            .background(BrandConfig.backgroundColor)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("閉じる") { dismiss() }
+                        .foregroundStyle(BrandConfig.brand)
                 }
             }
         }
