@@ -11,6 +11,8 @@ from app.services.agent_service import (
     get_agent,
     update_agent,
     delete_agent,
+    start_agent,
+    stop_agent,
     AgentLimitError,
 )
 
@@ -61,6 +63,30 @@ async def update_my_agent(
     if agent is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     return await update_agent(db, agent, body.name, body.model_name)
+
+
+@router.post("/{agent_id}/start", response_model=AgentResponse)
+async def start_my_agent(
+    agent_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    return await start_agent(db, agent)
+
+
+@router.post("/{agent_id}/stop", response_model=AgentResponse)
+async def stop_my_agent(
+    agent_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    return await stop_agent(db, agent)
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)

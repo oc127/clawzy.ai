@@ -105,6 +105,20 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
     return agent
 
 
+async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
+    agent.status = AgentStatus.running
+    await db.commit()
+    await db.refresh(agent)
+    return agent
+
+
+async def stop_agent(db: AsyncSession, agent: Agent) -> Agent:
+    agent.status = AgentStatus.stopped
+    await db.commit()
+    await db.refresh(agent)
+    return agent
+
+
 async def delete_agent(db: AsyncSession, agent: Agent) -> None:
     await db.delete(agent)
     await db.commit()
