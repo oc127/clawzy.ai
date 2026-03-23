@@ -5,6 +5,7 @@ struct ChatView: View {
     @State private var chatService = ChatService()
     @State private var inputText = ""
     @FocusState private var isInputFocused: Bool
+    @Environment(\.lang) var lang
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,7 +79,7 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 10) {
-            TextField("メッセージを入力...", text: $inputText, axis: .vertical)
+            TextField(lang.t("メッセージを入力...", en: "Type a message...", zh: "输入消息...", ko: "메시지 입력..."), text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...5)
                 .focused($isInputFocused)

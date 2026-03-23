@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		4EBD3CC62F71354F00F4A127 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB72F71354F00F4A127 /* Constants.swift */; };
 		4EBD3CC72F71354F00F4A127 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB82F71354F00F4A127 /* KeychainHelper.swift */; };
+		4EBD3CE32F71900000F4A127 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CE22F71900000F4A127 /* LanguageManager.swift */; };
 		4EBD3CC82F71354F00F4A127 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CC12F71354F00F4A127 /* DashboardView.swift */; };
 		4EBD3CC92F71354F00F4A127 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CA42F71354F00F4A127 /* ContentView.swift */; };
 		4EBD3CCA2F71354F00F4A127 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CBB2F71354F00F4A127 /* RegisterView.swift */; };
@@ -47,6 +48,7 @@
 		4EBD3CB62F71354F00F4A127 /* BrandConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandConfig.swift; sourceTree = "<group>"; };
 		4EBD3CB72F71354F00F4A127 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		4EBD3CB82F71354F00F4A127 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		4EBD3CE22F71900000F4A127 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		4EBD3CBA2F71354F00F4A127 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		4EBD3CBB2F71354F00F4A127 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		4EBD3CBD2F71354F00F4A127 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 				4EBD3CB62F71354F00F4A127 /* BrandConfig.swift */,
 				4EBD3CB72F71354F00F4A127 /* Constants.swift */,
 				4EBD3CB82F71354F00F4A127 /* KeychainHelper.swift */,
+				4EBD3CE22F71900000F4A127 /* LanguageManager.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -294,6 +297,7 @@
 			files = (
 				4EBD3CC62F71354F00F4A127 /* Constants.swift in Sources */,
 				4EBD3CC72F71354F00F4A127 /* KeychainHelper.swift in Sources */,
+				4EBD3CE32F71900000F4A127 /* LanguageManager.swift in Sources */,
 				4EBD3CE12F717B5500F4A127 /* MarketView.swift in Sources */,
 				4EBD3CC82F71354F00F4A127 /* DashboardView.swift in Sources */,
 				4EBD3CC92F71354F00F4A127 /* ContentView.swift in Sources */,
