@@ -54,6 +54,7 @@ struct LoginView: View {
                             TextField("", text: $email)
                                 .textFieldStyle(.plain)
                                 .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
                                 .autocorrectionDisabled()
                                 .onChange(of: email) { _, v in
                                     let low = v.lowercased().trimmingCharacters(in: .whitespaces)

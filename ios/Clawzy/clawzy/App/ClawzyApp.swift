@@ -10,6 +10,7 @@ struct ClawzyApp: App {
             ContentView()
                 .environment(authManager)
                 .environment(\.lang, languageManager)
+                .preferredColorScheme(.light)
         }
     }
 }

@@ -55,6 +55,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             messageList
             inputBar
+            Color.clear.frame(height: 80)
         }
         .background(BrandConfig.backgroundColor)
         .navigationTitle(agent.name)
