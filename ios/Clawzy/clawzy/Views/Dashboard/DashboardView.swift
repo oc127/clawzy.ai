@@ -92,6 +92,7 @@ struct DashboardView: View {
 private struct CreditsCard: View {
     let balance: Int
     @Environment(\.lang) var lang
+    @State private var showShop = false
 
     var body: some View {
         HStack {
@@ -105,13 +106,15 @@ private struct CreditsCard: View {
                     .foregroundStyle(BrandConfig.brand)
             }
             Spacer()
-            ZStack {
-                Circle()
-                    .fill(BrandConfig.brand.opacity(0.10))
-                    .frame(width: 52, height: 52)
-                Image(systemName: "bolt.fill")
-                    .font(.title3)
-                    .foregroundStyle(BrandConfig.brand)
+            Button { showShop = true } label: {
+                ZStack {
+                    Circle()
+                        .fill(BrandConfig.brand.opacity(0.10))
+                        .frame(width: 52, height: 52)
+                    Image(systemName: "bolt.fill")
+                        .font(.title3)
+                        .foregroundStyle(BrandConfig.brand)
+                }
             }
         }
         .padding(.horizontal, 20)
@@ -119,6 +122,7 @@ private struct CreditsCard: View {
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .sheet(isPresented: $showShop) { CreditsShopView() }
     }
 }
 
