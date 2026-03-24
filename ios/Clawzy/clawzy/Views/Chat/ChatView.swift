@@ -112,7 +112,7 @@ struct ChatView: View {
                 Text(agent.name).fontWeight(.semibold)
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(chatService.isConnected ? Color.green : Color(white: 0.7))
+                        .fill(chatService.isConnected ? Color.green : Color(UIColor.systemGray3))
                         .frame(width: 6, height: 6)
                     Text(agent.modelName).font(.caption2).foregroundStyle(.secondary)
                 }
@@ -173,15 +173,15 @@ struct ChatView: View {
                 )
                 .textFieldStyle(.plain).lineLimit(1...5).focused($isInputFocused)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(Color.white)
+                .background(BrandConfig.fieldBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(white: 0.86), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(BrandConfig.separator, lineWidth: 1))
 
                 Button { sendMessage() } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(canSend ? BrandConfig.brand : Color(white: 0.82))
+                        .background(canSend ? BrandConfig.brand : BrandConfig.disabledGray)
                         .clipShape(Circle())
                 }
                 .disabled(!canSend)
@@ -190,7 +190,7 @@ struct ChatView: View {
             .padding(.horizontal, 14).padding(.vertical, 10)
         }
         .background(BrandConfig.backgroundColor)
-        .overlay(Rectangle().fill(Color(white: 0.88)).frame(height: 1), alignment: .top)
+        .overlay(Rectangle().fill(BrandConfig.separator).frame(height: 0.5), alignment: .top)
     }
 
     @ViewBuilder
@@ -338,7 +338,7 @@ struct MessageBubbleView: View {
                 }
 
                 Text(bubble.timestamp, style: .time)
-                    .font(.caption2).foregroundStyle(Color(white: 0.6))
+                    .font(.caption2).foregroundStyle(.secondary)
             }
 
             if !isUser { Spacer(minLength: 64) }
@@ -356,7 +356,7 @@ private struct TextBubbleView: View {
         isUser
             ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -366,7 +366,7 @@ private struct TextBubbleView: View {
             .foregroundStyle(isUser ? .white : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(
-                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(Color(white: 0.88), lineWidth: 1)
+                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1)
             )
     }
 }
@@ -385,7 +385,7 @@ private struct ImageGridView: View {
         isUser
             ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -421,15 +421,15 @@ private struct TypingIndicator: View {
             }
             HStack(spacing: 4) {
                 ForEach(0..<3) { i in
-                    Circle().fill(Color(white: 0.6)).frame(width: 7, height: 7)
+                    Circle().fill(Color.secondary).frame(width: 7, height: 7)
                         .scaleEffect(phase == i ? 1.3 : 0.8)
                         .animation(.easeInOut(duration: 0.4).repeatForever().delay(Double(i) * 0.13), value: phase)
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Color.white)
+            .background(BrandConfig.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(white: 0.88), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1))
             Spacer(minLength: 64)
         }
         .onAppear { phase = 1 }

@@ -36,7 +36,7 @@ struct MarketView: View {
                                         .background(
                                             selectedCategory == i
                                                 ? BrandConfig.brand
-                                                : Color(white: 0.92)
+                                                : BrandConfig.disabledGray
                                         )
                                         .clipShape(Capsule())
                                 }
@@ -115,14 +115,14 @@ private struct TemplateCard: View {
                 .foregroundStyle(added ? .secondary : BrandConfig.brand)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(added ? Color(white: 0.93) : BrandConfig.brand.opacity(0.09))
+                .background(added ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .disabled(added)
         }
         .padding(14)
         .frame(height: 180)
-        .background(Color.white)
+        .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }

@@ -15,7 +15,13 @@ struct BrandConfig {
     static let brandDeep      = Color(red: 0.78, green: 0.04, blue: 0.17)
     static let primaryColor   = brand
     static let accentColor    = brand
-    static let backgroundColor = Color(white: 0.965)
+
+    /// Adaptive background colors — auto-switch light ↔ dark mode
+    static let backgroundColor = Color(UIColor.systemGroupedBackground)
+    static let cardBackground  = Color(UIColor.secondarySystemBackground)
+    static let fieldBackground = Color(UIColor.tertiarySystemBackground)
+    static let separator       = Color(UIColor.separator)
+    static let disabledGray    = Color(UIColor.systemGray4)
 
     // MARK: - Strings
     static let tagline        = "AI Agents, Unleashed"
@@ -93,11 +99,11 @@ struct LabeledField<Content: View>: View {
             content()
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .background(Color.white)
+                .background(BrandConfig.fieldBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(white: 0.84), lineWidth: 1)
+                        .stroke(BrandConfig.separator, lineWidth: 1)
                 )
         }
     }

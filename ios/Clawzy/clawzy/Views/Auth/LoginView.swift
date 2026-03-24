@@ -101,11 +101,11 @@ struct LoginView: View {
                     HStack(spacing: 0) {
                         StatBadge(number: "500", label: "Free credits")
                         Rectangle()
-                            .fill(Color(white: 0.88))
+                            .fill(BrandConfig.separator)
                             .frame(width: 1, height: 28)
                         StatBadge(number: "6+", label: "AI models")
                         Rectangle()
-                            .fill(Color(white: 0.88))
+                            .fill(BrandConfig.separator)
                             .frame(width: 1, height: 28)
                         StatBadge(number: "24/7", label: "Uptime")
                     }

@@ -53,7 +53,7 @@ struct CreateAgentView: View {
                                 }
                             }
                         }
-                        .background(Color.white)
+                        .background(BrandConfig.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
@@ -92,11 +92,11 @@ private struct ModelRow: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? BrandConfig.brand.opacity(0.12) : Color(white: 0.95))
+                        .fill(isSelected ? BrandConfig.brand.opacity(0.12) : BrandConfig.disabledGray)
                         .frame(width: 36, height: 36)
                     Image(systemName: "cpu")
                         .font(.footnote)
-                        .foregroundStyle(isSelected ? BrandConfig.brand : Color(white: 0.55))
+                        .foregroundStyle(isSelected ? BrandConfig.brand : .secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -130,7 +130,7 @@ private struct ModelRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color.white)
+            .background(BrandConfig.cardBackground)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
