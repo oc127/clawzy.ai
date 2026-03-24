@@ -34,6 +34,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @Environment(AuthManager.self) var authManager
     @Environment(\.lang) var lang
+    @AppStorage("appColorScheme") private var colorScheme: String = "system"
 
     var body: some View {
         NavigationStack {
@@ -66,6 +67,21 @@ struct SettingsView: View {
                                 .fontWeight(.bold)
                                 .foregroundStyle(BrandConfig.brand)
                         }
+                    }
+                }
+
+                Section(lang.t("外観", en: "Appearance", zh: "外观", ko: "외관")) {
+                    HStack {
+                        Label(lang.t("テーマ", en: "Theme", zh: "主题", ko: "테마"),
+                              systemImage: "circle.lefthalf.filled")
+                        Spacer()
+                        Picker("", selection: $colorScheme) {
+                            Text(lang.t("自動", en: "Auto", zh: "自动", ko: "자동")).tag("system")
+                            Image(systemName: "sun.max.fill").tag("light")
+                            Image(systemName: "moon.fill").tag("dark")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 120)
                     }
                 }
 

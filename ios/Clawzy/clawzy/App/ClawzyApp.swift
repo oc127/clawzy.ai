@@ -4,12 +4,22 @@ import SwiftUI
 struct ClawzyApp: App {
     @State private var authManager = AuthManager()
     @State private var languageManager = LanguageManager()
+    @AppStorage("appColorScheme") private var colorScheme: String = "system"
+
+    private var preferredScheme: ColorScheme? {
+        switch colorScheme {
+        case "light": return .light
+        case "dark":  return .dark
+        default:      return nil
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(authManager)
                 .environment(\.lang, languageManager)
+                .preferredColorScheme(preferredScheme)
         }
     }
 }
