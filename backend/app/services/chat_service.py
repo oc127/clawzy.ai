@@ -83,6 +83,7 @@ async def stream_chat_completion(
     agent: Agent,
     conversation_id: str,
     user_content: str,
+    images: list[str] | None = None,
 ):
     """
     Stream a chat completion from LiteLLM.
@@ -92,12 +93,28 @@ async def stream_chat_completion(
       {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
-    # Save user message
-    await save_message(db, conversation_id, MessageRole.user, user_content)
+    # Save user message (text only in DB)
+    await save_message(db, conversation_id, MessageRole.user, user_content or "[image]")
     await db.commit()
 
     # Build message history for context
     history = await get_conversation_history(db, conversation_id)
+
+    # If images attached, replace last user message with multimodal content
+    if images:
+        model_to_use = "qwen-vl-plus"   # vision-capable model
+        content_parts: list = []
+        if user_content:
+            content_parts.append({"type": "text", "text": user_content})
+        for img_url in images:
+            content_parts.append({"type": "image_url", "image_url": {"url": img_url}})
+        # Replace last history entry (the user text message we just saved)
+        if history and history[-1]["role"] == "user":
+            history[-1]["content"] = content_parts
+        else:
+            history.append({"role": "user", "content": content_parts})
+    else:
+        model_to_use = agent.model_name
 
     # Call LiteLLM streaming endpoint
     url = f"{settings.litellm_url}/v1/chat/completions"
@@ -106,7 +123,7 @@ async def stream_chat_completion(
         "Content-Type": "application/json",
     }
     payload = {
-        "model": agent.model_name,
+        "model": model_to_use,
         "messages": history,
         "max_tokens": 4096,
         "stream": True,

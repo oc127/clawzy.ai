@@ -41,11 +41,18 @@ final class ChatService {
 
     // MARK: - 发送消息
 
-    func sendMessage(_ content: String) {
+    func sendMessage(_ content: String, images: [Data] = []) {
         if !isConnected { reconnect() }
-        let userBubble = ChatBubble(role: .user, content: content)
-        messages.append(userBubble)
-        let msg = WSSendMessage(type: "message", content: content, model: nil)
+
+        // Build base64 strings for images
+        let b64Images = images.map { "data:image/jpeg;base64," + $0.base64EncodedString() }
+
+        var bubble = ChatBubble(role: .user, content: content)
+        bubble.images = images
+        messages.append(bubble)
+
+        let msg = WSSendMessage(type: "message", content: content, model: nil,
+                                images: b64Images.isEmpty ? nil : b64Images)
         guard let data = try? JSONEncoder().encode(msg),
               let string = String(data: data, encoding: .utf8) else { return }
         webSocketTask?.send(.string(string)) { error in
@@ -53,7 +60,6 @@ final class ChatService {
         }
         isStreaming = true
         currentStreamText = ""
-        // Don't pre-append assistant bubble — it's added on first stream chunk
     }
 
     // MARK: - 接收消息
@@ -117,5 +123,6 @@ struct ChatBubble: Identifiable {
     let id = UUID()
     let role: MessageRole
     var content: String
+    var images: [Data] = []     // raw JPEG data for display
     let timestamp = Date()
 }

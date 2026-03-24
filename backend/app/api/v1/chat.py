@@ -87,7 +87,9 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 
             if msg_type == "message":
                 content = data.get("content", "").strip()
-                if not content:
+                images = data.get("images") or []   # list of base64 data-URLs
+
+                if not content and not images:
                     continue
 
                 conversation_id = data.get("conversation_id")
@@ -119,7 +121,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                     conv_id = conv.id
 
                     async for event in stream_chat_completion(
-                        db, user_id, agent, conv_id, content
+                        db, user_id, agent, conv_id, content, images=images
                     ):
                         await websocket.send_text(event)
 

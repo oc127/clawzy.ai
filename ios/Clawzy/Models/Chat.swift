@@ -48,6 +48,7 @@ struct WSSendMessage: Codable {
     let type: String
     let content: String?
     let model: String?
+    let images: [String]?   // base64 data-URLs: "data:image/jpeg;base64,..."
 }
 
 /// 服务端推送给客户端的消息
