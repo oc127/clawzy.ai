@@ -37,8 +37,17 @@ struct ChatView: View {
     @State private var inputText = ""
     @State private var attachments: [ChatAttachment] = []
     @State private var photoItems: [PhotosPickerItem] = []
+    @State private var showPhotoPicker = false
     @State private var showFilePicker = false
-    @State private var showAttachSheet = false
+
+    private static let allowedFileTypes: [UTType] = [
+        .pdf, .plainText, .json, .commaSeparatedText,
+        UTType(filenameExtension: "md")    ?? .plainText,
+        UTType(filenameExtension: "swift") ?? .plainText,
+        UTType(filenameExtension: "py")    ?? .plainText,
+        UTType(filenameExtension: "js")    ?? .plainText,
+        UTType(filenameExtension: "ts")    ?? .plainText,
+    ]
     @FocusState private var isInputFocused: Bool
     @Environment(\.lang) var lang
 
@@ -50,7 +59,6 @@ struct ChatView: View {
         .background(BrandConfig.backgroundColor)
         .navigationTitle(agent.name)
         .toolbar { toolbarContent }
-        .toolbar(.visible, for: .tabBar)
         .onAppear { chatService.connect(agentId: agent.id) }
         .onDisappear { chatService.disconnect() }
         .onChange(of: photoItems) { _, newItems in
@@ -58,31 +66,13 @@ struct ChatView: View {
         }
         .fileImporter(
             isPresented: $showFilePicker,
-            allowedContentTypes: [
-                .pdf, .plainText, .json, .commaSeparatedText,
-                UTType(filenameExtension: "md")    ?? .plainText,
-                UTType(filenameExtension: "swift") ?? .plainText,
-                UTType(filenameExtension: "py")    ?? .plainText,
-                UTType(filenameExtension: "js")    ?? .plainText,
-                UTType(filenameExtension: "ts")    ?? .plainText,
-            ],
+            allowedContentTypes: Self.allowedFileTypes,
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result { Task { await loadFiles(urls) } }
         }
-        .confirmationDialog(
-            lang.t("添付", en: "Attach", zh: "添加附件", ko: "첨부"),
-            isPresented: $showAttachSheet
-        ) {
-            PhotosPicker(selection: $photoItems, maxSelectionCount: 4, matching: .images) {
-                Label(lang.t("写真・画像", en: "Photos & Images", zh: "图片/照片", ko: "사진·이미지"),
-                      systemImage: "photo")
-            }
-            Button(lang.t("ファイル", en: "File", zh: "文件", ko: "파일")) {
-                showFilePicker = true
-            }
-            Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"), role: .cancel) {}
-        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems,
+                      maxSelectionCount: 4, matching: .images)
     }
 
     // MARK: - Message list
@@ -158,13 +148,22 @@ struct ChatView: View {
             }
 
             HStack(alignment: .bottom, spacing: 8) {
-                // Attach button
-                Button { showAttachSheet = true } label: {
-                    Image(systemName: attachments.isEmpty ? "plus.circle.fill" : "plus.circle.fill")
+                // Attach menu
+                Menu {
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Label(lang.t("写真・画像", en: "Photos & Images", zh: "图片", ko: "사진"), systemImage: "photo")
+                    }
+                    Button {
+                        showFilePicker = true
+                    } label: {
+                        Label(lang.t("ファイル", en: "File", zh: "文件", ko: "파일"), systemImage: "doc")
+                    }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
                         .font(.system(size: 28))
-                        .foregroundStyle(attachments.isEmpty
-                                         ? BrandConfig.brand.opacity(0.8)
-                                         : BrandConfig.brand)
+                        .foregroundStyle(attachments.isEmpty ? BrandConfig.brand.opacity(0.8) : BrandConfig.brand)
                 }
 
                 TextField(
@@ -329,40 +328,12 @@ struct MessageBubbleView: View {
             VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
                 // Image grid
                 if !bubble.images.isEmpty {
-                    let cols = min(bubble.images.count, 2)
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: cols),
-                        spacing: 4
-                    ) {
-                        ForEach(Array(bubble.images.enumerated()), id: \.offset) { _, imgData in
-                            if let ui = UIImage(data: imgData) {
-                                Image(uiImage: ui)
-                                    .resizable().scaledToFill()
-                                    .frame(width: bubble.images.count == 1 ? 200 : 95,
-                                           height: bubble.images.count == 1 ? 160 : 95)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                        }
-                    }
-                    .padding(4)
-                    .background(isUser
-                        ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    ImageGridView(images: bubble.images, isUser: isUser)
                 }
 
                 // Text bubble
                 if !bubble.content.isEmpty {
-                    Text(bubble.content)
-                        .padding(.horizontal, 14).padding(.vertical, 10)
-                        .background(
-                            isUser
-                                ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom)
-                        )
-                        .foregroundStyle(isUser ? .white : .primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
-                        .overlay(isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(Color(white: 0.88), lineWidth: 1))
+                    TextBubbleView(text: bubble.content, isUser: isUser)
                 }
 
                 Text(bubble.timestamp, style: .time)
@@ -371,6 +342,68 @@ struct MessageBubbleView: View {
 
             if !isUser { Spacer(minLength: 64) }
         }
+    }
+}
+
+// MARK: - Text bubble
+
+private struct TextBubbleView: View {
+    let text: String
+    let isUser: Bool
+
+    private var bg: LinearGradient {
+        isUser
+            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                             startPoint: .topLeading, endPoint: .bottomTrailing)
+            : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom)
+    }
+
+    var body: some View {
+        Text(text)
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(bg)
+            .foregroundStyle(isUser ? .white : .primary)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .overlay(
+                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(Color(white: 0.88), lineWidth: 1)
+            )
+    }
+}
+
+// MARK: - Image grid
+
+private struct ImageGridView: View {
+    let images: [Data]
+    let isUser: Bool
+
+    private var cols: Int { min(images.count, 2) }
+    private var imgSize: CGSize {
+        images.count == 1 ? CGSize(width: 200, height: 160) : CGSize(width: 95, height: 95)
+    }
+    private var bg: LinearGradient {
+        isUser
+            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                             startPoint: .topLeading, endPoint: .bottomTrailing)
+            : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom)
+    }
+
+    var body: some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: cols),
+            spacing: 4
+        ) {
+            ForEach(Array(images.enumerated()), id: \.offset) { _, imgData in
+                if let ui = UIImage(data: imgData) {
+                    Image(uiImage: ui)
+                        .resizable().scaledToFill()
+                        .frame(width: imgSize.width, height: imgSize.height)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        }
+        .padding(4)
+        .background(bg)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
