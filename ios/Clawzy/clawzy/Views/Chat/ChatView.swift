@@ -50,18 +50,25 @@ struct ChatView: View {
     ]
     @FocusState private var isInputFocused: Bool
     @Environment(\.lang) var lang
+    @Environment(\.tabBarVisible) var tabBarVisible
 
     var body: some View {
         VStack(spacing: 0) {
             messageList
             inputBar
-            Color.clear.frame(height: 80)
         }
         .background(BrandConfig.backgroundColor)
         .navigationTitle(agent.name)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
-        .onAppear { chatService.connect(agentId: agent.id) }
-        .onDisappear { chatService.disconnect() }
+        .onAppear {
+            chatService.connect(agentId: agent.id)
+            withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = false }
+        }
+        .onDisappear {
+            chatService.disconnect()
+            withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = true }
+        }
         .onChange(of: photoItems) { _, newItems in
             Task { await loadPhotos(newItems) }
         }
