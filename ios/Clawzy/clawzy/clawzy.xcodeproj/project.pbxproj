@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4E5235112F72B0EA0089F71E /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E5235102F72B0E90089F71E /* StoreKit.framework */; };
 		4EBD3CC62F71354F00F4A127 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB72F71354F00F4A127 /* Constants.swift */; };
 		4EBD3CC72F71354F00F4A127 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB82F71354F00F4A127 /* KeychainHelper.swift */; };
 		4EBD3CC82F71354F00F4A127 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CC12F71354F00F4A127 /* DashboardView.swift */; };
@@ -34,6 +35,7 @@
 
 /* Begin PBXFileReference section */
 		4E3C33572F5EE10E00EC6244 /* clawzy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = clawzy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E5235102F72B0E90089F71E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		4EBD3CA32F71354F00F4A127 /* ClawzyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClawzyApp.swift; sourceTree = "<group>"; };
 		4EBD3CA42F71354F00F4A127 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4EBD3CA52F71354F00F4A127 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -72,6 +74,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4E5235112F72B0EA0089F71E /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +93,7 @@
 				4EBD3CB92F71354F00F4A127 /* Utilities */,
 				4EBD3CC52F71354F00F4A127 /* Views */,
 				4E3C33592F5EE10E00EC6244 /* clawzy */,
+				4E52350F2F72B0E90089F71E /* Frameworks */,
 				4E3C33582F5EE10E00EC6244 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -100,6 +104,14 @@
 				4E3C33572F5EE10E00EC6244 /* clawzy.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		4E52350F2F72B0E90089F71E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				4E5235102F72B0E90089F71E /* StoreKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		4EBD3CA62F71354F00F4A127 /* App */ = {
@@ -446,7 +458,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 2963GBPUW3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -491,7 +503,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 2963GBPUW3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
