@@ -31,6 +31,9 @@
 		4EBD3CDD2F7163EC00F4A127 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */; };
 		4EBD3CE12F717B5500F4A127 /* MarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CDF2F717B5500F4A127 /* MarketView.swift */; };
 		4EBD3CE32F71900000F4A127 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CE22F71900000F4A127 /* LanguageManager.swift */; };
+
+		F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */; };
+		7566003396D948279B9EB8FE /* CreditsShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +62,9 @@
 		4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		4EBD3CDF2F717B5500F4A127 /* MarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketView.swift; sourceTree = "<group>"; };
 		4EBD3CE22F71900000F4A127 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+
+		D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
+		473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsShopView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -165,7 +171,8 @@
 				4EBD3CB22F71354F00F4A127 /* APIClient.swift */,
 				4EBD3CB32F71354F00F4A127 /* AuthManager.swift */,
 				4EBD3CB42F71354F00F4A127 /* ChatService.swift */,
-			);
+			
+				D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */,);
 			path = Services;
 			sourceTree = "<group>";
 		};
@@ -229,8 +236,18 @@
 				4EBD3CBF2F71354F00F4A127 /* Components */,
 				4EBD3CC22F71354F00F4A127 /* Dashboard */,
 				4EBD3CC42F71354F00F4A127 /* Settings */,
-			);
+			
+				A2B14337D2B341FDB2B3622D /* Credits */,);
 			path = Views;
+			sourceTree = "<group>";
+		};
+
+		A2B14337D2B341FDB2B3622D /* Credits */ = {
+			isa = PBXGroup;
+			children = (
+				473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */,
+			);
+			path = Credits;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
