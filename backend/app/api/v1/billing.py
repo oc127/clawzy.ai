@@ -216,7 +216,18 @@ async def _handle_checkout_completed(db: AsyncSession, session: dict) -> None:
 
 
 async def _handle_invoice_paid(db: AsyncSession, invoice: dict) -> None:
-    """invoice.paid — subscription renewed, grant monthly credits."""
+    """invoice.paid — subscription renewed, grant monthly credits.
+
+    NOTE: Stripe fires invoice.paid for the *initial* subscription invoice at the same
+    time as checkout.session.completed.  We skip that case (billing_reason ==
+    "subscription_create") to avoid double-crediting; checkout.session.completed
+    already handles the first grant.
+    """
+    billing_reason = invoice.get("billing_reason", "")
+    if billing_reason == "subscription_create":
+        logger.debug("invoice.paid: skipping initial invoice (handled by checkout.session.completed)")
+        return
+
     customer_id = invoice.get("customer")
     if not customer_id:
         return
@@ -226,18 +237,21 @@ async def _handle_invoice_paid(db: AsyncSession, invoice: dict) -> None:
         logger.warning("invoice.paid: user not found (customer=%s)", customer_id)
         return
 
-    # Find subscription to know credit amount
+    # Resolve credits from the active subscription's plan type
     result = await db.execute(
         select(Subscription).where(Subscription.user_id == user.id)
     )
     sub = result.scalar_one_or_none()
-    credits = sub.credits_included if sub else 0
-
-    if credits <= 0:
-        logger.warning("invoice.paid: no credits_included for user=%s", user.id)
+    if sub is None:
+        logger.warning("invoice.paid: no subscription record for user=%s", user.id)
         return
 
-    await _add_credits(db, user, credits, CreditReason.subscription, "stripe invoice.paid renewal")
+    credits = PLAN_CREDITS.get(sub.plan.value, 0)
+    if credits <= 0:
+        logger.warning("invoice.paid: no credits for plan=%s user=%s", sub.plan, user.id)
+        return
+
+    await _add_credits(db, user, credits, CreditReason.subscription, f"stripe invoice.paid plan={sub.plan.value}")
 
 
 async def _handle_subscription_deleted(db: AsyncSession, subscription: dict) -> None:
