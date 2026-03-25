@@ -77,7 +77,7 @@ struct DashboardView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .background(Color.white)
+                .background(BrandConfig.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 16)
             }
@@ -116,7 +116,7 @@ private struct CreditsCard: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color.white)
+        .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
     }
@@ -223,6 +223,6 @@ struct AgentRowView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(Color.white)
+        .background(BrandConfig.cardBackground)
     }
 }

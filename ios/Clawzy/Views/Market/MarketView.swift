@@ -70,7 +70,7 @@ struct MarketView: View {
                                     .font(.footnote).fontWeight(.medium)
                                     .foregroundStyle(selectedCategory == cat ? .white : .primary)
                                     .padding(.horizontal, 14).padding(.vertical, 8)
-                                    .background(selectedCategory == cat ? BrandConfig.brand : Color(white: 0.92))
+                                    .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
                                     .clipShape(Capsule())
                             }
                         }
@@ -97,7 +97,7 @@ struct MarketView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(0..<6, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(Color(white: 0.92))
+                        .fill(BrandConfig.disabledGray)
                         .frame(height: 180)
                         .shimmer()
                 }
@@ -222,14 +222,14 @@ private struct TemplateCard: View {
                 .foregroundStyle(alreadyAdded ? .secondary : BrandConfig.brand)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(alreadyAdded ? Color(white: 0.93) : BrandConfig.brand.opacity(0.09))
+                .background(alreadyAdded ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .disabled(alreadyAdded || isLoading)
         }
         .padding(14)
         .frame(height: 180)
-        .background(Color.white)
+        .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }

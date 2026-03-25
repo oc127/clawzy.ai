@@ -172,15 +172,15 @@ struct ChatView: View {
                 )
                 .textFieldStyle(.plain).lineLimit(1...5).focused($isInputFocused)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(Color.white)
+                .background(Color(UIColor.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(white: 0.86), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(UIColor.separator), lineWidth: 1))
 
                 Button { sendMessage() } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(canSend ? BrandConfig.brand : Color(white: 0.82))
+                        .background(canSend ? BrandConfig.brand : BrandConfig.disabledGray)
                         .clipShape(Circle())
                 }
                 .disabled(!canSend)
@@ -189,7 +189,7 @@ struct ChatView: View {
             .padding(.horizontal, 14).padding(.vertical, 10)
         }
         .background(BrandConfig.backgroundColor)
-        .overlay(Rectangle().fill(Color(white: 0.88)).frame(height: 1), alignment: .top)
+        .overlay(Rectangle().fill(Color(UIColor.separator)).frame(height: 1), alignment: .top)
     }
 
     @ViewBuilder
@@ -355,7 +355,7 @@ private struct TextBubbleView: View {
         isUser
             ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -365,7 +365,7 @@ private struct TextBubbleView: View {
             .foregroundStyle(isUser ? .white : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(
-                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(Color(white: 0.88), lineWidth: 1)
+                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(Color(UIColor.separator), lineWidth: 1)
             )
     }
 }
@@ -384,7 +384,7 @@ private struct ImageGridView: View {
         isUser
             ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [Color.white], startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -426,9 +426,9 @@ private struct TypingIndicator: View {
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Color.white)
+            .background(Color(UIColor.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(white: 0.88), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(UIColor.separator), lineWidth: 1))
             Spacer(minLength: 64)
         }
         .onAppear { phase = 1 }
