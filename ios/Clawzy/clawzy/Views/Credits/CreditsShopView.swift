@@ -120,7 +120,7 @@ struct CreditsShopView: View {
                         if let error = store.errorMessage {
                             Text(error)
                                 .font(.caption)
-                                .foregroundStyle(BrandConfig.brand)
+                                .foregroundStyle(.red)
                                 .multilineTextAlignment(.center)
                         }
 
@@ -149,7 +149,7 @@ struct CreditsShopView: View {
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
-                        .disabled(store.isPurchasing || currentProduct == nil)
+                        .disabled(store.isPurchasing || currentProduct == nil || store.activeProductId == selectedPlan.id)
 
                         // Auto-renew note
                         Text(lang.t(
@@ -193,12 +193,15 @@ struct CreditsShopView: View {
             .padding(.trailing, 20)
         }
         .background(BrandConfig.backgroundColor)
-        .task {
-            if store.products.isEmpty {
-                await store.loadProducts()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if showPlanPicker {
+                withAnimation(.spring(response: 0.3)) { showPlanPicker = false }
             }
+        }
+        .task {
+            if store.products.isEmpty { await store.loadProducts() }
             await store.refreshEntitlements()
-            // Default select active plan if any
             if let active = store.activePlan { selectedPlan = active }
         }
     }

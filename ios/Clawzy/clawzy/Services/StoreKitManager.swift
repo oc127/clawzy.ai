@@ -8,13 +8,9 @@ struct CreditPlan: Identifiable {
     let usdEquivalent: Int  // display only
 
     var creditsFormatted: String {
-        let n = credits
-        if n >= 1_000 {
-            let k = n / 1_000
-            let rem = (n % 1_000) / 100
-            return rem > 0 ? "\(k),\(rem * 100)" : "\(k),000"
-        }
-        return "\(n)"
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: credits)) ?? "\(credits)"
     }
 }
 
@@ -34,6 +30,7 @@ let allCreditPlans: [CreditPlan] = [
 
 // MARK: - StoreKit manager
 
+@MainActor
 @Observable
 final class StoreKitManager {
     static let shared = StoreKitManager()
@@ -47,9 +44,16 @@ final class StoreKitManager {
 
     init() {
         updateTask = Task { await listenForTransactions() }
-        Task {
-            await loadProducts()
-            await refreshEntitlements()
+        Task { await loadProducts() }
+    }
+
+    private static func localizedString(ja: String, en: String, zh: String, ko: String) -> String {
+        let code = Locale.current.language.languageCode?.identifier ?? "en"
+        switch code {
+        case "ja": return ja
+        case "zh": return zh
+        case "ko": return ko
+        default:   return en
         }
     }
 
@@ -63,13 +67,19 @@ final class StoreKitManager {
             let fetched = try await Product.products(for: ids)
             products = fetched.sorted { $0.price < $1.price }
         } catch {
-            errorMessage = "商品の読み込みに失敗しました"
+            errorMessage = Self.localizedString(
+                ja: "商品の読み込みに失敗しました",
+                en: "Failed to load products",
+                zh: "加载商品失败",
+                ko: "상품 로드 실패"
+            )
         }
     }
 
     // MARK: - Purchase
 
     func purchase(_ product: Product) async {
+        guard activeProductId != product.id else { return }
         isPurchasing = true
         errorMessage = nil
         defer { isPurchasing = false }
