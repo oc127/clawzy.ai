@@ -1,8 +1,7 @@
-"""Chat service — streams LLM responses via LiteLLM and manages conversations."""
+"""Chat service — streams LLM responses via OpenClaw and manages conversations."""
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 
 import httpx
@@ -12,9 +11,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.agent import Agent
 from app.models.chat import Conversation, Message, MessageRole
-from app.services.credits_service import deduct_credits, InsufficientCreditsError
+from app.services.credits_service import (
+    deduct_credits,
+    calculate_credits,
+    InsufficientCreditsError,
+)
 
 logger = logging.getLogger(__name__)
+
+# Minimum credits required to start a request (rough guard against zero-balance calls)
+_MIN_CREDITS_GUARD = 1
 
 
 async def get_or_create_conversation(
@@ -64,7 +70,7 @@ async def save_message(
 
 
 async def get_conversation_history(
-    db: AsyncSession, conversation_id: str, limit: int = 20
+    db: AsyncSession, conversation_id: str, limit: int = 100
 ) -> list[dict]:
     """Get recent messages for context."""
     result = await db.execute(
@@ -77,6 +83,22 @@ async def get_conversation_history(
     return [{"role": m.role.value, "content": m.content} for m in messages]
 
 
+def _build_openclaw_url(agent: Agent) -> str:
+    """
+    Resolve the OpenClaw HTTP endpoint to use for this agent.
+
+    If the agent has its own running container with a ws_port, route to that
+    dedicated instance. Otherwise fall back to the shared gateway.
+    """
+    from app.models.agent import AgentStatus
+
+    if agent.status == AgentStatus.running and agent.ws_port:
+        # Dedicated per-agent container (port mapped on host)
+        return f"http://127.0.0.1:{agent.ws_port}"
+    # Shared default gateway
+    return settings.openclaw_url
+
+
 async def stream_chat_completion(
     db: AsyncSession,
     user_id: str,
@@ -86,23 +108,40 @@ async def stream_chat_completion(
     images: list[str] | None = None,
 ):
     """
-    Stream a chat completion from LiteLLM.
+    Stream a chat completion through OpenClaw (which proxies to LiteLLM).
 
     Yields JSON-encoded event dicts:
       {"type": "stream", "content": "..."}
       {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
-    # Save user message (text only in DB)
+    # ── 1. Pre-flight credit check ──────────────────────────────────────────
+    from app.models.user import User
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one()
+    if user.credit_balance < _MIN_CREDITS_GUARD:
+        yield json.dumps({
+            "type": "error",
+            "code": "insufficient_credits",
+            "message": "Insufficient credits. Please top up to continue.",
+        })
+        return
+
+    # ── 2. Save user message ────────────────────────────────────────────────
     await save_message(db, conversation_id, MessageRole.user, user_content or "[image]")
     await db.commit()
 
-    # Build message history for context
+    # ── 3. Build message history ────────────────────────────────────────────
     history = await get_conversation_history(db, conversation_id)
+
+    # Inject agent system prompt as the first message if present
+    if agent.system_prompt:
+        history = [{"role": "system", "content": agent.system_prompt}] + history
 
     # If images attached, replace last user message with multimodal content
     if images:
-        model_to_use = "qwen-vl-plus"   # vision-capable model
+        model_to_use = "qwen-vl-plus"  # vision-capable model
         content_parts: list = []
         if user_content:
             content_parts.append({"type": "text", "text": user_content})
@@ -116,16 +155,21 @@ async def stream_chat_completion(
     else:
         model_to_use = agent.model_name
 
-    # Call LiteLLM streaming endpoint
-    url = f"{settings.litellm_url}/v1/chat/completions"
+    # ── 4. Route through OpenClaw ───────────────────────────────────────────
+    openclaw_base = _build_openclaw_url(agent)
+    url = f"{openclaw_base}/v1/chat/completions"
+    # Per-agent containers have their own gateway token stored in agent.config
+    gateway_token = (
+        (agent.config or {}).get("gateway_token") or settings.openclaw_gateway_token
+    )
     headers = {
-        "Authorization": f"Bearer {settings.litellm_master_key}",
+        "Authorization": f"Bearer {gateway_token}",
         "Content-Type": "application/json",
     }
     payload = {
         "model": model_to_use,
         "messages": history,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
         "stream": True,
     }
 
@@ -138,7 +182,7 @@ async def stream_chat_completion(
             async with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code != 200:
                     body = await response.aread()
-                    logger.error("LiteLLM error %s: %s", response.status_code, body)
+                    logger.error("OpenClaw error %s: %s", response.status_code, body)
                     yield json.dumps({
                         "type": "error",
                         "code": "model_error",
@@ -198,26 +242,26 @@ async def stream_chat_completion(
 
     # Estimate tokens if not provided by API
     if tokens_input == 0:
-        tokens_input = len(str(history)) // 4  # rough estimate
+        tokens_input = len(str(history)) // 4
     if tokens_output == 0:
         tokens_output = len(full_content) // 4
 
-    # Deduct credits
+    # ── 5. Deduct credits (post-completion) ────────────────────────────────
+    credits_used = 0
     try:
         credits_used = await deduct_credits(
             db, user_id, agent.model_name,
             tokens_input, tokens_output, agent.id,
         )
     except InsufficientCreditsError:
-        # Still save the message but warn user
-        credits_used = 0
+        # Balance may have dropped during a long stream; warn but don't block
         yield json.dumps({
             "type": "error",
             "code": "insufficient_credits",
-            "message": "Credits insufficient, please top up",
+            "message": "Credits insufficient after response, please top up",
         })
 
-    # Save assistant message
+    # ── 6. Persist assistant message ────────────────────────────────────────
     await save_message(
         db, conversation_id, MessageRole.assistant, full_content,
         model_name=agent.model_name,
@@ -239,7 +283,6 @@ async def stream_chat_completion(
     await db.commit()
 
     # Refresh user balance
-    from app.models.user import User
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one()
 

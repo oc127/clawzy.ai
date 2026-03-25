@@ -34,6 +34,7 @@ class DockerManager:
             ports={
                 "18789/tcp": ("127.0.0.1", ws_port),
             },
+            network=settings.openclaw_network,
             mem_limit="512m",
             cpu_quota=50000,
             labels={

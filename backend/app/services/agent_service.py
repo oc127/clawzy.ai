@@ -1,10 +1,12 @@
 import json
 import logging
+import secrets
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
 from app.models.subscription import Subscription, PlanType
 
@@ -107,13 +109,43 @@ async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_n
 
 
 async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
-    agent.status = AgentStatus.running
+    """Start (or create) the agent's dedicated OpenClaw container."""
+    try:
+        if agent.container_id:
+            # Container exists — just start it
+            docker_manager.start_container(agent.container_id)
+        else:
+            # First start — provision a new container
+            gateway_token = secrets.token_urlsafe(32)
+            container_id = docker_manager.create_agent_container(
+                agent_id=agent.id,
+                gateway_token=gateway_token,
+                litellm_key=settings.litellm_master_key,
+                model_name=agent.model_name,
+                ws_port=agent.ws_port,
+            )
+            agent.container_id = container_id
+            # Persist gateway token so chat routing can auth against the container
+            agent.config = {**(agent.config or {}), "gateway_token": gateway_token}
+
+        agent.status = AgentStatus.running
+    except Exception as exc:
+        logger.warning("Failed to start container for agent %s: %s", agent.id, exc)
+        agent.status = AgentStatus.error
+
     await db.commit()
     await db.refresh(agent)
     return agent
 
 
 async def stop_agent(db: AsyncSession, agent: Agent) -> Agent:
+    """Stop the agent's dedicated OpenClaw container (if any)."""
+    if agent.container_id:
+        try:
+            docker_manager.stop_container(agent.container_id)
+        except Exception as exc:
+            logger.warning("Failed to stop container for agent %s: %s", agent.id, exc)
+
     agent.status = AgentStatus.stopped
     await db.commit()
     await db.refresh(agent)

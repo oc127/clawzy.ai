@@ -43,6 +43,13 @@ model_list:
       api_key: os.environ/DASHSCOPE_API_KEY
       max_tokens: 8192
 
+  - model_name: qwen-vl-plus
+    litellm_params:
+      model: openai/qwen-vl-plus
+      api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api_key: os.environ/DASHSCOPE_API_KEY
+      max_tokens: 8192
+
 # General proxy settings
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

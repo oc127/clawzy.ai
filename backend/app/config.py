@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
 
     # --- OpenClaw ---
+    openclaw_url: str = "http://localhost:18789"
+    openclaw_gateway_token: str = ""
     openclaw_image: str = "ghcr.io/openclaw/openclaw:latest"
     openclaw_network: str = "clawzy-network"
     openclaw_port_start: int = 19000

@@ -21,6 +21,8 @@ services:
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
       - "127.0.0.1:5432:5432"
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U clawzy"]
       interval: 10s
@@ -38,6 +40,8 @@ services:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -69,6 +73,8 @@ services:
       --config /app/config.yaml
       --port 4000
       --detailed_debug
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
       interval: 30s
@@ -95,6 +101,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       LITELLM_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      OPENCLAW_URL: http://clawzy-openclaw:18789
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       JWT_SECRET: ${JWT_SECRET}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
@@ -102,6 +110,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "127.0.0.1:8000:8000"
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -122,6 +132,7 @@ services:
         condition: service_healthy
     environment:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: "true"
     volumes:
       - openclaw_config:/home/node/.openclaw
@@ -130,6 +141,8 @@ services:
     ports:
       - "127.0.0.1:18789:18789"
       - "127.0.0.1:18790:18790"
+    networks:
+      - clawzy-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
       interval: 30s
@@ -161,3 +174,7 @@ volumes:
   redis_data:
   openclaw_config:
   openclaw_workspace:
+
+networks:
+  clawzy-network:
+    name: clawzy-network
