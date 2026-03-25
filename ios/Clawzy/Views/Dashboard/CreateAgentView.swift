@@ -7,6 +7,7 @@ struct CreateAgentView: View {
     @State private var name = ""
     @State private var selectedModel = "deepseek-chat"
     @State private var isCreating = false
+    @State private var showError = false
 
     let availableModels: [(id: String, name: String, desc: String, badge: String)] = [
         ("deepseek-chat",     "DeepSeek V3",  "高コスパ汎用モデル",   "おすすめ"),
@@ -60,9 +61,13 @@ struct CreateAgentView: View {
                     BrandButton(title: isCreating ? "" : "作成する", isLoading: isCreating) {
                         Task {
                             isCreating = true
-                            let _ = await agentService.createAgent(name: name, modelName: selectedModel)
+                            let agent = await agentService.createAgent(name: name, modelName: selectedModel)
                             isCreating = false
-                            dismiss()
+                            if agent != nil {
+                                dismiss()
+                            } else {
+                                showError = true
+                            }
                         }
                     }
                     .disabled(name.isEmpty || isCreating)
@@ -77,6 +82,11 @@ struct CreateAgentView: View {
                     Button("キャンセル") { dismiss() }
                         .foregroundStyle(BrandConfig.brand)
                 }
+            }
+            .alert("作成に失敗しました", isPresented: $showError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(agentService.errorMessage ?? "不明なエラーが発生しました")
             }
         }
     }
