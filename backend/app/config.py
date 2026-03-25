@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     # --- Credits ---
     signup_bonus_credits: int = 500
 
+    # --- CORS ---
+    environment: str = "development"
+    cors_origins: list[str] = ["https://clawzy.ai", "https://www.clawzy.ai"]
+
+    # --- Apple ---
+    apple_shared_secret: str = ""
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
