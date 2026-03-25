@@ -143,9 +143,9 @@ struct CreditsShopView: View {
                             .padding(.vertical, 16)
                             .background(
                                 store.activeProductId == selectedPlan.id
-                                ? Color(UIColor.systemGray3)
-                                : LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                                                 startPoint: .leading, endPoint: .trailing)
+                                ? AnyShapeStyle(Color(UIColor.systemGray3))
+                                : AnyShapeStyle(LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                                                               startPoint: .leading, endPoint: .trailing))
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                         }

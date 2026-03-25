@@ -347,6 +347,8 @@
 				4EBD3CDA2F71354F00F4A127 /* AgentService.swift in Sources */,
 				4EBD3CDB2F71354F00F4A127 /* MainTabView.swift in Sources */,
 				4EBD3CDD2F7163EC00F4A127 /* SplashView.swift in Sources */,
+				F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */,
+				7566003396D948279B9EB8FE /* CreditsShopView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

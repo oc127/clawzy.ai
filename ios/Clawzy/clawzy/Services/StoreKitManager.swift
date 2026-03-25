@@ -40,7 +40,7 @@ final class StoreKitManager {
     var isPurchasing = false
     var errorMessage: String?
 
-    private var updateTask: Task<Void, Never>?
+    nonisolated(unsafe) private var updateTask: Task<Void, Never>?
 
     init() {
         updateTask = Task { await listenForTransactions() }
