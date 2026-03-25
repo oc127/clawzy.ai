@@ -40,7 +40,7 @@ final class StoreKitManager {
     var isPurchasing = false
     var errorMessage: String?
 
-    nonisolated(unsafe) private var updateTask: Task<Void, Never>?
+    private var updateTask: Task<Void, Never>?
 
     init() {
         updateTask = Task { await listenForTransactions() }
@@ -56,8 +56,6 @@ final class StoreKitManager {
         default:   return en
         }
     }
-
-    deinit { updateTask?.cancel() }
 
     // MARK: - Load products from App Store
 
