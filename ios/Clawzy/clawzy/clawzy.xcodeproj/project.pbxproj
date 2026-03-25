@@ -34,6 +34,7 @@
 
 		F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */; };
 		7566003396D948279B9EB8FE /* CreditsShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */; };
+		B1C2D3E4F5A6071823B1C2D3 /* ClawHubService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +66,7 @@
 
 		D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
 		473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsShopView.swift; sourceTree = "<group>"; };
+		A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClawHubService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -171,7 +173,7 @@
 				4EBD3CB22F71354F00F4A127 /* APIClient.swift */,
 				4EBD3CB32F71354F00F4A127 /* AuthManager.swift */,
 				4EBD3CB42F71354F00F4A127 /* ChatService.swift */,
-			
+				A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */,
 				D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */,);
 			path = Services;
 			sourceTree = "<group>";
@@ -349,6 +351,7 @@
 				4EBD3CDD2F7163EC00F4A127 /* SplashView.swift in Sources */,
 				F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */,
 				7566003396D948279B9EB8FE /* CreditsShopView.swift in Sources */,
+				B1C2D3E4F5A6071823B1C2D3 /* ClawHubService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

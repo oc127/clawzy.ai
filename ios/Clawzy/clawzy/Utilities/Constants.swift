@@ -23,11 +23,15 @@ enum Constants {
         static let credits = "/api/v1/billing/credits"
         static let creditsTransactions = "/api/v1/billing/credits/transactions"
 
+        static let clawHubSearch = "/api/v1/clawhub/search"
+        static let clawHubInstall = "/api/v1/clawhub/install"
+
         static func agent(_ id: String) -> String { "/api/v1/agents/\(id)" }
         static func agentStart(_ id: String) -> String { "/api/v1/agents/\(id)/start" }
         static func agentStop(_ id: String) -> String { "/api/v1/agents/\(id)/stop" }
         static func wsChat(_ agentId: String) -> String { "/api/v1/ws/chat/\(agentId)" }
         static func conversations(_ agentId: String) -> String { "/api/v1/agents/\(agentId)/conversations" }
         static func messages(_ conversationId: String) -> String { "/api/v1/conversations/\(conversationId)/messages" }
+        static func clawHubSkill(_ slug: String) -> String { "/api/v1/clawhub/skills/\(slug)" }
     }
 }
