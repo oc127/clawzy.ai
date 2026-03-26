@@ -79,6 +79,12 @@
       }
     }
   },
+  "gateway": {
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": ["*"]
+    }
+  },
   "agents": {
     "defaults": {
       "model": {

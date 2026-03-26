@@ -52,6 +52,7 @@ def _generate_openclaw_config(
                 }
             },
         },
+        "gateway": {"bind": "lan", "controlUi": {"allowedOrigins": ["*"]}},
         "agents": {"defaults": agent_defaults},
     }
 

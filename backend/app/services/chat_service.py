@@ -63,7 +63,12 @@ async def _openclaw_stream(ws_url: str, gateway_token: str, message: str):
 
     Raises ConnectionError on WebSocket failures, RuntimeError on protocol errors.
     """
-    headers = {"Authorization": f"Bearer {gateway_token}"}
+    # Origin must match the gateway's allowedOrigins. Using the gateway host itself.
+    origin = ws_url.replace("wss://", "https://").replace("ws://", "http://")
+    headers = {
+        "Authorization": f"Bearer {gateway_token}",
+        "Origin": origin,
+    }
 
     try:
         async with websockets.connect(ws_url, additional_headers=headers) as ws:
