@@ -123,6 +123,7 @@ async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
                 litellm_key=settings.litellm_master_key,
                 model_name=agent.model_name,
                 ws_port=agent.ws_port,
+                system_prompt=agent.system_prompt,
             )
             agent.container_id = container_id
             # Persist gateway token so chat routing can auth against the container

@@ -111,6 +111,8 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-production}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      # Per-agent openclaw.json configs written by backend, bind-mounted into per-agent containers
+      - /opt/clawzy/agents:/app/agent_configs
     ports:
       - "127.0.0.1:8000:8000"
     networks:

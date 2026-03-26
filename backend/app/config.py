@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     openclaw_network: str = "clawzy-network"
     openclaw_port_start: int = 19000
     openclaw_port_end: int = 19999
+    # Host path for per-agent openclaw.json configs (bind-mounted from host → backend container)
+    agent_configs_host_path: str = "/opt/clawzy/agents"
 
     # --- Credits ---
     signup_bonus_credits: int = 500
