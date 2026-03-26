@@ -367,6 +367,7 @@ private struct TextBubbleView: View {
             .overlay(
                 isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(Color(UIColor.separator), lineWidth: 1)
             )
+            .frame(maxWidth: UIScreen.main.bounds.width * 0.80, alignment: isUser ? .trailing : .leading)
     }
 }
 
