@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import PDFKit
 import UniformTypeIdentifiers
+import SafariServices
 
 // MARK: - Attachment model
 
@@ -39,6 +40,7 @@ struct ChatView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
     @State private var showFilePicker = false
+    @State private var showOpenClaw = false
 
     private static let allowedFileTypes: [UTType] = [
         .pdf, .plainText, .json, .commaSeparatedText,
@@ -81,6 +83,10 @@ struct ChatView: View {
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems,
                       maxSelectionCount: 4, matching: .images)
+        .sheet(isPresented: $showOpenClaw) {
+            SafariView(url: URL(string: "https://clawzy.ai/openclaw/")!)
+                .ignoresSafeArea()
+        }
     }
 
     // MARK: - Message list
@@ -123,6 +129,11 @@ struct ChatView: View {
                         .frame(width: 6, height: 6)
                     Text(agent.modelName).font(.caption2).foregroundStyle(.secondary)
                 }
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button { showOpenClaw = true } label: {
+                Image(systemName: "globe")
             }
         }
         ToolbarItem(placement: .automatic) {
@@ -311,6 +322,16 @@ struct ChatView: View {
         }
         return ui.jpegData(compressionQuality: 0.1)
     }
+}
+
+// MARK: - Safari wrapper
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
 // MARK: - Message bubble
