@@ -59,7 +59,10 @@ struct ChatView: View {
         .background(BrandConfig.backgroundColor)
         .navigationTitle(agent.name)
         .toolbar { toolbarContent }
-        .onAppear { chatService.connect(agentId: agent.id) }
+        .onAppear {
+            chatService.connect(agentId: agent.id)
+            Task { await chatService.loadHistory(agentId: agent.id) }
+        }
         .onDisappear { chatService.disconnect() }
         .onChange(of: photoItems) { _, newItems in
             Task { await loadPhotos(newItems) }
