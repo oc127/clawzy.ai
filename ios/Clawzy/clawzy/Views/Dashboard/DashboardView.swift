@@ -187,6 +187,20 @@ struct AgentRowView: View {
         }
     }
 
+    /// True if the agent was created within the last 24 hours.
+    var isNew: Bool {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: agent.createdAt) {
+            return Date.now.timeIntervalSince(date) < 86400
+        }
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: agent.createdAt) {
+            return Date.now.timeIntervalSince(date) < 86400
+        }
+        return false
+    }
+
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
@@ -198,9 +212,19 @@ struct AgentRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(agent.name)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.primary)
+                HStack(spacing: 6) {
+                    Text(agent.name)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                    if isNew {
+                        Text(lang.t("新着", en: "NEW", zh: "新", ko: "NEW"))
+                            .font(.caption2).fontWeight(.bold)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5).padding(.vertical, 2)
+                            .background(BrandConfig.brand)
+                            .clipShape(Capsule())
+                    }
+                }
                 Text(agent.modelName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
