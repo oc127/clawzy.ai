@@ -155,7 +155,7 @@ async def stream_chat_completion(
     else:
         model_to_use = agent.model_name
 
-    # ── 4. Route through OpenClaw ───────────────────────────────────────────
+    # ── 4. Route through OpenClaw → LiteLLM ─────────────────────────────────
     openclaw_base = _build_openclaw_url(agent)
     url = f"{openclaw_base}/v1/chat/completions"
     # Per-agent containers have their own gateway token stored in agent.config
@@ -166,8 +166,14 @@ async def stream_chat_completion(
         "Authorization": f"Bearer {gateway_token}",
         "Content-Type": "application/json",
     }
+    # Shared gateway: route to per-model agent (e.g. openclaw:qwen-max)
+    # Per-agent containers: each container IS the dedicated agent → use main
+    if openclaw_base == settings.openclaw_url:
+        openclaw_model = f"openclaw:{model_to_use}"
+    else:
+        openclaw_model = "openclaw:main"
     payload = {
-        "model": model_to_use,
+        "model": openclaw_model,
         "messages": history,
         "max_tokens": 8192,
         "stream": True,
