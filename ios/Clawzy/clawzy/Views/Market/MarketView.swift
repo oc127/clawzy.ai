@@ -344,21 +344,20 @@ private struct TemplateCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .disabled(isDisabled)
-            .alert(
-                lang.t("エージェントを追加", en: "Add Agent", zh: "添加助手", ko: "에이전트 추가"),
-                isPresented: $showConfirm
-            ) {
-                Button(lang.t("追加する", en: "Add", zh: "添加", ko: "추가")) { doInstall() }
-                Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"), role: .cancel) {}
-            } message: {
-                Text("\(localizedName)\n\(localizedDesc)")
-            }
         }
         .padding(14)
         .frame(height: 180)
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .sheet(isPresented: $showConfirm) {
+            TemplateInstallSheet(
+                template: template,
+                localizedName: localizedName,
+                localizedDesc: localizedDesc,
+                onInstall: { doInstall() }
+            )
+        }
     }
 
     private func doInstall() {
@@ -379,6 +378,94 @@ private struct TemplateCard: View {
                 onError(msg)
             }
         }
+    }
+}
+
+// MARK: - Template install sheet
+
+private struct TemplateInstallSheet: View {
+    let template: AgentTemplate
+    let localizedName: String
+    let localizedDesc: String
+    let onInstall: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.lang) var lang
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(Color(UIColor.separator))
+                .frame(width: 36, height: 4)
+                .padding(.top, 12)
+                .padding(.bottom, 20)
+
+            Text(template.icon)
+                .font(.system(size: 56))
+                .padding(.bottom, 10)
+
+            Text(localizedName)
+                .font(.title3).fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+
+            Text(localizedDesc)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+
+            if !template.systemPrompt.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(lang.t("システムプロンプト", en: "System Prompt", zh: "系统提示词", ko: "시스템 프롬프트"))
+                        .font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+                    Text(template.systemPrompt)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(4)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(BrandConfig.disabledGray)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+            }
+
+            Spacer()
+
+            VStack(spacing: 10) {
+                Button {
+                    dismiss()
+                    onInstall()
+                } label: {
+                    Text(lang.t("追加する", en: "Add Agent", zh: "添加助手", ko: "에이전트 추가"))
+                        .font(.body).fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(BrandConfig.brand)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                Button {
+                    dismiss()
+                } label: {
+                    Text(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"))
+                        .font(.body).fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(BrandConfig.disabledGray)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .background(BrandConfig.cardBackground)
+        .presentationDetents([.medium])
     }
 }
 
