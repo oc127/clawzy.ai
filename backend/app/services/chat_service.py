@@ -92,9 +92,9 @@ def _build_openclaw_url(agent: Agent) -> str:
     """
     from app.models.agent import AgentStatus
 
-    if agent.status == AgentStatus.running and agent.ws_port:
-        # Dedicated per-agent container (port mapped on host)
-        return f"http://127.0.0.1:{agent.ws_port}"
+    if agent.status == AgentStatus.running and agent.container_id:
+        # Dedicated per-agent container — reachable by name on the Docker network
+        return f"http://clawzy-agent-{agent.id}:18789"
     # Shared default gateway
     return settings.openclaw_url
 
@@ -182,6 +182,23 @@ async def stream_chat_completion(
     full_content = ""
     tokens_input = 0
     tokens_output = 0
+
+    # If per-agent container is unreachable, fall back to shared gateway
+    if openclaw_base != settings.openclaw_url:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as probe:
+                await probe.get(f"{openclaw_base}/health")
+        except httpx.ConnectError:
+            logger.warning(
+                "Agent %s container unreachable at %s; falling back to shared gateway",
+                agent.id, openclaw_base,
+            )
+            openclaw_base = settings.openclaw_url
+            url = f"{openclaw_base}/v1/chat/completions"
+            gateway_token = settings.openclaw_gateway_token
+            headers["Authorization"] = f"Bearer {gateway_token}"
+            openclaw_model = f"openclaw:{model_to_use}"
+            payload["model"] = openclaw_model
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
