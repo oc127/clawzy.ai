@@ -7,7 +7,16 @@ final class LanguageManager {
     }
 
     init() {
-        self.current = UserDefaults.standard.string(forKey: "appLanguage") ?? "ja"
+        if let saved = UserDefaults.standard.string(forKey: "appLanguage") {
+            self.current = saved
+        } else {
+            // No explicit preference — follow system locale
+            let systemLang = Locale.preferredLanguages.first ?? "en"
+            if systemLang.hasPrefix("ja") { self.current = "ja" }
+            else if systemLang.hasPrefix("zh") { self.current = "zh" }
+            else if systemLang.hasPrefix("ko") { self.current = "ko" }
+            else { self.current = "en" }
+        }
     }
 
     /// Return the string for the active language.

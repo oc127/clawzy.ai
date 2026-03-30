@@ -40,3 +40,11 @@ struct RegisterRequest: Codable {
     let password: String
     let name: String
 }
+
+struct RefreshRequest: Codable {
+    let refreshToken: String
+
+    enum CodingKeys: String, CodingKey {
+        case refreshToken = "refresh_token"
+    }
+}

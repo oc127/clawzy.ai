@@ -25,8 +25,32 @@ final class AuthManager {
                 self.isAuthenticated = true
                 self.errorMessage = nil
             }
+        } catch APIError.unauthorized {
+            // Access token expired — try refresh token before giving up
+            await tryRefreshToken()
         } catch {
-            // Token expired or invalid — log out silently, show no error
+            // Other error (network etc) — log out silently
+            await MainActor.run { self.logout() }
+        }
+    }
+
+    private func tryRefreshToken() async {
+        guard let refreshToken = keychain.readString(for: Constants.refreshTokenKey) else {
+            await MainActor.run { self.logout() }
+            return
+        }
+        do {
+            let body = RefreshRequest(refreshToken: refreshToken)
+            let response: AuthResponse = try await api.request(Constants.API.refresh, method: "POST", body: body)
+            saveTokens(response)
+            let user: User = try await api.request(Constants.API.me)
+            await MainActor.run {
+                self.currentUser = user
+                self.isAuthenticated = true
+                self.errorMessage = nil
+            }
+        } catch {
+            // Refresh token also expired — log out
             await MainActor.run { self.logout() }
         }
     }
