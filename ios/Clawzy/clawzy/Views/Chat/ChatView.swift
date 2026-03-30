@@ -65,6 +65,7 @@ struct ChatView: View {
         .toolbar { toolbarContent }
         .onAppear {
             chatService.connect(agentId: agent.id)
+            Task { await chatService.loadHistory(agentId: agent.id) }
             withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = false }
         }
         .onDisappear {
