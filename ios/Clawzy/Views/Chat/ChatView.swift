@@ -33,7 +33,7 @@ struct ChatAttachment: Identifiable {
 
 struct ChatView: View {
     let agent: Agent
-    @State private var chatService = ChatService()
+    let chatService: ChatService
     @State private var inputText = ""
     @State private var attachments: [ChatAttachment] = []
     @State private var photoItems: [PhotosPickerItem] = []

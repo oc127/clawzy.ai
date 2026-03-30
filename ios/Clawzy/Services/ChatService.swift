@@ -16,6 +16,8 @@ final class ChatService {
     // MARK: - 连接
 
     func connect(agentId: String) {
+        // 已连接到同一个 agent，无需重建连接
+        if currentAgentId == agentId && isConnected { return }
         currentAgentId = agentId
         reconnect()
     }
@@ -108,6 +110,25 @@ final class ChatService {
     }
 
     // MARK: - 加载历史对话
+
+    /// 进入聊天页面时调用：加载最近一条对话的消息历史。
+    /// 若 messages 已有内容（WebSocket 连接复用），则跳过。
+    func loadHistory(agentId: String) async {
+        guard messages.isEmpty else { return }
+        let conversations = await loadConversations(agentId: agentId)
+        guard let latest = conversations.first else { return }
+        let msgs = await loadMessages(conversationId: latest.id)
+        let bubbles = msgs.compactMap { msg -> ChatBubble? in
+            guard msg.role == .user || msg.role == .assistant else { return nil }
+            return ChatBubble(role: msg.role, content: msg.content)
+        }
+        await MainActor.run {
+            // 双重检查：避免 WebSocket 在加载期间已收到新消息
+            if messages.isEmpty {
+                messages = bubbles
+            }
+        }
+    }
 
     func loadConversations(agentId: String) async -> [Conversation] {
         (try? await APIClient.shared.request(Constants.API.conversations(agentId))) ?? []

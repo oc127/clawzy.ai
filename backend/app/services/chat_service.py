@@ -1,4 +1,4 @@
-"""Chat service — streams LLM responses via OpenClaw and manages conversations."""
+"""Chat service — streams LLM responses via LiteLLM and manages conversations."""
 
 import json
 import logging
@@ -83,20 +83,9 @@ async def get_conversation_history(
     return [{"role": m.role.value, "content": m.content} for m in messages]
 
 
-def _build_openclaw_url(agent: Agent) -> str:
-    """
-    Resolve the OpenClaw HTTP endpoint to use for this agent.
-
-    If the agent has its own running container with a ws_port, route to that
-    dedicated instance. Otherwise fall back to the shared gateway.
-    """
-    from app.models.agent import AgentStatus
-
-    if agent.status == AgentStatus.running and agent.ws_port:
-        # Dedicated per-agent container (port mapped on host)
-        return f"http://127.0.0.1:{agent.ws_port}"
-    # Shared default gateway
-    return settings.openclaw_url
+def _build_litellm_url() -> str:
+    """Return the LiteLLM chat completions endpoint."""
+    return f"{settings.litellm_url}/v1/chat/completions"
 
 
 async def stream_chat_completion(
@@ -155,15 +144,10 @@ async def stream_chat_completion(
     else:
         model_to_use = agent.model_name
 
-    # ── 4. Route through OpenClaw ───────────────────────────────────────────
-    openclaw_base = _build_openclaw_url(agent)
-    url = f"{openclaw_base}/v1/chat/completions"
-    # Per-agent containers have their own gateway token stored in agent.config
-    gateway_token = (
-        (agent.config or {}).get("gateway_token") or settings.openclaw_gateway_token
-    )
+    # ── 4. Route directly to LiteLLM ────────────────────────────────────────
+    url = _build_litellm_url()
     headers = {
-        "Authorization": f"Bearer {gateway_token}",
+        "Authorization": f"Bearer {settings.litellm_master_key}",
         "Content-Type": "application/json",
     }
     payload = {
@@ -182,7 +166,7 @@ async def stream_chat_completion(
             async with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code != 200:
                     body = await response.aread()
-                    logger.error("OpenClaw error %s: %s", response.status_code, body)
+                    logger.error("LiteLLM error %s: %s", response.status_code, body)
                     yield json.dumps({
                         "type": "error",
                         "code": "model_error",

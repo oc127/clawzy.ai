@@ -3,6 +3,7 @@ import SwiftUI
 struct DashboardView: View {
     @Environment(AuthManager.self) var authManager
     @Environment(AgentService.self) var agentService
+    @Environment(ChatServiceCache.self) var chatCache
     @Environment(\.lang) var lang
     @State private var showCreateAgent = false
 
@@ -70,7 +71,7 @@ struct DashboardView: View {
                 VStack(spacing: 1) {
                     ForEach(agentService.agents) { agent in
                         NavigationLink {
-                            ChatView(agent: agent)
+                            ChatView(agent: agent, chatService: chatCache.service(for: agent.id))
                         } label: {
                             AgentRowView(agent: agent)
                         }

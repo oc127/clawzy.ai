@@ -6,7 +6,5 @@
 	<array>
 		<string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
 	</array>
-	<key>com.apple.developer.in-app-payments</key>
-	<array/>
 </dict>
 </plist>

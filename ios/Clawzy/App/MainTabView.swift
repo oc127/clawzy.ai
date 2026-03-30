@@ -26,6 +26,7 @@ enum AppTab: Int, CaseIterable {
 
 struct MainTabView: View {
     @State private var agentService = AgentService()
+    @State private var chatCache = ChatServiceCache()
     @State private var selected: AppTab = .home
     @Environment(\.lang) var lang
 
@@ -49,6 +50,7 @@ struct MainTabView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         .environment(agentService)
+        .environment(chatCache)
     }
 }
 
