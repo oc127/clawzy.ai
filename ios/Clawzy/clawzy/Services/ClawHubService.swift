@@ -48,7 +48,7 @@ final class ClawHubService {
     private let api = APIClient.shared
 
     /// Search plugins. Pass `page > 1` to append results.
-    func search(query: String = "", page: Int = 1) async {
+    func search(query: String = "", page: Int = 1, limit: Int = 20) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -57,7 +57,7 @@ final class ClawHubService {
         components.queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "page", value: "\(page)"),
-            URLQueryItem(name: "limit", value: "20"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
         ]
         let qs = components.percentEncodedQuery.map { "?\($0)" } ?? ""
         let path = Constants.API.clawHubSearch + qs
