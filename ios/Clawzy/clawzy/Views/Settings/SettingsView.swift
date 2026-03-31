@@ -33,8 +33,13 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @Environment(AuthManager.self) var authManager
+    @Environment(AgentService.self) var agentService
     @Environment(\.lang) var lang
     @AppStorage("appColorScheme") private var colorScheme: String = "system"
+    @State private var isExporting = false
+    @State private var exportData: Data?
+    @State private var exportError: String?
+    @State private var showExportShare = false
 
     var body: some View {
         NavigationStack {
@@ -66,6 +71,23 @@ struct SettingsView: View {
                             Text("\(user.creditBalance)")
                                 .fontWeight(.bold)
                                 .foregroundStyle(BrandConfig.brand)
+                        }
+                    }
+
+                    // Installed plugins — show for each agent
+                    if !agentService.agents.isEmpty {
+                        Section(lang.t("エージェント管理", en: "Agent Management", zh: "助手管理", ko: "에이전트 관리")) {
+                            ForEach(agentService.agents) { agent in
+                                NavigationLink {
+                                    InstalledPluginsView(agent: agent)
+                                } label: {
+                                    Label(
+                                        lang.t("インストール済みプラグイン", en: "Installed Plugins", zh: "已安装插件", ko: "설치된 플러그인")
+                                        + " — " + agent.name,
+                                        systemImage: "puzzlepiece.extension"
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -111,6 +133,29 @@ struct SettingsView: View {
                     .pickerStyle(.navigationLink)
                 }
 
+                Section(lang.t("データ", en: "Data", zh: "数据", ko: "데이터")) {
+                    Button {
+                        Task { await exportUserData() }
+                    } label: {
+                        HStack {
+                            if isExporting {
+                                ProgressView()
+                                    .padding(.trailing, 4)
+                            } else {
+                                Label(lang.t("データをエクスポート", en: "Export Data", zh: "导出数据", ko: "데이터 내보내기"),
+                                      systemImage: "square.and.arrow.up")
+                            }
+                        }
+                        .foregroundStyle(BrandConfig.brand)
+                    }
+                    .disabled(isExporting)
+                    .sheet(isPresented: $showExportShare) {
+                        if let data = exportData {
+                            ShareSheet(items: [data as Any])
+                        }
+                    }
+                }
+
                 Section(lang.t("このアプリについて", en: "About", zh: "关于", ko: "앱 정보")) {
                     HStack {
                         Label(lang.t("バージョン", en: "Version", zh: "版本", ko: "버전"),
@@ -143,6 +188,48 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(lang.t("設定", en: "Settings", zh: "设置", ko: "설정"))
+            .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
+                   isPresented: Binding(get: { exportError != nil },
+                                        set: { if !$0 { exportError = nil } })) {
+                Button("OK") { exportError = nil }
+            } message: {
+                Text(exportError ?? "")
+            }
         }
     }
+
+    // MARK: - Export
+
+    private func exportUserData() async {
+        await MainActor.run { isExporting = true }
+        defer { Task { @MainActor in isExporting = false } }
+
+        guard let url = URL(string: Constants.baseURL + Constants.API.backupExport) else { return }
+        var req = URLRequest(url: url)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainHelper.shared.readString(for: Constants.accessTokenKey) {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            await MainActor.run {
+                exportData = data
+                showExportShare = true
+            }
+        } catch {
+            await MainActor.run { exportError = error.localizedDescription }
+        }
+    }
+}
+
+// MARK: - Share sheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

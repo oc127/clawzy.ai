@@ -4,6 +4,7 @@ import SwiftUI
 struct ClawzyApp: App {
     @State private var authManager = AuthManager()
     @State private var languageManager = LanguageManager()
+    @State private var healthMonitor = HealthMonitor()
     @AppStorage("appColorScheme") private var colorScheme: String = "system"
 
     private var preferredScheme: ColorScheme? {
@@ -19,7 +20,9 @@ struct ClawzyApp: App {
             ContentView()
                 .environment(authManager)
                 .environment(\.lang, languageManager)
+                .environment(healthMonitor)
                 .preferredColorScheme(preferredScheme)
+                .task { healthMonitor.startMonitoring() }
         }
     }
 }

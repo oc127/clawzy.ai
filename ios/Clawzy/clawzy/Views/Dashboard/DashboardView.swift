@@ -3,8 +3,10 @@ import SwiftUI
 struct DashboardView: View {
     @Environment(AuthManager.self) var authManager
     @Environment(AgentService.self) var agentService
+    @Environment(HealthMonitor.self) var healthMonitor
     @Environment(\.lang) var lang
     @State private var showCreateAgent = false
+    @State private var showHealthDetail = false
 
     var body: some View {
         NavigationStack {
@@ -20,6 +22,11 @@ struct DashboardView: View {
             }
             .navigationTitle(lang.t("ホーム", en: "Home", zh: "首页", ko: "홈"))
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    StatusBadge(status: healthMonitor.overallStatus) {
+                        showHealthDetail = true
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showCreateAgent = true
@@ -32,6 +39,9 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showCreateAgent) {
                 CreateAgentView(agentService: agentService)
+            }
+            .sheet(isPresented: $showHealthDetail) {
+                HealthDetailSheet(healthMonitor: healthMonitor)
             }
             .task { await agentService.fetchAgents() }
             .refreshable { await agentService.fetchAgents() }
@@ -84,6 +94,116 @@ struct DashboardView: View {
             .padding(.bottom, 24)
         }
         .background(BrandConfig.backgroundColor)
+    }
+}
+
+// MARK: - Status badge
+
+private struct StatusBadge: View {
+    let status: ServiceStatus
+    let onTap: () -> Void
+
+    private var color: Color {
+        switch status {
+        case .online:   return .green
+        case .degraded: return .yellow
+        case .offline:  return .red
+        }
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            Circle()
+                .fill(color)
+                .frame(width: 10, height: 10)
+                .shadow(color: color.opacity(0.6), radius: 3)
+        }
+    }
+}
+
+// MARK: - Health detail sheet
+
+private struct HealthDetailSheet: View {
+    let healthMonitor: HealthMonitor
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.lang) var lang
+
+    private var statusText: String {
+        switch healthMonitor.overallStatus {
+        case .online:   return lang.t("正常", en: "All Systems Online", zh: "一切正常", ko: "정상")
+        case .degraded: return lang.t("OpenClaw 異常", en: "OpenClaw Degraded", zh: "OpenClaw 异常", ko: "OpenClaw 이상")
+        case .offline:  return lang.t("オフライン", en: "Server Offline", zh: "服务器离线", ko: "서버 오프라인")
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Label(lang.t("バックエンド", en: "Backend", zh: "后端", ko: "백엔드"),
+                              systemImage: "server.rack")
+                        Spacer()
+                        Circle()
+                            .fill(healthMonitor.isBackendOnline ? Color.green : Color.red)
+                            .frame(width: 10, height: 10)
+                        Text(healthMonitor.isBackendOnline
+                             ? lang.t("オンライン", en: "Online", zh: "在线", ko: "온라인")
+                             : lang.t("オフライン", en: "Offline", zh: "离线", ko: "오프라인"))
+                            .foregroundStyle(healthMonitor.isBackendOnline ? .green : .red)
+                            .font(.subheadline)
+                    }
+                    HStack {
+                        Label("OpenClaw", systemImage: "cube.box")
+                        Spacer()
+                        Circle()
+                            .fill(healthMonitor.isOpenClawOnline ? Color.green : Color.yellow)
+                            .frame(width: 10, height: 10)
+                        Text(healthMonitor.isOpenClawOnline
+                             ? lang.t("正常", en: "Online", zh: "正常", ko: "정상")
+                             : lang.t("オフライン", en: "Offline", zh: "离线", ko: "오프라인"))
+                            .foregroundStyle(healthMonitor.isOpenClawOnline ? .green : .yellow)
+                            .font(.subheadline)
+                    }
+                }
+                if let checked = healthMonitor.lastChecked {
+                    Section {
+                        HStack {
+                            Text(lang.t("最終確認", en: "Last Checked", zh: "最后检查", ko: "마지막 확인"))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(checked, style: .relative)
+                                .font(.subheadline)
+                        }
+                    }
+                }
+                Section {
+                    Button {
+                        Task { await healthMonitor.checkHealth() }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if healthMonitor.isChecking {
+                                ProgressView()
+                            } else {
+                                Label(lang.t("再確認", en: "Refresh", zh: "刷新", ko: "새로고침"),
+                                      systemImage: "arrow.clockwise")
+                            }
+                            Spacer()
+                        }
+                    }
+                    .foregroundStyle(BrandConfig.brand)
+                }
+            }
+            .navigationTitle(statusText)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(lang.t("閉じる", en: "Close", zh: "关闭", ko: "닫기")) { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 

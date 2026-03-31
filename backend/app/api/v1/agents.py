@@ -1,7 +1,11 @@
+import json
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.docker_manager import docker_manager
 from app.deps import get_current_user
 from app.models.user import User
 from app.schemas.agent import AgentCreate, AgentUpdate, AgentResponse
@@ -15,6 +19,8 @@ from app.services.agent_service import (
     stop_agent,
     AgentLimitError,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -99,3 +105,80 @@ async def delete_my_agent(
     if agent is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     await delete_agent(db, agent)
+
+
+# ---------------------------------------------------------------------------
+# Plugin management
+# ---------------------------------------------------------------------------
+
+@router.get("/{agent_id}/plugins")
+async def list_agent_plugins(
+    agent_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List installed ClawHub plugins inside the agent container."""
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not agent.container_id:
+        return {"plugins": []}
+
+    try:
+        container = docker_manager.client.containers.get(agent.container_id)
+        exit_code, output_bytes = container.exec_run(
+            ["openclaw", "plugins", "list", "--json"],
+            demux=False,
+        )
+    except Exception as exc:
+        logger.error("Docker exec error for agent %s: %s", agent_id, exc)
+        raise HTTPException(status_code=500, detail=f"Container exec error: {str(exc)[:300]}")
+
+    output = (output_bytes or b"").decode("utf-8", errors="replace")
+    plugins: list = []
+    try:
+        data = json.loads(output)
+        if isinstance(data, list):
+            plugins = data
+        elif isinstance(data, dict) and "plugins" in data:
+            plugins = data["plugins"]
+    except (json.JSONDecodeError, ValueError):
+        for line in output.strip().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                parts = line.split("@", 1)
+                plugins.append({"slug": parts[0], "version": parts[1] if len(parts) > 1 else "unknown"})
+
+    return {"plugins": plugins}
+
+
+@router.delete("/{agent_id}/plugins/{slug}", status_code=status.HTTP_204_NO_CONTENT)
+async def uninstall_agent_plugin(
+    agent_id: str,
+    slug: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Uninstall a ClawHub plugin from an agent's container."""
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not agent.container_id:
+        raise HTTPException(status_code=400, detail="Agent container is not running")
+
+    try:
+        container = docker_manager.client.containers.get(agent.container_id)
+        exit_code, output_bytes = container.exec_run(
+            ["openclaw", "plugins", "uninstall", f"clawhub:{slug}"],
+            demux=False,
+        )
+    except Exception as exc:
+        logger.error("Docker exec error for agent %s: %s", agent_id, exc)
+        raise HTTPException(status_code=500, detail=f"Container exec error: {str(exc)[:300]}")
+
+    output = (output_bytes or b"").decode("utf-8", errors="replace")[:500]
+    if exit_code != 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Plugin uninstall failed (exit {exit_code}): {output}",
+        )

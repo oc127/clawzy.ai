@@ -43,4 +43,16 @@ app.include_router(api_router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "clawzy-backend"}
+    from app.core.docker_manager import docker_manager
+
+    openclaw_status = "ok"
+    try:
+        docker_manager.client.ping()
+    except Exception:
+        openclaw_status = "offline"
+
+    return {
+        "status": "ok",
+        "service": "clawzy-backend",
+        "openclaw": openclaw_status,
+    }

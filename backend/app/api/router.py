@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, users, agents, models, billing, chat, templates, clawhub
+from app.api.v1 import auth, users, agents, models, billing, chat, templates, clawhub, backup
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -12,3 +12,4 @@ api_router.include_router(billing.router)
 api_router.include_router(chat.router)
 api_router.include_router(templates.router)
 api_router.include_router(clawhub.router)
+api_router.include_router(backup.router)

@@ -41,6 +41,10 @@ struct ChatView: View {
     @State private var showPhotoPicker = false
     @State private var showFilePicker = false
     @State private var showOpenClaw = false
+    @State private var showModelPicker = false
+    @State private var availableModels: [AIModel] = []
+    @State private var currentModelName: String = ""
+    @Environment(HealthMonitor.self) var healthMonitor
 
     private static let allowedFileTypes: [UTType] = [
         .pdf, .plainText, .json, .commaSeparatedText,
@@ -56,6 +60,10 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Disconnect banner
+            if !healthMonitor.isBackendOnline || !chatService.isConnected {
+                DisconnectBanner(isBackendDown: !healthMonitor.isBackendOnline)
+            }
             messageList
             inputBar
         }
@@ -64,8 +72,12 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
         .onAppear {
+            currentModelName = agent.modelName
             chatService.connect(agentId: agent.id)
-            Task { await chatService.loadHistory(agentId: agent.id) }
+            Task {
+                await chatService.loadHistory(agentId: agent.id)
+                await loadModels()
+            }
             withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = false }
         }
         .onDisappear {
@@ -87,6 +99,20 @@ struct ChatView: View {
         .sheet(isPresented: $showOpenClaw) {
             SafariView(url: URL(string: "https://clawzy.ai/openclaw/")!)
                 .ignoresSafeArea()
+        }
+        .confirmationDialog(
+            lang.t("モデルを選択", en: "Select Model", zh: "选择模型", ko: "모델 선택"),
+            isPresented: $showModelPicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(availableModels) { model in
+                Button {
+                    Task { await switchModel(to: model.id) }
+                } label: {
+                    Text(model.name + (model.id == currentModelName ? " ✓" : ""))
+                }
+            }
+            Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"), role: .cancel) {}
         }
     }
 
@@ -128,13 +154,20 @@ struct ChatView: View {
                     Circle()
                         .fill(chatService.isConnected ? Color.green : Color(UIColor.systemGray3))
                         .frame(width: 6, height: 6)
-                    Text(agent.modelName).font(.caption2).foregroundStyle(.secondary)
+                    Text(currentModelName.isEmpty ? agent.modelName : currentModelName)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
         ToolbarItem(placement: .navigationBarTrailing) {
             Button { showOpenClaw = true } label: {
                 Image(systemName: "globe")
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button { showModelPicker = true } label: {
+                Image(systemName: "cpu")
+                    .font(.system(size: 15))
             }
         }
         ToolbarItem(placement: .automatic) {
@@ -148,6 +181,31 @@ struct ChatView: View {
                 .background(BrandConfig.brand.opacity(0.10))
                 .clipShape(Capsule())
             }
+        }
+    }
+
+    // MARK: - Model switching
+
+    private func loadModels() async {
+        do {
+            let models: [AIModel] = try await APIClient.shared.request(Constants.API.models)
+            await MainActor.run { availableModels = models }
+        } catch {
+            // Silent — model picker just won't show options
+        }
+    }
+
+    private func switchModel(to modelId: String) async {
+        do {
+            let body = UpdateAgentModelRequest(modelName: modelId)
+            let _: Agent = try await APIClient.shared.request(
+                Constants.API.agent(agent.id),
+                method: "PATCH",
+                body: body
+            )
+            await MainActor.run { currentModelName = modelId }
+        } catch {
+            // Silent fail — UI stays with previous model name
         }
     }
 
@@ -322,6 +380,42 @@ struct ChatView: View {
             quality -= 0.15
         }
         return ui.jpegData(compressionQuality: 0.1)
+    }
+}
+
+// MARK: - Disconnect banner
+
+private struct DisconnectBanner: View {
+    let isBackendDown: Bool
+    @Environment(\.lang) var lang
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.8)
+                .tint(.white)
+            Text(isBackendDown
+                 ? lang.t("サーバーに接続できません", en: "Server unreachable", zh: "服务器无法访问", ko: "서버 연결 불가")
+                 : lang.t("接続中断、再接続中...", en: "Connection lost, reconnecting...", zh: "连接中断，正在重连...", ko: "연결 끊김, 재연결 중..."))
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.white)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(isBackendDown ? Color.red : Color.orange)
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.easeInOut, value: isBackendDown)
+    }
+}
+
+// MARK: - Model update request
+
+private struct UpdateAgentModelRequest: Encodable {
+    let modelName: String
+    enum CodingKeys: String, CodingKey {
+        case modelName = "model_name"
     }
 }
 
