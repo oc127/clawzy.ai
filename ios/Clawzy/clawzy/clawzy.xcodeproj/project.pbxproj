@@ -37,6 +37,7 @@
 		B1C2D3E4F5A6071823B1C2D3 /* ClawHubService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */; };
 		C1D2E3F4A5B6078923C1D2E3 /* HealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */; };
 		E3F4A5B6C7D8090145E3F4A5 /* InstalledPluginsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */; };
+		F5A6B7C8D9E0005278F5A6B7 /* PluginsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +73,7 @@
 		A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClawHubService.swift; sourceTree = "<group>"; };
 		D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMonitor.swift; sourceTree = "<group>"; };
 		F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledPluginsView.swift; sourceTree = "<group>"; };
+		E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginsStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -179,6 +181,7 @@
 				4EBD3CB32F71354F00F4A127 /* AuthManager.swift */,
 				4EBD3CB42F71354F00F4A127 /* ChatService.swift */,
 				A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */,
+				E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */,
 				D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */,
 				D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */,);
 			path = Services;
@@ -369,6 +372,7 @@
 				F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */,
 				7566003396D948279B9EB8FE /* CreditsShopView.swift in Sources */,
 				B1C2D3E4F5A6071823B1C2D3 /* ClawHubService.swift in Sources */,
+				F5A6B7C8D9E0005278F5A6B7 /* PluginsStore.swift in Sources */,
 				C1D2E3F4A5B6078923C1D2E3 /* HealthMonitor.swift in Sources */,
 				E3F4A5B6C7D8090145E3F4A5 /* InstalledPluginsView.swift in Sources */,
 			);

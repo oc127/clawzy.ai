@@ -53,26 +53,40 @@ final class ClawHubService {
         errorMessage = nil
         defer { isLoading = false }
 
-        var components = URLComponents()
-        components.queryItems = [
-            URLQueryItem(name: "q", value: query),
-            URLQueryItem(name: "page", value: "\(page)"),
-            URLQueryItem(name: "limit", value: "\(limit)"),
-        ]
-        let qs = components.percentEncodedQuery.map { "?\($0)" } ?? ""
-        let path = Constants.API.clawHubSearch + qs
+        guard let items = await fetchRaw(query: query, page: page, limit: limit) else { return }
+        if page == 1 {
+            plugins = items
+        } else {
+            plugins += items
+        }
+    }
 
-        do {
-            let response: ClawHubSearchResponse = try await api.request(path)
-            if page == 1 {
-                plugins = response.items
-            } else {
-                plugins += response.items
+    /// Load popular skills: try empty query first, fallback to keywords.
+    func searchPopular(limit: Int = 10) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        // Try empty query first
+        if let items = await fetchRaw(query: "", limit: limit), !items.isEmpty {
+            plugins = items
+            return
+        }
+
+        // Fallback: merge results from multiple keywords
+        var seen = Set<String>()
+        var merged: [ClawHubPlugin] = []
+        for kw in ["coding", "writing", "assistant"] {
+            if let items = await fetchRaw(query: kw, limit: 10) {
+                for p in items where !seen.contains(p.slug) {
+                    seen.insert(p.slug)
+                    merged.append(p)
+                }
             }
-            totalCount = response.total
-        } catch {
-            errorMessage = error.localizedDescription
-            if page == 1 { plugins = [] }
+        }
+        plugins = Array(merged.prefix(limit))
+        if plugins.isEmpty {
+            errorMessage = "No skills found"
         }
     }
 
@@ -84,5 +98,27 @@ final class ClawHubService {
             method: "POST",
             body: body
         )
+    }
+
+    // MARK: - Private
+
+    private func fetchRaw(query: String = "", page: Int = 1, limit: Int = 20) async -> [ClawHubPlugin]? {
+        var components = URLComponents()
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        let qs = components.percentEncodedQuery.map { "?\($0)" } ?? ""
+        let path = Constants.API.clawHubSearch + qs
+
+        do {
+            let response: ClawHubSearchResponse = try await api.request(path)
+            totalCount = response.total
+            return response.items
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
     }
 }

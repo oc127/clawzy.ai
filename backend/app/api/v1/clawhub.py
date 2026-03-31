@@ -96,7 +96,7 @@ async def search_plugins(
     items = [
         ClawHubPlugin(
             slug=item.get("slug", ""),
-            name=item.get("name", item.get("title", "")),
+            name=item.get("name") or item.get("title") or item.get("slug", "").replace("-", " ").title(),
             description=item.get("description") or item.get("summary"),
             author=item.get("author") or item.get("author_name"),
             downloads=item.get("downloads") or item.get("download_count"),

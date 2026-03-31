@@ -1,27 +1,16 @@
 import SwiftUI
 
-// MARK: - Plugin model
-
-struct InstalledPlugin: Identifiable, Decodable {
-    var id: String { slug }
-    let slug: String
-    let version: String?
-    let name: String?
-}
-
-private struct PluginsResponse: Decodable {
-    let plugins: [InstalledPlugin]
-}
-
 // MARK: - InstalledPluginsView
 
 struct InstalledPluginsView: View {
     let agent: Agent
-    @State private var plugins: [InstalledPlugin] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
+    @Environment(PluginsStore.self) var pluginsStore
     @State private var uninstallingSlug: String?
+    @State private var errorMessage: String?
     @Environment(\.lang) var lang
+
+    private var plugins: [InstalledPlugin] { pluginsStore.plugins(for: agent.id) }
+    private var isLoading: Bool { pluginsStore.isLoading(agentId: agent.id) }
 
     var body: some View {
         List {
@@ -86,8 +75,8 @@ struct InstalledPluginsView: View {
                                 zh: "已安装插件",
                                 ko: "설치된 플러그인"))
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await fetchPlugins() }
-        .task { await fetchPlugins() }
+        .refreshable { await pluginsStore.fetch(agentId: agent.id) }
+        .task { await pluginsStore.fetch(agentId: agent.id) }
         .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
                isPresented: Binding(get: { errorMessage != nil },
                                     set: { if !$0 { errorMessage = nil } })) {
@@ -99,30 +88,13 @@ struct InstalledPluginsView: View {
 
     // MARK: - API
 
-    private func fetchPlugins() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            let resp: PluginsResponse = try await APIClient.shared.request(
-                Constants.API.agentPlugins(agent.id)
-            )
-            await MainActor.run { plugins = resp.plugins }
-        } catch {
-            await MainActor.run { errorMessage = error.localizedDescription }
-        }
-    }
-
     private func uninstall(slug: String) async {
-        await MainActor.run { uninstallingSlug = slug }
-        defer { Task { @MainActor in uninstallingSlug = nil } }
+        uninstallingSlug = slug
+        defer { uninstallingSlug = nil }
         do {
-            try await APIClient.shared.requestVoid(
-                Constants.API.agentPlugin(agent.id, slug: slug),
-                method: "DELETE"
-            )
-            await MainActor.run { plugins.removeAll { $0.slug == slug } }
+            try await pluginsStore.uninstall(slug: slug, agentId: agent.id)
         } catch {
-            await MainActor.run { errorMessage = error.localizedDescription }
+            errorMessage = error.localizedDescription
         }
     }
 }

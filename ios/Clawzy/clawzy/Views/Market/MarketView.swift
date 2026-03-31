@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MarketView: View {
     @Environment(AgentService.self) var agentService
+    @Environment(PluginsStore.self) var pluginsStore
     @Environment(\.lang) var lang
 
     @State private var selectedTab = 0
@@ -9,7 +10,6 @@ struct MarketView: View {
     @State private var popularService = ClawHubService()
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
-    @State private var installedAgent: Agent?
 
     // Toast state
     @State private var toastMessage: String?
@@ -35,15 +35,6 @@ struct MarketView: View {
             }
             .background(BrandConfig.backgroundColor)
             .navigationTitle(lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"))
-            // Navigate to ChatView after successful install
-            .navigationDestination(isPresented: Binding(
-                get: { installedAgent != nil },
-                set: { if !$0 { installedAgent = nil } }
-            )) {
-                if let agent = installedAgent {
-                    ChatView(agent: agent)
-                }
-            }
             .overlay(alignment: .bottom) {
                 if let msg = toastMessage {
                     ToastView(message: msg, isError: toastIsError)
@@ -60,7 +51,7 @@ struct MarketView: View {
         }
     }
 
-    // MARK: - Templates tab (ClawHub popular skills)
+    // MARK: - Templates tab
 
     private var templatesTab: some View {
         Group {
@@ -84,8 +75,8 @@ struct MarketView: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(popularService.plugins) { plugin in
-                            ClawHubTemplateCard(plugin: plugin) { agentId in
-                                await installPlugin(plugin: plugin, agentId: agentId)
+                            ClawHubTemplateCard(plugin: plugin) {
+                                await installPlugin(plugin: plugin)
                             }
                         }
                     }
@@ -96,7 +87,7 @@ struct MarketView: View {
         }
         .task {
             if popularService.plugins.isEmpty && !popularService.isLoading {
-                await popularService.search(query: "assistant", limit: 10)
+                await popularService.searchPopular(limit: 10)
             }
         }
     }
@@ -150,8 +141,8 @@ struct MarketView: View {
                 ScrollView {
                     LazyVStack(spacing: 10) {
                         ForEach(clawHubService.plugins) { plugin in
-                            PluginCard(plugin: plugin) { agentId in
-                                await installPlugin(plugin: plugin, agentId: agentId)
+                            PluginCard(plugin: plugin) {
+                                await installPlugin(plugin: plugin)
                             }
                         }
                     }
@@ -173,20 +164,29 @@ struct MarketView: View {
         }
     }
 
-    private func installPlugin(plugin: ClawHubPlugin, agentId: String) async {
+    @discardableResult
+    private func installPlugin(plugin: ClawHubPlugin) async -> Bool {
+        guard let agentId = agentService.agents.first?.id else {
+            showToast(
+                lang.t("まずエージェントを作成してください",
+                        en: "Please create an agent first",
+                        zh: "请先创建一个助手",
+                        ko: "먼저 에이전트를 만들어주세요"),
+                isError: true
+            )
+            return false
+        }
         do {
             try await clawHubService.install(agentId: agentId, slug: plugin.slug)
             showToast(
-                "✅ \(plugin.name) \(lang.t("をインストールしました。開いています...", en: "installed, opening...", zh: "已安装，正在打开...", ko: "설치됨, 열리는 중..."))",
+                "✅ \(plugin.name) \(lang.t("をインストールしました", en: "installed", zh: "已安装", ko: "설치됨"))",
                 isError: false
             )
-            if let agent = agentService.agents.first(where: { $0.id == agentId }) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    installedAgent = agent
-                }
-            }
+            await pluginsStore.fetch(agentId: agentId)
+            return true
         } catch {
             showToast("⚠️ \(error.localizedDescription)", isError: true)
+            return false
         }
     }
 
@@ -217,14 +217,12 @@ struct MarketView: View {
     }
 }
 
-// MARK: - ClawHub Template Card (grid layout, confirmationDialog)
+// MARK: - ClawHub Template Card (grid layout, no dialogs)
 
 private struct ClawHubTemplateCard: View {
     let plugin: ClawHubPlugin
-    let onInstall: (String) async -> Void
+    let onInstall: () async -> Bool
 
-    @State private var showConfirm = false
-    @State private var showAgentPicker = false
     @State private var isInstalling = false
     @State private var installed = false
     @Environment(\.lang) var lang
@@ -259,7 +257,12 @@ private struct ClawHubTemplateCard: View {
 
             Button {
                 guard !isInstalling && !installed else { return }
-                showConfirm = true
+                isInstalling = true
+                Task {
+                    let ok = await onInstall()
+                    isInstalling = false
+                    if ok { installed = true }
+                }
             } label: {
                 HStack(spacing: 4) {
                     if isInstalling {
@@ -268,8 +271,8 @@ private struct ClawHubTemplateCard: View {
                         Image(systemName: installed ? "checkmark" : "plus").font(.caption.bold())
                     }
                     Text(installed
-                         ? lang.t("インストール済み", en: "Installed",     zh: "已安装", ko: "설치됨")
-                         : lang.t("インストール",     en: "Install",       zh: "安装",   ko: "설치"))
+                         ? lang.t("インストール済み", en: "Installed ✓",  zh: "已安装 ✓", ko: "설치됨 ✓")
+                         : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
                         .font(.caption).fontWeight(.medium)
                 }
                 .foregroundStyle(installed || isInstalling ? .secondary : BrandConfig.brand)
@@ -285,31 +288,6 @@ private struct ClawHubTemplateCard: View {
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
-        .confirmationDialog(
-            plugin.name,
-            isPresented: $showConfirm,
-            titleVisibility: .visible
-        ) {
-            Button(lang.t("インストール", en: "Install", zh: "安装", ko: "설치")) {
-                showAgentPicker = true
-            }
-            Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"), role: .cancel) {}
-        } message: {
-            if let desc = plugin.description, !desc.isEmpty {
-                Text(desc)
-            }
-        }
-        .sheet(isPresented: $showAgentPicker) {
-            AgentPickerSheet { agentId in
-                showAgentPicker = false
-                isInstalling = true
-                Task {
-                    await onInstall(agentId)
-                    isInstalling = false
-                    installed = true
-                }
-            }
-        }
     }
 
     private func iconForPlugin(_ p: ClawHubPlugin) -> String {
@@ -339,12 +317,10 @@ private struct ClawHubTemplateCard: View {
 
 private struct PluginCard: View {
     let plugin: ClawHubPlugin
-    let onInstall: (String) async -> Void
+    let onInstall: () async -> Bool
 
-    @State private var showAgentPicker = false
     @State private var isInstalling = false
     @State private var installed = false
-    @Environment(AgentService.self) var agentService
     @Environment(\.lang) var lang
 
     var body: some View {
@@ -390,23 +366,18 @@ private struct PluginCard: View {
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-        .sheet(isPresented: $showAgentPicker) {
-            AgentPickerSheet { agentId in
-                showAgentPicker = false
-                isInstalling = true
-                Task {
-                    await onInstall(agentId)
-                    isInstalling = false
-                    installed = true
-                }
-            }
-        }
     }
 
     @ViewBuilder
     private var installButton: some View {
         Button {
-            if !installed && !isInstalling { showAgentPicker = true }
+            guard !installed && !isInstalling else { return }
+            isInstalling = true
+            Task {
+                let ok = await onInstall()
+                isInstalling = false
+                if ok { installed = true }
+            }
         } label: {
             Group {
                 if isInstalling {
@@ -416,8 +387,8 @@ private struct PluginCard: View {
                         Image(systemName: installed ? "checkmark" : "arrow.down.circle")
                             .font(.caption.bold())
                         Text(installed
-                             ? lang.t("済み",          en: "Installed", zh: "已安装", ko: "설치됨")
-                             : lang.t("インストール",  en: "Install",   zh: "安装",   ko: "설치"))
+                             ? lang.t("済み",         en: "Installed", zh: "已安装", ko: "설치됨")
+                             : lang.t("インストール", en: "Install",   zh: "安装",   ko: "설치"))
                             .font(.caption).fontWeight(.medium)
                     }
                     .foregroundStyle(installed ? .secondary : BrandConfig.brand)
@@ -433,70 +404,6 @@ private struct PluginCard: View {
 
     private func formatDownloads(_ n: Int) -> String {
         n >= 1000 ? "\(n / 1000)k" : "\(n)"
-    }
-}
-
-// MARK: - Agent picker sheet
-
-private struct AgentPickerSheet: View {
-    let onSelect: (String) -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @Environment(AgentService.self) var agentService
-    @Environment(\.lang) var lang
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if agentService.agents.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "person.crop.circle.badge.questionmark")
-                            .font(.system(size: 40)).foregroundStyle(.secondary)
-                        Text(lang.t("エージェントがありません",
-                                    en: "No agents yet",
-                                    zh: "还没有助手",
-                                    ko: "에이전트가 없습니다"))
-                            .font(.headline)
-                        Text(lang.t("まずダッシュボードでエージェントを作成してください",
-                                    en: "Create an agent on the Home tab first",
-                                    zh: "请先在首页创建一个助手",
-                                    ko: "먼저 홈 탭에서 에이전트를 만들어주세요"))
-                            .font(.footnote).foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center).padding(.horizontal, 32)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List(agentService.agents) { agent in
-                        Button {
-                            onSelect(agent.id)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(agent.name)
-                                        .font(.subheadline).fontWeight(.medium).foregroundStyle(.primary)
-                                    Text(agent.modelName)
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(lang.t("インストール先を選択",
-                                    en: "Choose an Agent",
-                                    zh: "选择安装目标",
-                                    ko: "에이전트 선택"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소")) { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
 }
 

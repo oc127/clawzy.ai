@@ -26,6 +26,7 @@ enum AppTab: Int, CaseIterable {
 
 struct MainTabView: View {
     @State private var agentService = AgentService()
+    @State private var pluginsStore = PluginsStore()
     @State private var selected: AppTab = .home
     @State private var tabBarVisible = true
     @Environment(\.lang) var lang
@@ -51,6 +52,7 @@ struct MainTabView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         .environment(agentService)
+        .environment(pluginsStore)
         .environment(\.tabBarVisible, $tabBarVisible)
     }
 }
