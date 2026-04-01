@@ -157,9 +157,12 @@ async def stream_chat_completion(
         model_to_use = agent.model_name
 
     # ── 4. Dual-channel routing ─────────────────────────────────────────────
-    # Build both endpoint configs.  Both use the LiteLLM master key — OpenClaw
-    # proxies requests through to LiteLLM so the same key is accepted on both.
-    shared_headers = {
+    # OpenClaw and LiteLLM use different auth tokens.
+    openclaw_headers = {
+        "Authorization": f"Bearer {settings.openclaw_gateway_token}",
+        "Content-Type": "application/json",
+    }
+    litellm_headers = {
         "Authorization": f"Bearer {settings.litellm_master_key}",
         "Content-Type": "application/json",
     }
@@ -192,7 +195,7 @@ async def stream_chat_completion(
 
     # Try to establish the OpenClaw connection
     _probe_client = httpx.AsyncClient(timeout=openclaw_timeout)
-    _stream_ctx = _probe_client.stream("POST", openclaw_url, headers=shared_headers, json=payload)
+    _stream_ctx = _probe_client.stream("POST", openclaw_url, headers=openclaw_headers, json=payload)
     try:
         _response = await _stream_ctx.__aenter__()
     except (httpx.ConnectError, httpx.TimeoutException) as exc:
@@ -205,7 +208,7 @@ async def stream_chat_completion(
         active_url = litellm_url
         active_timeout = litellm_timeout
         _probe_client = httpx.AsyncClient(timeout=litellm_timeout)
-        _stream_ctx = _probe_client.stream("POST", litellm_url, headers=shared_headers, json=payload)
+        _stream_ctx = _probe_client.stream("POST", litellm_url, headers=litellm_headers, json=payload)
         try:
             _response = await _stream_ctx.__aenter__()
         except (httpx.ConnectError, httpx.TimeoutException):

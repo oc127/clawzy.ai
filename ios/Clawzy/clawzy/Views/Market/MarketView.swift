@@ -7,17 +7,36 @@ struct MarketView: View {
 
     @State private var selectedTab = 0
     @State private var clawHubService = ClawHubService()
-    @State private var popularService = ClawHubService()
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
 
-    // Install confirmation modal
+    // Install confirmation modal (for plugins)
     @State private var selectedPlugin: ClawHubPlugin?
     @State private var isConfirmInstalling = false
+
+    // Templates state
+    @State private var templates: [AppTemplate] = []
+    @State private var isLoadingTemplates = true
+    @State private var selectedCategory = ""
 
     // Toast state
     @State private var toastMessage: String?
     @State private var toastIsError = false
+
+    private var allLabel: String { lang.t("すべて", en: "All", zh: "全部", ko: "전체") }
+
+    private var categories: [String] {
+        let cats = templates.map(\.category)
+        var seen = Set<String>()
+        let unique = cats.filter { seen.insert($0).inserted }
+        return [allLabel] + unique
+    }
+
+    private var filteredTemplates: [AppTemplate] {
+        selectedCategory == allLabel || selectedCategory.isEmpty
+            ? templates
+            : templates.filter { $0.category == selectedCategory }
+    }
 
     var body: some View {
         ZStack {
@@ -50,7 +69,7 @@ struct MarketView: View {
                 .animation(.easeInOut(duration: 0.25), value: toastMessage)
             }
 
-            // MARK: - Centered install confirmation overlay
+            // MARK: - Centered install confirmation overlay (for plugins)
             if selectedPlugin != nil {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
@@ -157,46 +176,107 @@ struct MarketView: View {
         .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
     }
 
-    // MARK: - Templates tab
+    // MARK: - Templates tab (real DB templates)
 
     private var templatesTab: some View {
         Group {
-            if popularService.isLoading && popularService.plugins.isEmpty {
-                Spacer()
-                ProgressView()
-                Spacer()
-            } else if let err = popularService.errorMessage, popularService.plugins.isEmpty {
+            if isLoadingTemplates {
+                skeletonGrid
+            } else if templates.isEmpty {
                 emptyState(
-                    icon: "wifi.slash",
-                    title: lang.t("接続エラー",      en: "Connection Error", zh: "连接错误", ko: "연결 오류"),
-                    subtitle: err
-                )
-            } else if popularService.plugins.isEmpty {
-                emptyState(
-                    icon: "tray",
-                    title: lang.t("スキルが見つかりません", en: "No Skills Found",    zh: "未找到技能",       ko: "스킬 없음"),
+                    icon: "storefront",
+                    title: lang.t("テンプレートがありません", en: "No templates", zh: "暂无模板", ko: "템플릿 없음"),
                     subtitle: lang.t("しばらくしてからもう一度お試しください", en: "Please try again later", zh: "请稍后重试", ko: "나중에 다시 시도해주세요")
                 )
             } else {
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(popularService.plugins) { plugin in
-                            ClawHubTemplateCard(plugin: plugin) {
-                                selectedPlugin = plugin
+                    VStack(spacing: 0) {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(categories, id: \.self) { cat in
+                                    Button { withAnimation { selectedCategory = cat } } label: {
+                                        Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
+                                            .font(.footnote).fontWeight(.medium)
+                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
+                                            .padding(.horizontal, 14).padding(.vertical, 8)
+                                            .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                        }
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(filteredTemplates) { t in
+                                TemplateCard(template: t, agentService: agentService) { msg in
+                                    showToast(msg, isError: msg.hasPrefix("⚠️"))
+                                }
                             }
                         }
+                        .padding(.horizontal, 16).padding(.bottom, 24)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
                 }
             }
         }
         .task {
-            if popularService.plugins.isEmpty && !popularService.isLoading {
-                await popularService.searchPopular(limit: 10)
+            if templates.isEmpty {
+                await loadTemplates()
             }
         }
     }
+
+    private var skeletonGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ForEach(0..<6, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(BrandConfig.disabledGray)
+                        .frame(height: 180)
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    private func loadTemplates() async {
+        isLoadingTemplates = true
+        if agentService.agents.isEmpty { await agentService.fetchAgents() }
+        let remote: [AppTemplate]? = try? await APIClient.shared.request(Constants.API.templates)
+        templates = (remote != nil && !remote!.isEmpty) ? remote! : Self.fallbackTemplates
+        isLoadingTemplates = false
+    }
+
+    // Hardcoded fallback
+    static let fallbackTemplates: [AppTemplate] = [
+        AppTemplate(id: "tpl-001", name: "ビジネスアシスタント", description: "メール・資料作成・会議サポート",      icon: "💼", category: "ビジネス", modelName: "deepseek-chat",     systemPrompt: "あなたはプロフェッショナルなビジネスアシスタントです。", sortOrder: 1),
+        AppTemplate(id: "tpl-002", name: "日本語家庭教師",      description: "日本語学習をサポートします",          icon: "📚", category: "教育",     modelName: "qwen-plus",          systemPrompt: "あなたは経験豊富な日本語教師です。",                    sortOrder: 2),
+        AppTemplate(id: "tpl-003", name: "コピーライター",      description: "広告・SNS・ブログ文章を作成",         icon: "✍️", category: "創作",     modelName: "deepseek-chat",     systemPrompt: "あなたはクリエイティブなコピーライターです。",            sortOrder: 3),
+        AppTemplate(id: "tpl-004", name: "データアナリスト",    description: "データ分析・レポート作成",             icon: "📊", category: "分析",     modelName: "deepseek-reasoner", systemPrompt: "あなたはデータアナリストです。",                        sortOrder: 4),
+        AppTemplate(id: "tpl-005", name: "コードレビュアー",    description: "コードレビュー・バグ修正サポート",     icon: "💻", category: "コード",   modelName: "deepseek-chat",     systemPrompt: "あなたはシニアエンジニアです。",                        sortOrder: 5),
+        AppTemplate(id: "tpl-006", name: "クリエイティブライター", description: "小説・詩・脚本の執筆サポート",     icon: "🎨", category: "創作",     modelName: "qwen-max",          systemPrompt: "あなたはクリエイティブライターです。",                  sortOrder: 6),
+        AppTemplate(id: "tpl-007", name: "翻訳スペシャリスト",  description: "日英中韓の高精度翻訳",               icon: "🌐", category: "ビジネス", modelName: "qwen-plus",          systemPrompt: "あなたはプロの翻訳者です。",                            sortOrder: 7),
+        AppTemplate(id: "tpl-008", name: "リサーチアシスタント", description: "調査・要約・情報整理",              icon: "🔍", category: "分析",     modelName: "deepseek-reasoner", systemPrompt: "あなたはリサーチアシスタントです。",                    sortOrder: 8),
+    ]
+
+    static let templateL10n: [String: (name: (en: String, zh: String, ko: String), desc: (en: String, zh: String, ko: String))] = [
+        "tpl-001": (name: (en: "Business Assistant",    zh: "商务助手",    ko: "비즈니스 어시스턴트"),
+                    desc: (en: "Email, documents & meeting support", zh: "邮件、文档和会议支持", ko: "이메일, 문서, 회의 지원")),
+        "tpl-002": (name: (en: "Language Tutor",        zh: "语言家教",    ko: "언어 튜터"),
+                    desc: (en: "Learn Japanese with an expert tutor", zh: "与专业教师学习日语", ko: "전문 강사와 일본어 학습")),
+        "tpl-003": (name: (en: "Copywriter",            zh: "文案写手",    ko: "카피라이터"),
+                    desc: (en: "Ads, social media & blog writing",    zh: "广告、社交媒体和博客文案", ko: "광고, SNS, 블로그 글쓰기")),
+        "tpl-004": (name: (en: "Data Analyst",          zh: "数据分析师",  ko: "데이터 분석가"),
+                    desc: (en: "Data analysis & report generation",   zh: "数据分析和报告生成", ko: "데이터 분석 및 보고서 작성")),
+        "tpl-005": (name: (en: "Code Reviewer",         zh: "代码审查员",  ko: "코드 리뷰어"),
+                    desc: (en: "Code review & bug-fix assistance",    zh: "代码审查和错误修复", ko: "코드 리뷰 및 버그 수정")),
+        "tpl-006": (name: (en: "Creative Writer",       zh: "创意写作者",  ko: "크리에이티브 라이터"),
+                    desc: (en: "Novels, poetry & screenplay writing", zh: "小说、诗歌和剧本写作", ko: "소설, 시, 대본 창작")),
+        "tpl-007": (name: (en: "Translation Specialist", zh: "翻译专家",   ko: "번역 전문가"),
+                    desc: (en: "High-accuracy JA/EN/ZH/KO translation", zh: "日英中韩高精度翻译", ko: "일/영/중/한 고품질 번역")),
+        "tpl-008": (name: (en: "Research Assistant",   zh: "研究助手",    ko: "리서치 어시스턴트"),
+                    desc: (en: "Research, summary & information organisation", zh: "调研、总结和信息整理", ko: "조사, 요약 및 정보 정리")),
+    ]
 
     // MARK: - Plugins tab
 
@@ -285,7 +365,7 @@ struct MarketView: View {
         do {
             try await clawHubService.install(agentId: agentId, slug: plugin.slug)
             showToast(
-                "✅ \(plugin.name) \(lang.t("をインストールしました", en: "installed", zh: "已安装", ko: "설치됨"))",
+                "\(plugin.name) \(lang.t("をインストールしました", en: "installed", zh: "已安装", ko: "설치됨"))",
                 isError: false
             )
             await pluginsStore.fetch(agentId: agentId)
@@ -296,7 +376,7 @@ struct MarketView: View {
         }
     }
 
-    private func showToast(_ message: String, isError: Bool) {
+    private func showToast(_ message: String, isError: Bool = false) {
         toastMessage = message
         toastIsError = isError
         Task {
@@ -341,84 +421,94 @@ struct MarketView: View {
     }
 }
 
-// MARK: - ClawHub Template Card (grid layout)
+// MARK: - Template Card (DB templates, creates agent directly)
 
-private struct ClawHubTemplateCard: View {
-    let plugin: ClawHubPlugin
-    let onTap: () -> Void
+private struct TemplateCard: View {
+    let template: AppTemplate
+    let agentService: AgentService
+    let onAdded: (String) -> Void
 
+    @State private var isLoading = false
     @Environment(\.lang) var lang
+
+    var alreadyAdded: Bool {
+        agentService.agents.contains { $0.name == template.name }
+    }
+
+    var localizedName: String {
+        guard let l10n = MarketView.templateL10n[template.id] else { return template.name }
+        return lang.t(template.name, en: l10n.name.en, zh: l10n.name.zh, ko: l10n.name.ko)
+    }
+
+    var localizedDescription: String {
+        guard let l10n = MarketView.templateL10n[template.id] else { return template.description }
+        return lang.t(template.description, en: l10n.desc.en, zh: l10n.desc.zh, ko: l10n.desc.ko)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(iconForPlugin(plugin))
-                    .font(.largeTitle)
+                Text(template.icon).font(.largeTitle)
                 Spacer()
-                if let dl = plugin.downloads {
-                    Label(formatDownloads(dl), systemImage: "arrow.down.circle")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
+                Text(lang.categoryLabel(template.category))
+                    .font(.caption2).fontWeight(.semibold)
+                    .foregroundStyle(BrandConfig.brand)
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .background(BrandConfig.brand.opacity(0.10))
+                    .clipShape(Capsule())
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(plugin.name)
-                    .font(.footnote).fontWeight(.semibold).lineLimit(2)
-                if let desc = plugin.description, !desc.isEmpty {
-                    Text(desc)
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                }
-            }
-
-            if let author = plugin.author, !author.isEmpty {
-                Text(author)
-                    .font(.caption2).foregroundStyle(.tertiary)
+                Text(localizedName)
+                    .font(.footnote).fontWeight(.semibold).lineLimit(1)
+                Text(localizedDescription)
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
 
             Spacer()
 
             Button {
-                onTap()
+                guard !alreadyAdded && !isLoading else { return }
+                isLoading = true
+                Task {
+                    let result = await agentService.createAgent(
+                        name: template.name,
+                        modelName: template.modelName,
+                        systemPrompt: template.systemPrompt.isEmpty ? nil : template.systemPrompt
+                    )
+                    isLoading = false
+                    if result != nil {
+                        onAdded("\(template.icon) \(localizedName) \(lang.t("を追加しました", en: "added", zh: "已添加", ko: "추가됨"))")
+                    } else {
+                        let errMsg = agentService.errorMessage ?? lang.t("エラーが発生しました", en: "Something went wrong", zh: "出现错误", ko: "오류가 발생했습니다")
+                        onAdded("⚠️ \(errMsg)")
+                    }
+                }
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "plus").font(.caption.bold())
-                    Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
+                    if isLoading {
+                        ProgressView().scaleEffect(0.7).tint(BrandConfig.brand)
+                    } else {
+                        Image(systemName: alreadyAdded ? "checkmark" : "plus").font(.caption.bold())
+                    }
+                    Text(alreadyAdded
+                         ? lang.t("追加済み", en: "Added",     zh: "已添加", ko: "추가됨")
+                         : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추가"))
                         .font(.caption).fontWeight(.medium)
                 }
-                .foregroundStyle(BrandConfig.brand)
+                .foregroundStyle(alreadyAdded ? .secondary : BrandConfig.brand)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(BrandConfig.brand.opacity(0.09))
+                .background(alreadyAdded ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
+            .disabled(alreadyAdded || isLoading)
         }
         .padding(14)
         .frame(height: 180)
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
-    }
-
-    private func iconForPlugin(_ p: ClawHubPlugin) -> String {
-        let name = p.name.lowercased()
-        let slug = p.slug.lowercased()
-        let combined = name + " " + slug
-        if combined.contains("writ") || combined.contains("copy") { return "✍️" }
-        if combined.contains("code") || combined.contains("dev") || combined.contains("git") { return "💻" }
-        if combined.contains("data") || combined.contains("analy") { return "📊" }
-        if combined.contains("translat") || combined.contains("lang") { return "🌐" }
-        if combined.contains("research") || combined.contains("search") { return "🔍" }
-        if combined.contains("business") || combined.contains("meet") || combined.contains("email") { return "💼" }
-        if combined.contains("agent") { return "🤖" }
-        if combined.contains("assistant") { return "🧠" }
-        if combined.contains("image") || combined.contains("art") || combined.contains("design") { return "🎨" }
-        if combined.contains("music") || combined.contains("audio") { return "🎵" }
-        if combined.contains("video") || combined.contains("stream") { return "🎬" }
-        return "🔌"
-    }
-
-    private func formatDownloads(_ n: Int) -> String {
-        n >= 1000 ? "\(n / 1000)k" : "\(n)"
     }
 }
 
