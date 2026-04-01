@@ -26,13 +26,13 @@ enum AppTab: Int, CaseIterable {
 
 struct MainTabView: View {
     @State private var agentService = AgentService()
-    @State private var chatCache = ChatServiceCache()
+    @State private var pluginsStore = PluginsStore()
     @State private var selected: AppTab = .home
+    @State private var tabBarVisible = true
     @Environment(\.lang) var lang
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Page content — full screen, content avoids the custom tab bar via safeArea padding
             Group {
                 switch selected {
                 case .home:     DashboardView()
@@ -42,15 +42,18 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaInset(edge: .bottom) {
-                Color.clear.frame(height: 80)
+                Color.clear.frame(height: tabBarVisible ? 80 : 0)
             }
 
-            // Custom floating tab bar
-            CustomTabBar(selected: $selected)
+            if tabBarVisible {
+                CustomTabBar(selected: $selected)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .ignoresSafeArea(edges: .bottom)
         .environment(agentService)
-        .environment(chatCache)
+        .environment(pluginsStore)
+        .environment(\.tabBarVisible, $tabBarVisible)
     }
 }
 

@@ -123,7 +123,6 @@ final class ChatService {
             return ChatBubble(role: msg.role, content: msg.content)
         }
         await MainActor.run {
-            // 双重检查：避免 WebSocket 在加载期间已收到新消息
             if messages.isEmpty {
                 messages = bubbles
             }
@@ -136,24 +135,6 @@ final class ChatService {
 
     func loadMessages(conversationId: String) async -> [Message] {
         (try? await APIClient.shared.request(Constants.API.messages(conversationId))) ?? []
-    }
-
-    /// 加载最近一条对话的历史消息，在打开聊天窗口时调用
-    func loadHistory(agentId: String) async {
-        let conversations = await loadConversations(agentId: agentId)
-        guard let latest = conversations.first else { return }
-        let msgs = await loadMessages(conversationId: latest.id)
-        let bubbles: [ChatBubble] = msgs.compactMap { msg in
-            guard msg.role == .user || msg.role == .assistant else { return nil }
-            return ChatBubble(role: msg.role, content: msg.content)
-        }
-        guard !bubbles.isEmpty else { return }
-        await MainActor.run {
-            // Only prepend history if we haven't already loaded it (no messages yet)
-            if self.messages.isEmpty {
-                self.messages = bubbles
-            }
-        }
     }
 }
 

@@ -10,9 +10,13 @@ struct MarketView: View {
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
 
-    // Install confirmation modal (for plugins)
+    // Plugin popup state
     @State private var selectedPlugin: ClawHubPlugin?
     @State private var isConfirmInstalling = false
+
+    // Template popup state
+    @State private var selectedTemplate: AppTemplate?
+    @State private var isConfirmAdding = false
 
     // Templates state
     @State private var templates: [AppTemplate] = []
@@ -39,7 +43,8 @@ struct MarketView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
+            // Layer 1: Normal content
             NavigationStack {
                 VStack(spacing: 0) {
                     Picker("", selection: $selectedTab) {
@@ -69,22 +74,32 @@ struct MarketView: View {
                 .animation(.easeInOut(duration: 0.25), value: toastMessage)
             }
 
-            // MARK: - Centered install confirmation overlay (for plugins)
-            if selectedPlugin != nil {
+            // Layer 2: Plugin popup at TOP
+            if let plugin = selectedPlugin {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .onTapGesture {
                         if !isConfirmInstalling { selectedPlugin = nil }
                     }
-                    .transition(.opacity)
 
-                if let plugin = selectedPlugin {
-                    installConfirmCard(plugin: plugin)
-                        .transition(.scale(scale: 0.92).combined(with: .opacity))
-                }
+                popupCard(plugin: plugin)
+                    .padding(.top, 80)
+            }
+
+            // Layer 3: Template popup at TOP
+            if let template = selectedTemplate {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        if !isConfirmAdding { selectedTemplate = nil }
+                    }
+
+                templatePopupCard(template: template)
+                    .padding(.top, 80)
             }
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedPlugin != nil)
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedTemplate != nil)
         .onChange(of: selectedTab) { _, newVal in
             if newVal == 1 && clawHubService.plugins.isEmpty {
                 Task { await clawHubService.search() }
@@ -92,12 +107,11 @@ struct MarketView: View {
         }
     }
 
-    // MARK: - Install confirmation card
+    // MARK: - Popup card
 
     @ViewBuilder
-    private func installConfirmCard(plugin: ClawHubPlugin) -> some View {
+    private func popupCard(plugin: ClawHubPlugin) -> some View {
         VStack(spacing: 0) {
-            // Close button row
             HStack {
                 Spacer()
                 Button {
@@ -110,18 +124,15 @@ struct MarketView: View {
             }
             .padding(.bottom, 8)
 
-            // Icon
             Text(iconForPlugin(plugin))
                 .font(.system(size: 52))
                 .padding(.bottom, 12)
 
-            // Name
             Text(plugin.name)
                 .font(.title3).fontWeight(.bold)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 6)
 
-            // Description
             if let desc = plugin.description, !desc.isEmpty {
                 Text(desc)
                     .font(.subheadline)
@@ -131,7 +142,6 @@ struct MarketView: View {
                     .padding(.bottom, 8)
             }
 
-            // Slug badge
             Text(plugin.slug)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
@@ -140,7 +150,6 @@ struct MarketView: View {
                 .clipShape(Capsule())
                 .padding(.bottom, 20)
 
-            // Install button
             Button {
                 guard !isConfirmInstalling else { return }
                 isConfirmInstalling = true
@@ -170,13 +179,103 @@ struct MarketView: View {
             .disabled(isConfirmInstalling)
         }
         .padding(24)
-        .frame(width: min(UIScreen.main.bounds.width - 48, 360))
+        .frame(width: 320)
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
     }
 
-    // MARK: - Templates tab (real DB templates)
+    // MARK: - Template popup card
+
+    @ViewBuilder
+    private func templatePopupCard(template: AppTemplate) -> some View {
+        let l10n = Self.templateL10n[template.id]
+        let localName = l10n != nil ? lang.t(template.name, en: l10n!.name.en, zh: l10n!.name.zh, ko: l10n!.name.ko) : template.name
+        let localDesc = l10n != nil ? lang.t(template.description, en: l10n!.desc.en, zh: l10n!.desc.zh, ko: l10n!.desc.ko) : template.description
+
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button {
+                    if !isConfirmAdding { selectedTemplate = nil }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom, 8)
+
+            Text(template.icon)
+                .font(.system(size: 52))
+                .padding(.bottom, 12)
+
+            Text(localName)
+                .font(.title3).fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 6)
+
+            Text(localDesc)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .padding(.bottom, 8)
+
+            Text(lang.categoryLabel(template.category))
+                .font(.caption2).fontWeight(.semibold)
+                .foregroundStyle(BrandConfig.brand)
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(BrandConfig.brand.opacity(0.10))
+                .clipShape(Capsule())
+                .padding(.bottom, 20)
+
+            Button {
+                guard !isConfirmAdding else { return }
+                isConfirmAdding = true
+                Task {
+                    let result = await agentService.createAgent(
+                        name: template.name,
+                        modelName: template.modelName,
+                        systemPrompt: template.systemPrompt.isEmpty ? nil : template.systemPrompt
+                    )
+                    isConfirmAdding = false
+                    if result != nil {
+                        selectedTemplate = nil
+                        showToast("\(template.icon) \(localName) \(lang.t("を追加しました", en: "added", zh: "已添加", ko: "추가됨"))")
+                    } else {
+                        let errMsg = agentService.errorMessage ?? lang.t("エラーが発生しました", en: "Something went wrong", zh: "出现错误", ko: "오류가 발생했습니다")
+                        showToast("⚠️ \(errMsg)", isError: true)
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if isConfirmAdding {
+                        ProgressView().tint(.white).scaleEffect(0.85)
+                    } else {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    Text(isConfirmAdding
+                         ? lang.t("作成中...", en: "Creating...", zh: "创建中...", ko: "생성 중...")
+                         : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추가"))
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(isConfirmAdding)
+        }
+        .padding(24)
+        .frame(width: 320)
+        .background(BrandConfig.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+    }
+
+    // MARK: - Templates tab
 
     private var templatesTab: some View {
         Group {
@@ -209,12 +308,12 @@ struct MarketView: View {
 
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                             ForEach(filteredTemplates) { t in
-                                TemplateCard(template: t, agentService: agentService) { msg in
-                                    showToast(msg, isError: msg.hasPrefix("⚠️"))
+                                TemplateCard(template: t, agentService: agentService) {
+                                    selectedTemplate = t
                                 }
                             }
                         }
-                        .padding(.horizontal, 16).padding(.bottom, 24)
+                        .padding(.horizontal, 16).padding(.bottom, 100)
                     }
                 }
             }
@@ -247,7 +346,6 @@ struct MarketView: View {
         isLoadingTemplates = false
     }
 
-    // Hardcoded fallback
     static let fallbackTemplates: [AppTemplate] = [
         AppTemplate(id: "tpl-001", name: "ビジネスアシスタント", description: "メール・資料作成・会議サポート",      icon: "💼", category: "ビジネス", modelName: "deepseek-chat",     systemPrompt: "あなたはプロフェッショナルなビジネスアシスタントです。", sortOrder: 1),
         AppTemplate(id: "tpl-002", name: "日本語家庭教師",      description: "日本語学習をサポートします",          icon: "📚", category: "教育",     modelName: "qwen-plus",          systemPrompt: "あなたは経験豊富な日本語教師です。",                    sortOrder: 2),
@@ -421,14 +519,13 @@ struct MarketView: View {
     }
 }
 
-// MARK: - Template Card (DB templates, creates agent directly)
+// MARK: - Template Card
 
 private struct TemplateCard: View {
     let template: AppTemplate
     let agentService: AgentService
-    let onAdded: (String) -> Void
+    let onTap: () -> Void
 
-    @State private var isLoading = false
     @Environment(\.lang) var lang
 
     var alreadyAdded: Bool {
@@ -467,30 +564,9 @@ private struct TemplateCard: View {
 
             Spacer()
 
-            Button {
-                guard !alreadyAdded && !isLoading else { return }
-                isLoading = true
-                Task {
-                    let result = await agentService.createAgent(
-                        name: template.name,
-                        modelName: template.modelName,
-                        systemPrompt: template.systemPrompt.isEmpty ? nil : template.systemPrompt
-                    )
-                    isLoading = false
-                    if result != nil {
-                        onAdded("\(template.icon) \(localizedName) \(lang.t("を追加しました", en: "added", zh: "已添加", ko: "추가됨"))")
-                    } else {
-                        let errMsg = agentService.errorMessage ?? lang.t("エラーが発生しました", en: "Something went wrong", zh: "出现错误", ko: "오류가 발생했습니다")
-                        onAdded("⚠️ \(errMsg)")
-                    }
-                }
-            } label: {
+            Button { onTap() } label: {
                 HStack(spacing: 4) {
-                    if isLoading {
-                        ProgressView().scaleEffect(0.7).tint(BrandConfig.brand)
-                    } else {
-                        Image(systemName: alreadyAdded ? "checkmark" : "plus").font(.caption.bold())
-                    }
+                    Image(systemName: alreadyAdded ? "checkmark" : "plus").font(.caption.bold())
                     Text(alreadyAdded
                          ? lang.t("追加済み", en: "Added",     zh: "已添加", ko: "추가됨")
                          : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추가"))
@@ -502,7 +578,7 @@ private struct TemplateCard: View {
                 .background(alreadyAdded ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .disabled(alreadyAdded || isLoading)
+            .disabled(alreadyAdded)
         }
         .padding(14)
         .frame(height: 180)
@@ -511,8 +587,6 @@ private struct TemplateCard: View {
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }
 }
-
-// MARK: - Plugin card
 
 private struct PluginCard: View {
     let plugin: ClawHubPlugin
@@ -531,7 +605,18 @@ private struct PluginCard: View {
                     }
                 }
                 Spacer()
-                installButton
+                Button { onTap() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.circle").font(.caption.bold())
+                        Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
+                            .font(.caption).fontWeight(.medium)
+                    }
+                    .foregroundStyle(BrandConfig.brand)
+                    .frame(minWidth: 80)
+                    .padding(.vertical, 6).padding(.horizontal, 10)
+                    .background(BrandConfig.brand.opacity(0.09))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
             }
 
             if let desc = plugin.description, !desc.isEmpty {
@@ -545,7 +630,7 @@ private struct PluginCard: View {
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 if let dl = plugin.downloads {
-                    Label(formatDownloads(dl), systemImage: "arrow.down.circle")
+                    Label(dl >= 1000 ? "\(dl / 1000)k" : "\(dl)", systemImage: "arrow.down.circle")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 if let tags = plugin.tags, let first = tags.first {
@@ -563,29 +648,6 @@ private struct PluginCard: View {
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-    }
-
-    @ViewBuilder
-    private var installButton: some View {
-        Button {
-            onTap()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "arrow.down.circle")
-                    .font(.caption.bold())
-                Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
-                    .font(.caption).fontWeight(.medium)
-            }
-            .foregroundStyle(BrandConfig.brand)
-            .frame(minWidth: 80)
-            .padding(.vertical, 6).padding(.horizontal, 10)
-            .background(BrandConfig.brand.opacity(0.09))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-    }
-
-    private func formatDownloads(_ n: Int) -> String {
-        n >= 1000 ? "\(n / 1000)k" : "\(n)"
     }
 }
 

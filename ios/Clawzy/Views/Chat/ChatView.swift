@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import PDFKit
 import UniformTypeIdentifiers
+import SafariServices
 
 // MARK: - Attachment model
 
@@ -33,12 +34,17 @@ struct ChatAttachment: Identifiable {
 
 struct ChatView: View {
     let agent: Agent
-    let chatService: ChatService
+    @State private var chatService = ChatService()
     @State private var inputText = ""
     @State private var attachments: [ChatAttachment] = []
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
     @State private var showFilePicker = false
+    @State private var showOpenClaw = false
+    @State private var showModelPicker = false
+    @State private var availableModels: [AIModel] = []
+    @State private var currentModelName: String = ""
+    @Environment(HealthMonitor.self) var healthMonitor
 
     private static let allowedFileTypes: [UTType] = [
         .pdf, .plainText, .json, .commaSeparatedText,
@@ -50,20 +56,34 @@ struct ChatView: View {
     ]
     @FocusState private var isInputFocused: Bool
     @Environment(\.lang) var lang
+    @Environment(\.tabBarVisible) var tabBarVisible
 
     var body: some View {
         VStack(spacing: 0) {
+            // Disconnect banner
+            if !healthMonitor.isBackendOnline || !chatService.isConnected {
+                DisconnectBanner(isBackendDown: !healthMonitor.isBackendOnline)
+            }
             messageList
             inputBar
         }
         .background(BrandConfig.backgroundColor)
         .navigationTitle(agent.name)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
         .onAppear {
+            currentModelName = agent.modelName
             chatService.connect(agentId: agent.id)
-            Task { await chatService.loadHistory(agentId: agent.id) }
+            Task {
+                await chatService.loadHistory(agentId: agent.id)
+                await loadModels()
+            }
+            withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = false }
         }
-        .onDisappear { chatService.disconnect() }
+        .onDisappear {
+            chatService.disconnect()
+            withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = true }
+        }
         .onChange(of: photoItems) { _, newItems in
             Task { await loadPhotos(newItems) }
         }
@@ -76,6 +96,24 @@ struct ChatView: View {
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems,
                       maxSelectionCount: 4, matching: .images)
+        .sheet(isPresented: $showOpenClaw) {
+            SafariView(url: URL(string: "https://clawzy.ai/openclaw/")!)
+                .ignoresSafeArea()
+        }
+        .confirmationDialog(
+            lang.t("モデルを選択", en: "Select Model", zh: "选择模型", ko: "모델 선택"),
+            isPresented: $showModelPicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(availableModels) { model in
+                Button {
+                    Task { await switchModel(to: model.id) }
+                } label: {
+                    Text(model.name + (model.id == currentModelName ? " ✓" : ""))
+                }
+            }
+            Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"), role: .cancel) {}
+        }
     }
 
     // MARK: - Message list
@@ -114,10 +152,22 @@ struct ChatView: View {
                 Text(agent.name).fontWeight(.semibold)
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(chatService.isConnected ? Color.green : Color(white: 0.7))
+                        .fill(chatService.isConnected ? Color.green : Color(UIColor.systemGray3))
                         .frame(width: 6, height: 6)
-                    Text(agent.modelName).font(.caption2).foregroundStyle(.secondary)
+                    Text(currentModelName.isEmpty ? agent.modelName : currentModelName)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button { showOpenClaw = true } label: {
+                Image(systemName: "globe")
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button { showModelPicker = true } label: {
+                Image(systemName: "cpu")
+                    .font(.system(size: 15))
             }
         }
         ToolbarItem(placement: .automatic) {
@@ -131,6 +181,31 @@ struct ChatView: View {
                 .background(BrandConfig.brand.opacity(0.10))
                 .clipShape(Capsule())
             }
+        }
+    }
+
+    // MARK: - Model switching
+
+    private func loadModels() async {
+        do {
+            let models: [AIModel] = try await APIClient.shared.request(Constants.API.models)
+            await MainActor.run { availableModels = models }
+        } catch {
+            // Silent — model picker just won't show options
+        }
+    }
+
+    private func switchModel(to modelId: String) async {
+        do {
+            let body = UpdateAgentModelRequest(modelName: modelId)
+            let _: Agent = try await APIClient.shared.request(
+                Constants.API.agent(agent.id),
+                method: "PATCH",
+                body: body
+            )
+            await MainActor.run { currentModelName = modelId }
+        } catch {
+            // Silent fail — UI stays with previous model name
         }
     }
 
@@ -175,9 +250,9 @@ struct ChatView: View {
                 )
                 .textFieldStyle(.plain).lineLimit(1...5).focused($isInputFocused)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(BrandConfig.fieldBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(UIColor.separator), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(BrandConfig.separator, lineWidth: 1))
 
                 Button { sendMessage() } label: {
                     Image(systemName: "arrow.up")
@@ -192,7 +267,7 @@ struct ChatView: View {
             .padding(.horizontal, 14).padding(.vertical, 10)
         }
         .background(BrandConfig.backgroundColor)
-        .overlay(Rectangle().fill(Color(UIColor.separator)).frame(height: 1), alignment: .top)
+        .overlay(Rectangle().fill(BrandConfig.separator).frame(height: 0.5), alignment: .top)
     }
 
     @ViewBuilder
@@ -308,6 +383,52 @@ struct ChatView: View {
     }
 }
 
+// MARK: - Disconnect banner
+
+private struct DisconnectBanner: View {
+    let isBackendDown: Bool
+    @Environment(\.lang) var lang
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.8)
+                .tint(.white)
+            Text(isBackendDown
+                 ? lang.t("サーバーに接続できません", en: "Server unreachable", zh: "服务器无法访问", ko: "서버 연결 불가")
+                 : lang.t("接続中断、再接続中...", en: "Connection lost, reconnecting...", zh: "连接中断，正在重连...", ko: "연결 끊김, 재연결 중..."))
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.white)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(isBackendDown ? Color.red : Color.orange)
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.easeInOut, value: isBackendDown)
+    }
+}
+
+// MARK: - Model update request
+
+private struct UpdateAgentModelRequest: Encodable {
+    let modelName: String
+    enum CodingKeys: String, CodingKey {
+        case modelName = "model_name"
+    }
+}
+
+// MARK: - Safari wrapper
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
+}
+
 // MARK: - Message bubble
 
 struct MessageBubbleView: View {
@@ -340,7 +461,7 @@ struct MessageBubbleView: View {
                 }
 
                 Text(bubble.timestamp, style: .time)
-                    .font(.caption2).foregroundStyle(Color(white: 0.6))
+                    .font(.caption2).foregroundStyle(.secondary)
             }
 
             if !isUser { Spacer(minLength: 64) }
@@ -358,7 +479,7 @@ private struct TextBubbleView: View {
         isUser
             ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -368,7 +489,7 @@ private struct TextBubbleView: View {
             .foregroundStyle(isUser ? .white : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(
-                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(Color(UIColor.separator), lineWidth: 1)
+                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1)
             )
     }
 }
@@ -387,7 +508,7 @@ private struct ImageGridView: View {
         isUser
             ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -423,15 +544,15 @@ private struct TypingIndicator: View {
             }
             HStack(spacing: 4) {
                 ForEach(0..<3) { i in
-                    Circle().fill(Color(white: 0.6)).frame(width: 7, height: 7)
+                    Circle().fill(Color.secondary).frame(width: 7, height: 7)
                         .scaleEffect(phase == i ? 1.3 : 0.8)
                         .animation(.easeInOut(duration: 0.4).repeatForever().delay(Double(i) * 0.13), value: phase)
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(BrandConfig.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(UIColor.separator), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1))
             Spacer(minLength: 64)
         }
         .onAppear { phase = 1 }

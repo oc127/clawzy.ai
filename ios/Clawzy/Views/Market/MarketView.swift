@@ -1,96 +1,329 @@
 import SwiftUI
 
-// MARK: - MarketView
-
 struct MarketView: View {
     @Environment(AgentService.self) var agentService
+    @Environment(PluginsStore.self) var pluginsStore
     @Environment(\.lang) var lang
+
+    @State private var selectedTab = 0
+    @State private var clawHubService = ClawHubService()
+    @State private var searchText = ""
+    @State private var searchTask: Task<Void, Never>?
+
+    // Plugin popup state
+    @State private var selectedPlugin: ClawHubPlugin?
+    @State private var isConfirmInstalling = false
+
+    // Template popup state
+    @State private var selectedTemplate: AppTemplate?
+    @State private var isConfirmAdding = false
+
+    // Templates state
     @State private var templates: [AppTemplate] = []
-    @State private var isLoading = true
+    @State private var isLoadingTemplates = true
     @State private var selectedCategory = ""
-    @State private var toastMessage: String? = nil
+
+    // Toast state
+    @State private var toastMessage: String?
+    @State private var toastIsError = false
 
     private var allLabel: String { lang.t("すべて", en: "All", zh: "全部", ko: "전체") }
 
-    var categories: [String] {
+    private var categories: [String] {
         let cats = templates.map(\.category)
         var seen = Set<String>()
         let unique = cats.filter { seen.insert($0).inserted }
         return [allLabel] + unique
     }
 
-    var filtered: [AppTemplate] {
+    private var filteredTemplates: [AppTemplate] {
         selectedCategory == allLabel || selectedCategory.isEmpty
             ? templates
             : templates.filter { $0.category == selectedCategory }
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-                Group {
-                    if isLoading {
-                        skeletonGrid
-                    } else if templates.isEmpty {
-                        emptyState
+        ZStack(alignment: .top) {
+            // Layer 1: Normal content
+            NavigationStack {
+                VStack(spacing: 0) {
+                    Picker("", selection: $selectedTab) {
+                        Text(lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿")).tag(0)
+                        Text(lang.t("プラグイン",   en: "Plugins",   zh: "插件", ko: "플러그인")).tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+
+                    if selectedTab == 0 {
+                        templatesTab
                     } else {
-                        templateGrid
+                        pluginsTab
                     }
                 }
                 .background(BrandConfig.backgroundColor)
                 .navigationTitle(lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"))
-                .task { await loadTemplates() }
-                .refreshable { await loadTemplates() }
-
-                if let msg = toastMessage {
-                    Text(msg)
-                        .font(.footnote).fontWeight(.medium)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 20).padding(.vertical, 12)
-                        .background(Color.black.opacity(0.75))
-                        .clipShape(Capsule())
-                        .padding(.bottom, 20)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                .overlay(alignment: .bottom) {
+                    if let msg = toastMessage {
+                        ToastView(message: msg, isError: toastIsError)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .padding(.bottom, 24)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.25), value: toastMessage)
             }
-            .animation(.easeInOut(duration: 0.3), value: toastMessage)
+
+            // Layer 2: Plugin popup at TOP
+            if let plugin = selectedPlugin {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        if !isConfirmInstalling { selectedPlugin = nil }
+                    }
+
+                popupCard(plugin: plugin)
+                    .padding(.top, 80)
+            }
+
+            // Layer 3: Template popup at TOP
+            if let template = selectedTemplate {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        if !isConfirmAdding { selectedTemplate = nil }
+                    }
+
+                templatePopupCard(template: template)
+                    .padding(.top, 80)
+            }
+        }
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedPlugin != nil)
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedTemplate != nil)
+        .onChange(of: selectedTab) { _, newVal in
+            if newVal == 1 && clawHubService.plugins.isEmpty {
+                Task { await clawHubService.search() }
+            }
         }
     }
 
-    // MARK: - Template grid
+    // MARK: - Popup card
 
-    private var templateGrid: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(categories, id: \.self) { cat in
-                            Button { withAnimation { selectedCategory = cat } } label: {
-                                Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
-                                    .font(.footnote).fontWeight(.medium)
-                                    .foregroundStyle(selectedCategory == cat ? .white : .primary)
-                                    .padding(.horizontal, 14).padding(.vertical, 8)
-                                    .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
-                                    .clipShape(Capsule())
+    @ViewBuilder
+    private func popupCard(plugin: ClawHubPlugin) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button {
+                    if !isConfirmInstalling { selectedPlugin = nil }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom, 8)
+
+            Text(iconForPlugin(plugin))
+                .font(.system(size: 52))
+                .padding(.bottom, 12)
+
+            Text(plugin.name)
+                .font(.title3).fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 6)
+
+            if let desc = plugin.description, !desc.isEmpty {
+                Text(desc)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.bottom, 8)
+            }
+
+            Text(plugin.slug)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(Capsule())
+                .padding(.bottom, 20)
+
+            Button {
+                guard !isConfirmInstalling else { return }
+                isConfirmInstalling = true
+                Task {
+                    let ok = await installPlugin(plugin: plugin)
+                    isConfirmInstalling = false
+                    if ok { selectedPlugin = nil }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if isConfirmInstalling {
+                        ProgressView().tint(.white).scaleEffect(0.85)
+                    } else {
+                        Image(systemName: "arrow.down.circle.fill")
+                    }
+                    Text(isConfirmInstalling
+                         ? lang.t("インストール中...", en: "Installing...", zh: "安装中...", ko: "설치 중...")
+                         : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(isConfirmInstalling)
+        }
+        .padding(24)
+        .frame(width: 320)
+        .background(BrandConfig.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+    }
+
+    // MARK: - Template popup card
+
+    @ViewBuilder
+    private func templatePopupCard(template: AppTemplate) -> some View {
+        let l10n = Self.templateL10n[template.id]
+        let localName = l10n != nil ? lang.t(template.name, en: l10n!.name.en, zh: l10n!.name.zh, ko: l10n!.name.ko) : template.name
+        let localDesc = l10n != nil ? lang.t(template.description, en: l10n!.desc.en, zh: l10n!.desc.zh, ko: l10n!.desc.ko) : template.description
+
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button {
+                    if !isConfirmAdding { selectedTemplate = nil }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom, 8)
+
+            Text(template.icon)
+                .font(.system(size: 52))
+                .padding(.bottom, 12)
+
+            Text(localName)
+                .font(.title3).fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 6)
+
+            Text(localDesc)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .padding(.bottom, 8)
+
+            Text(lang.categoryLabel(template.category))
+                .font(.caption2).fontWeight(.semibold)
+                .foregroundStyle(BrandConfig.brand)
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(BrandConfig.brand.opacity(0.10))
+                .clipShape(Capsule())
+                .padding(.bottom, 20)
+
+            Button {
+                guard !isConfirmAdding else { return }
+                isConfirmAdding = true
+                Task {
+                    let result = await agentService.createAgent(
+                        name: template.name,
+                        modelName: template.modelName,
+                        systemPrompt: template.systemPrompt.isEmpty ? nil : template.systemPrompt
+                    )
+                    isConfirmAdding = false
+                    if result != nil {
+                        selectedTemplate = nil
+                        showToast("\(template.icon) \(localName) \(lang.t("を追加しました", en: "added", zh: "已添加", ko: "추가됨"))")
+                    } else {
+                        let errMsg = agentService.errorMessage ?? lang.t("エラーが発生しました", en: "Something went wrong", zh: "出现错误", ko: "오류가 발생했습니다")
+                        showToast("⚠️ \(errMsg)", isError: true)
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if isConfirmAdding {
+                        ProgressView().tint(.white).scaleEffect(0.85)
+                    } else {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    Text(isConfirmAdding
+                         ? lang.t("作成中...", en: "Creating...", zh: "创建中...", ko: "생성 중...")
+                         : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추가"))
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(isConfirmAdding)
+        }
+        .padding(24)
+        .frame(width: 320)
+        .background(BrandConfig.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+    }
+
+    // MARK: - Templates tab
+
+    private var templatesTab: some View {
+        Group {
+            if isLoadingTemplates {
+                skeletonGrid
+            } else if templates.isEmpty {
+                emptyState(
+                    icon: "storefront",
+                    title: lang.t("テンプレートがありません", en: "No templates", zh: "暂无模板", ko: "템플릿 없음"),
+                    subtitle: lang.t("しばらくしてからもう一度お試しください", en: "Please try again later", zh: "请稍后重试", ko: "나중에 다시 시도해주세요")
+                )
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(categories, id: \.self) { cat in
+                                    Button { withAnimation { selectedCategory = cat } } label: {
+                                        Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
+                                            .font(.footnote).fontWeight(.medium)
+                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
+                                            .padding(.horizontal, 14).padding(.vertical, 8)
+                                            .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                        }
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(filteredTemplates) { t in
+                                TemplateCard(template: t, agentService: agentService) {
+                                    selectedTemplate = t
+                                }
                             }
                         }
-                    }
-                    .padding(.horizontal, 16).padding(.vertical, 12)
-                }
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(filtered) { t in
-                        TemplateCard(template: t, agentService: agentService) { msg in
-                            showToast(msg)
-                        }
+                        .padding(.horizontal, 16).padding(.bottom, 100)
                     }
                 }
-                .padding(.horizontal, 16).padding(.bottom, 24)
+            }
+        }
+        .task {
+            if templates.isEmpty {
+                await loadTemplates()
             }
         }
     }
-
-    // MARK: - Skeleton loader
 
     private var skeletonGrid: some View {
         ScrollView {
@@ -99,54 +332,20 @@ struct MarketView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(BrandConfig.disabledGray)
                         .frame(height: 180)
-                        .shimmer()
                 }
             }
             .padding(16)
         }
     }
 
-    // MARK: - Empty state
-
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "storefront")
-                .font(.system(size: 48))
-                .foregroundStyle(Color(white: 0.8))
-            Text(lang.t("テンプレートがありません", en: "No templates", zh: "暂无模板", ko: "템플릿 없음"))
-                .foregroundStyle(.secondary)
-            Button(lang.t("再読み込み", en: "Reload", zh: "重新加载", ko: "다시 로드")) {
-                Task { await loadTemplates() }
-            }
-            .foregroundStyle(BrandConfig.brand)
-            Spacer()
-        }
-    }
-
-    // MARK: - Helpers
-
     private func loadTemplates() async {
-        isLoading = true
-        // Also ensure agents are loaded so alreadyAdded check works
+        isLoadingTemplates = true
         if agentService.agents.isEmpty { await agentService.fetchAgents() }
         let remote: [AppTemplate]? = try? await APIClient.shared.request(Constants.API.templates)
-        if let remote, !remote.isEmpty {
-            templates = remote
-        } else {
-            templates = Self.fallbackTemplates
-        }
-        isLoading = false
+        templates = (remote != nil && !remote!.isEmpty) ? remote! : Self.fallbackTemplates
+        isLoadingTemplates = false
     }
 
-    private func showToast(_ msg: String) {
-        withAnimation { toastMessage = msg }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation { toastMessage = nil }
-        }
-    }
-
-    // Hardcoded fallback — used until server migration runs
     static let fallbackTemplates: [AppTemplate] = [
         AppTemplate(id: "tpl-001", name: "ビジネスアシスタント", description: "メール・資料作成・会議サポート",      icon: "💼", category: "ビジネス", modelName: "deepseek-chat",     systemPrompt: "あなたはプロフェッショナルなビジネスアシスタントです。", sortOrder: 1),
         AppTemplate(id: "tpl-002", name: "日本語家庭教師",      description: "日本語学習をサポートします",          icon: "📚", category: "教育",     modelName: "qwen-plus",          systemPrompt: "あなたは経験豊富な日本語教師です。",                    sortOrder: 2),
@@ -158,7 +357,6 @@ struct MarketView: View {
         AppTemplate(id: "tpl-008", name: "リサーチアシスタント", description: "調査・要約・情報整理",              icon: "🔍", category: "分析",     modelName: "deepseek-reasoner", systemPrompt: "あなたはリサーチアシスタントです。",                    sortOrder: 8),
     ]
 
-    /// Localized name/description for fallback templates by ID.
     static let templateL10n: [String: (name: (en: String, zh: String, ko: String), desc: (en: String, zh: String, ko: String))] = [
         "tpl-001": (name: (en: "Business Assistant",    zh: "商务助手",    ko: "비즈니스 어시스턴트"),
                     desc: (en: "Email, documents & meeting support", zh: "邮件、文档和会议支持", ko: "이메일, 문서, 회의 지원")),
@@ -177,29 +375,168 @@ struct MarketView: View {
         "tpl-008": (name: (en: "Research Assistant",   zh: "研究助手",    ko: "리서치 어시스턴트"),
                     desc: (en: "Research, summary & information organisation", zh: "调研、总结和信息整理", ko: "조사, 요약 및 정보 정리")),
     ]
+
+    // MARK: - Plugins tab
+
+    private var pluginsTab: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField(lang.t("プラグインを検索...", en: "Search plugins...", zh: "搜索插件...", ko: "플러그인 검색..."), text: $searchText)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onSubmit { triggerSearch() }
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                        triggerSearch()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(BrandConfig.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .onChange(of: searchText) { _, _ in triggerSearch() }
+
+            if clawHubService.isLoading && clawHubService.plugins.isEmpty {
+                Spacer()
+                ProgressView()
+                Spacer()
+            } else if let err = clawHubService.errorMessage, clawHubService.plugins.isEmpty {
+                emptyState(
+                    icon: "wifi.slash",
+                    title: lang.t("接続エラー",      en: "Connection Error", zh: "连接错误", ko: "연결 오류"),
+                    subtitle: err
+                )
+            } else if clawHubService.plugins.isEmpty {
+                emptyState(
+                    icon: "tray",
+                    title: lang.t("プラグインが見つかりません", en: "No plugins found",         zh: "未找到插件",       ko: "플러그인 없음"),
+                    subtitle: lang.t("別のキーワードで検索してみてください",          en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(clawHubService.plugins) { plugin in
+                            PluginCard(plugin: plugin) {
+                                selectedPlugin = plugin
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func triggerSearch() {
+        searchTask?.cancel()
+        searchTask = Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            await clawHubService.search(query: searchText)
+        }
+    }
+
+    @discardableResult
+    private func installPlugin(plugin: ClawHubPlugin) async -> Bool {
+        guard let agentId = agentService.agents.first?.id else {
+            showToast(
+                lang.t("まずエージェントを作成してください",
+                        en: "Please create an agent first",
+                        zh: "请先创建一个助手",
+                        ko: "먼저 에이전트를 만들어주세요"),
+                isError: true
+            )
+            return false
+        }
+        do {
+            try await clawHubService.install(agentId: agentId, slug: plugin.slug)
+            showToast(
+                "\(plugin.name) \(lang.t("をインストールしました", en: "installed", zh: "已安装", ko: "설치됨"))",
+                isError: false
+            )
+            await pluginsStore.fetch(agentId: agentId)
+            return true
+        } catch {
+            showToast("⚠️ \(error.localizedDescription)", isError: true)
+            return false
+        }
+    }
+
+    private func showToast(_ message: String, isError: Bool = false) {
+        toastMessage = message
+        toastIsError = isError
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            toastMessage = nil
+        }
+    }
+
+    private func iconForPlugin(_ p: ClawHubPlugin) -> String {
+        let name = p.name.lowercased()
+        let slug = p.slug.lowercased()
+        let combined = name + " " + slug
+        if combined.contains("writ") || combined.contains("copy") { return "✍️" }
+        if combined.contains("code") || combined.contains("dev") || combined.contains("git") { return "💻" }
+        if combined.contains("data") || combined.contains("analy") { return "📊" }
+        if combined.contains("translat") || combined.contains("lang") { return "🌐" }
+        if combined.contains("research") || combined.contains("search") { return "🔍" }
+        if combined.contains("business") || combined.contains("meet") || combined.contains("email") { return "💼" }
+        if combined.contains("agent") { return "🤖" }
+        if combined.contains("assistant") { return "🧠" }
+        if combined.contains("image") || combined.contains("art") || combined.contains("design") { return "🎨" }
+        if combined.contains("music") || combined.contains("audio") { return "🎵" }
+        if combined.contains("video") || combined.contains("stream") { return "🎬" }
+        return "🔌"
+    }
+
+    @ViewBuilder
+    private func emptyState(icon: String, title: String, subtitle: String) -> some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: icon)
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+            Text(title).font(.headline)
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Spacer()
+        }
+    }
 }
 
-// MARK: - Template card
+// MARK: - Template Card
 
 private struct TemplateCard: View {
     let template: AppTemplate
     let agentService: AgentService
-    let onAdded: (String) -> Void
+    let onTap: () -> Void
 
-    @State private var isLoading = false
     @Environment(\.lang) var lang
 
     var alreadyAdded: Bool {
         agentService.agents.contains { $0.name == template.name }
     }
 
-    /// Returns localized name, falling back to template.name (Japanese from server)
     var localizedName: String {
         guard let l10n = MarketView.templateL10n[template.id] else { return template.name }
         return lang.t(template.name, en: l10n.name.en, zh: l10n.name.zh, ko: l10n.name.ko)
     }
 
-    /// Returns localized description, falling back to template.description
     var localizedDescription: String {
         guard let l10n = MarketView.templateL10n[template.id] else { return template.description }
         return lang.t(template.description, en: l10n.desc.en, zh: l10n.desc.zh, ko: l10n.desc.ko)
@@ -227,30 +564,9 @@ private struct TemplateCard: View {
 
             Spacer()
 
-            Button {
-                guard !alreadyAdded && !isLoading else { return }
-                isLoading = true
-                Task {
-                    let result = await agentService.createAgent(
-                        name: template.name,
-                        modelName: template.modelName,
-                        systemPrompt: template.systemPrompt.isEmpty ? nil : template.systemPrompt
-                    )
-                    isLoading = false
-                    if result != nil {
-                        onAdded("\(template.icon) \(localizedName) \(lang.t("を追加しました", en: "added", zh: "已添加", ko: "추가됨"))")
-                    } else {
-                        let errMsg = agentService.errorMessage ?? lang.t("エラーが発生しました", en: "Something went wrong", zh: "出现错误", ko: "오류가 발생했습니다")
-                        onAdded("⚠️ \(errMsg)")
-                    }
-                }
-            } label: {
+            Button { onTap() } label: {
                 HStack(spacing: 4) {
-                    if isLoading {
-                        ProgressView().scaleEffect(0.7).tint(BrandConfig.brand)
-                    } else {
-                        Image(systemName: alreadyAdded ? "checkmark" : "plus").font(.caption.bold())
-                    }
+                    Image(systemName: alreadyAdded ? "checkmark" : "plus").font(.caption.bold())
                     Text(alreadyAdded
                          ? lang.t("追加済み", en: "Added",     zh: "已添加", ko: "추가됨")
                          : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추가"))
@@ -262,7 +578,7 @@ private struct TemplateCard: View {
                 .background(alreadyAdded ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .disabled(alreadyAdded || isLoading)
+            .disabled(alreadyAdded)
         }
         .padding(14)
         .frame(height: 180)
@@ -272,32 +588,82 @@ private struct TemplateCard: View {
     }
 }
 
-// MARK: - Shimmer effect
+private struct PluginCard: View {
+    let plugin: ClawHubPlugin
+    let onTap: () -> Void
 
-private struct ShimmerModifier: ViewModifier {
-    @State private var phase: CGFloat = -1
+    @Environment(\.lang) var lang
 
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                GeometryReader { geo in
-                    LinearGradient(
-                        colors: [.clear, .white.opacity(0.5), .clear],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(width: geo.size.width * 2)
-                    .offset(x: geo.size.width * phase)
-                    .animation(.linear(duration: 1.2).repeatForever(autoreverses: false), value: phase)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(plugin.name)
+                        .font(.subheadline).fontWeight(.semibold)
+                    if let author = plugin.author {
+                        Text(author).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
-                .clipped()
-            )
-            .onAppear { phase = 1 }
+                Spacer()
+                Button { onTap() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.circle").font(.caption.bold())
+                        Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
+                            .font(.caption).fontWeight(.medium)
+                    }
+                    .foregroundStyle(BrandConfig.brand)
+                    .frame(minWidth: 80)
+                    .padding(.vertical, 6).padding(.horizontal, 10)
+                    .background(BrandConfig.brand.opacity(0.09))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+
+            if let desc = plugin.description, !desc.isEmpty {
+                Text(desc)
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+
+            HStack(spacing: 10) {
+                if let version = plugin.version {
+                    Label(version, systemImage: "tag")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                if let dl = plugin.downloads {
+                    Label(dl >= 1000 ? "\(dl / 1000)k" : "\(dl)", systemImage: "arrow.down.circle")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                if let tags = plugin.tags, let first = tags.first {
+                    Text(first)
+                        .font(.caption2).fontWeight(.medium)
+                        .foregroundStyle(BrandConfig.brand)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(BrandConfig.brand.opacity(0.10))
+                        .clipShape(Capsule())
+                }
+                Spacer()
+            }
+        }
+        .padding(14)
+        .background(BrandConfig.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
     }
 }
 
-private extension View {
-    func shimmer() -> some View {
-        modifier(ShimmerModifier())
+// MARK: - Toast
+
+private struct ToastView: View {
+    let message: String
+    let isError: Bool
+
+    var body: some View {
+        Text(message)
+            .font(.footnote).fontWeight(.medium)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .background(isError ? Color.red.opacity(0.9) : Color.green.opacity(0.85))
+            .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
     }
 }

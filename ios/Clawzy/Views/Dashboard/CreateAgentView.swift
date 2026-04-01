@@ -96,7 +96,7 @@ private struct ModelRow: View {
                         .frame(width: 36, height: 36)
                     Image(systemName: "cpu")
                         .font(.footnote)
-                        .foregroundStyle(isSelected ? BrandConfig.brand : Color(white: 0.55))
+                        .foregroundStyle(isSelected ? BrandConfig.brand : .secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {

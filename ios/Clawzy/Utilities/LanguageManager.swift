@@ -47,9 +47,18 @@ private struct LanguageManagerKey: EnvironmentKey {
     static let defaultValue = LanguageManager()
 }
 
+private struct TabBarVisibleKey: EnvironmentKey {
+    static let defaultValue: Binding<Bool> = .constant(true)
+}
+
 extension EnvironmentValues {
     var lang: LanguageManager {
         get { self[LanguageManagerKey.self] }
         set { self[LanguageManagerKey.self] = newValue }
+    }
+
+    var tabBarVisible: Binding<Bool> {
+        get { self[TabBarVisibleKey.self] }
+        set { self[TabBarVisibleKey.self] = newValue }
     }
 }
