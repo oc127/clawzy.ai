@@ -11,44 +11,150 @@ struct MarketView: View {
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
 
+    // Install confirmation modal
+    @State private var selectedPlugin: ClawHubPlugin?
+    @State private var isConfirmInstalling = false
+
     // Toast state
     @State private var toastMessage: String?
     @State private var toastIsError = false
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("", selection: $selectedTab) {
-                    Text(lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿")).tag(0)
-                    Text(lang.t("プラグイン",   en: "Plugins",   zh: "插件", ko: "플러그인")).tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+        ZStack {
+            NavigationStack {
+                VStack(spacing: 0) {
+                    Picker("", selection: $selectedTab) {
+                        Text(lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿")).tag(0)
+                        Text(lang.t("プラグイン",   en: "Plugins",   zh: "插件", ko: "플러그인")).tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
 
-                if selectedTab == 0 {
-                    templatesTab
-                } else {
-                    pluginsTab
+                    if selectedTab == 0 {
+                        templatesTab
+                    } else {
+                        pluginsTab
+                    }
+                }
+                .background(BrandConfig.backgroundColor)
+                .navigationTitle(lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"))
+                .overlay(alignment: .bottom) {
+                    if let msg = toastMessage {
+                        ToastView(message: msg, isError: toastIsError)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .padding(.bottom, 24)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.25), value: toastMessage)
+            }
+
+            // MARK: - Centered install confirmation overlay
+            if selectedPlugin != nil {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        if !isConfirmInstalling { selectedPlugin = nil }
+                    }
+                    .transition(.opacity)
+
+                if let plugin = selectedPlugin {
+                    installConfirmCard(plugin: plugin)
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
                 }
             }
-            .background(BrandConfig.backgroundColor)
-            .navigationTitle(lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"))
-            .overlay(alignment: .bottom) {
-                if let msg = toastMessage {
-                    ToastView(message: msg, isError: toastIsError)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .padding(.bottom, 24)
-                }
-            }
-            .animation(.easeInOut(duration: 0.25), value: toastMessage)
         }
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedPlugin != nil)
         .onChange(of: selectedTab) { _, newVal in
             if newVal == 1 && clawHubService.plugins.isEmpty {
                 Task { await clawHubService.search() }
             }
         }
+    }
+
+    // MARK: - Install confirmation card
+
+    @ViewBuilder
+    private func installConfirmCard(plugin: ClawHubPlugin) -> some View {
+        VStack(spacing: 0) {
+            // Close button row
+            HStack {
+                Spacer()
+                Button {
+                    if !isConfirmInstalling { selectedPlugin = nil }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom, 8)
+
+            // Icon
+            Text(iconForPlugin(plugin))
+                .font(.system(size: 52))
+                .padding(.bottom, 12)
+
+            // Name
+            Text(plugin.name)
+                .font(.title3).fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 6)
+
+            // Description
+            if let desc = plugin.description, !desc.isEmpty {
+                Text(desc)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.bottom, 8)
+            }
+
+            // Slug badge
+            Text(plugin.slug)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(Capsule())
+                .padding(.bottom, 20)
+
+            // Install button
+            Button {
+                guard !isConfirmInstalling else { return }
+                isConfirmInstalling = true
+                Task {
+                    let ok = await installPlugin(plugin: plugin)
+                    isConfirmInstalling = false
+                    if ok { selectedPlugin = nil }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if isConfirmInstalling {
+                        ProgressView().tint(.white).scaleEffect(0.85)
+                    } else {
+                        Image(systemName: "arrow.down.circle.fill")
+                    }
+                    Text(isConfirmInstalling
+                         ? lang.t("インストール中...", en: "Installing...", zh: "安装中...", ko: "설치 중...")
+                         : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(isConfirmInstalling)
+        }
+        .padding(24)
+        .frame(width: min(UIScreen.main.bounds.width - 48, 360))
+        .background(BrandConfig.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
     }
 
     // MARK: - Templates tab
@@ -76,7 +182,7 @@ struct MarketView: View {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(popularService.plugins) { plugin in
                             ClawHubTemplateCard(plugin: plugin) {
-                                await installPlugin(plugin: plugin)
+                                selectedPlugin = plugin
                             }
                         }
                     }
@@ -142,7 +248,7 @@ struct MarketView: View {
                     LazyVStack(spacing: 10) {
                         ForEach(clawHubService.plugins) { plugin in
                             PluginCard(plugin: plugin) {
-                                await installPlugin(plugin: plugin)
+                                selectedPlugin = plugin
                             }
                         }
                     }
@@ -199,6 +305,24 @@ struct MarketView: View {
         }
     }
 
+    private func iconForPlugin(_ p: ClawHubPlugin) -> String {
+        let name = p.name.lowercased()
+        let slug = p.slug.lowercased()
+        let combined = name + " " + slug
+        if combined.contains("writ") || combined.contains("copy") { return "✍️" }
+        if combined.contains("code") || combined.contains("dev") || combined.contains("git") { return "💻" }
+        if combined.contains("data") || combined.contains("analy") { return "📊" }
+        if combined.contains("translat") || combined.contains("lang") { return "🌐" }
+        if combined.contains("research") || combined.contains("search") { return "🔍" }
+        if combined.contains("business") || combined.contains("meet") || combined.contains("email") { return "💼" }
+        if combined.contains("agent") { return "🤖" }
+        if combined.contains("assistant") { return "🧠" }
+        if combined.contains("image") || combined.contains("art") || combined.contains("design") { return "🎨" }
+        if combined.contains("music") || combined.contains("audio") { return "🎵" }
+        if combined.contains("video") || combined.contains("stream") { return "🎬" }
+        return "🔌"
+    }
+
     @ViewBuilder
     private func emptyState(icon: String, title: String, subtitle: String) -> some View {
         VStack(spacing: 12) {
@@ -217,14 +341,12 @@ struct MarketView: View {
     }
 }
 
-// MARK: - ClawHub Template Card (grid layout, no dialogs)
+// MARK: - ClawHub Template Card (grid layout)
 
 private struct ClawHubTemplateCard: View {
     let plugin: ClawHubPlugin
-    let onInstall: () async -> Bool
+    let onTap: () -> Void
 
-    @State private var isInstalling = false
-    @State private var installed = false
     @Environment(\.lang) var lang
 
     var body: some View {
@@ -256,32 +378,19 @@ private struct ClawHubTemplateCard: View {
             Spacer()
 
             Button {
-                guard !isInstalling && !installed else { return }
-                isInstalling = true
-                Task {
-                    let ok = await onInstall()
-                    isInstalling = false
-                    if ok { installed = true }
-                }
+                onTap()
             } label: {
                 HStack(spacing: 4) {
-                    if isInstalling {
-                        ProgressView().scaleEffect(0.7).tint(BrandConfig.brand)
-                    } else {
-                        Image(systemName: installed ? "checkmark" : "plus").font(.caption.bold())
-                    }
-                    Text(installed
-                         ? lang.t("インストール済み", en: "Installed ✓",  zh: "已安装 ✓", ko: "설치됨 ✓")
-                         : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
+                    Image(systemName: "plus").font(.caption.bold())
+                    Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
                         .font(.caption).fontWeight(.medium)
                 }
-                .foregroundStyle(installed || isInstalling ? .secondary : BrandConfig.brand)
+                .foregroundStyle(BrandConfig.brand)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(installed ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
+                .background(BrandConfig.brand.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .disabled(installed || isInstalling)
         }
         .padding(14)
         .frame(height: 180)
@@ -317,10 +426,8 @@ private struct ClawHubTemplateCard: View {
 
 private struct PluginCard: View {
     let plugin: ClawHubPlugin
-    let onInstall: () async -> Bool
+    let onTap: () -> Void
 
-    @State private var isInstalling = false
-    @State private var installed = false
     @Environment(\.lang) var lang
 
     var body: some View {
@@ -371,35 +478,20 @@ private struct PluginCard: View {
     @ViewBuilder
     private var installButton: some View {
         Button {
-            guard !installed && !isInstalling else { return }
-            isInstalling = true
-            Task {
-                let ok = await onInstall()
-                isInstalling = false
-                if ok { installed = true }
-            }
+            onTap()
         } label: {
-            Group {
-                if isInstalling {
-                    ProgressView().controlSize(.small).tint(BrandConfig.brand)
-                } else {
-                    HStack(spacing: 4) {
-                        Image(systemName: installed ? "checkmark" : "arrow.down.circle")
-                            .font(.caption.bold())
-                        Text(installed
-                             ? lang.t("済み",         en: "Installed", zh: "已安装", ko: "설치됨")
-                             : lang.t("インストール", en: "Install",   zh: "安装",   ko: "설치"))
-                            .font(.caption).fontWeight(.medium)
-                    }
-                    .foregroundStyle(installed ? .secondary : BrandConfig.brand)
-                }
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.down.circle")
+                    .font(.caption.bold())
+                Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
+                    .font(.caption).fontWeight(.medium)
             }
+            .foregroundStyle(BrandConfig.brand)
             .frame(minWidth: 80)
             .padding(.vertical, 6).padding(.horizontal, 10)
-            .background(installed ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
+            .background(BrandConfig.brand.opacity(0.09))
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
-        .disabled(installed || isInstalling)
     }
 
     private func formatDownloads(_ n: Int) -> String {
