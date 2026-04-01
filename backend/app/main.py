@@ -41,6 +41,12 @@ app.add_middleware(RateLimitMiddleware)
 app.include_router(api_router)
 
 
+@app.on_event("startup")
+async def startup_event():
+    from app.services.scheduler_service import start_scheduler
+    start_scheduler()
+
+
 @app.get("/health")
 async def health():
     from app.core.docker_manager import docker_manager

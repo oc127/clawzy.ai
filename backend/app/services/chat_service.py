@@ -1,5 +1,12 @@
-"""Chat service — streams LLM responses via OpenClaw → LiteLLM fallback."""
+"""Chat service — streams LLM responses via OpenClaw -> LiteLLM fallback.
 
+Supports:
+- Dual-channel routing (OpenClaw primary, LiteLLM fallback)
+- Long-term memory injection and extraction
+- Tool calling with iterative execution loop
+"""
+
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -24,6 +31,9 @@ _MIN_CREDITS_GUARD = 1
 
 # How long to wait for OpenClaw to accept the connection before falling back
 _OPENCLAW_CONNECT_TIMEOUT = 5.0
+
+# Maximum tool-call iterations to prevent infinite loops
+_MAX_TOOL_ITERATIONS = 10
 
 
 async def get_or_create_conversation(
@@ -96,6 +106,26 @@ def _build_openclaw_url() -> str:
     return f"{settings.openclaw_url}/v1/chat/completions"
 
 
+async def _non_streaming_completion(
+    url: str,
+    headers: dict,
+    payload: dict,
+    timeout: httpx.Timeout,
+) -> dict | None:
+    """Make a non-streaming LLM call (used for tool-loop iterations)."""
+    payload_copy = {**payload, "stream": False}
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            resp = await client.post(url, headers=headers, json=payload_copy)
+            if resp.status_code != 200:
+                logger.error("Non-streaming LLM error %s: %s", resp.status_code, resp.text[:500])
+                return None
+            return resp.json()
+        except Exception as exc:
+            logger.error("Non-streaming LLM call failed: %s", exc)
+            return None
+
+
 async def stream_chat_completion(
     db: AsyncSession,
     user_id: str,
@@ -114,8 +144,13 @@ async def stream_chat_completion(
     transparently retried against LiteLLM.  The fallback is logged at WARNING
     level as "[FALLBACK] OpenClaw unreachable, using LiteLLM directly".
 
+    Supports tool calling: if the model returns tool_calls, they are executed
+    and the results fed back in a loop (max 10 iterations).
+
     Yields JSON-encoded event dicts:
       {"type": "stream", "content": "..."}
+      {"type": "tool_call", "tool": "...", "arguments": {...}}
+      {"type": "tool_result", "tool": "...", "result": "..."}
       {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
@@ -139,8 +174,19 @@ async def stream_chat_completion(
     # ── 3. Build message history ────────────────────────────────────────────
     history = await get_conversation_history(db, conversation_id)
 
-    if agent.system_prompt:
-        history = [{"role": "system", "content": agent.system_prompt}] + history
+    # ── 3a. Inject memory context into system prompt ────────────────────────
+    system_prompt = agent.system_prompt or ""
+    if agent.memory_enabled:
+        try:
+            from app.services.memory_service import get_memory_context
+            memory_ctx = await get_memory_context(db, agent.id)
+            if memory_ctx:
+                system_prompt = f"{system_prompt}\n\n{memory_ctx}" if system_prompt else memory_ctx
+        except Exception as exc:
+            logger.warning("Failed to load memory context for agent %s: %s", agent.id, exc)
+
+    if system_prompt:
+        history = [{"role": "system", "content": system_prompt}] + history
 
     if images:
         model_to_use = "qwen-vl-plus"
@@ -155,6 +201,14 @@ async def stream_chat_completion(
             history.append({"role": "user", "content": content_parts})
     else:
         model_to_use = agent.model_name
+
+    # ── 3b. Load enabled tools ──────────────────────────────────────────────
+    tools_definitions = []
+    try:
+        from app.services.tool_service import get_enabled_tools
+        tools_definitions = await get_enabled_tools(db, agent.id)
+    except Exception as exc:
+        logger.warning("Failed to load tools for agent %s: %s", agent.id, exc)
 
     # ── 4. Dual-channel routing ─────────────────────────────────────────────
     # OpenClaw and LiteLLM use different auth tokens.
@@ -173,14 +227,14 @@ async def stream_chat_completion(
         "stream": True,
     }
 
+    # Include tools in payload if any are enabled
+    if tools_definitions:
+        payload["tools"] = tools_definitions
+
     openclaw_url = _build_openclaw_url()
     litellm_url = _build_litellm_url()
 
     # --- Attempt to connect to OpenClaw with a short connect timeout.
-    # httpx establishes the TCP connection (and sends the request) when we
-    # enter the stream() context manager.  Any ConnectError / TimeoutException
-    # raised at that point means OpenClaw is down — switch to LiteLLM before
-    # yielding a single byte to the client.
     openclaw_timeout = httpx.Timeout(
         connect=_OPENCLAW_CONNECT_TIMEOUT,
         read=120.0,
@@ -190,6 +244,7 @@ async def stream_chat_completion(
     litellm_timeout = httpx.Timeout(120.0)
 
     active_url = openclaw_url
+    active_headers = openclaw_headers
     active_timeout = openclaw_timeout
     using_fallback = False
 
@@ -206,6 +261,7 @@ async def stream_chat_completion(
         )
         using_fallback = True
         active_url = litellm_url
+        active_headers = litellm_headers
         active_timeout = litellm_timeout
         _probe_client = httpx.AsyncClient(timeout=litellm_timeout)
         _stream_ctx = _probe_client.stream("POST", litellm_url, headers=litellm_headers, json=payload)
@@ -224,6 +280,7 @@ async def stream_chat_completion(
     full_content = ""
     tokens_input = 0
     tokens_output = 0
+    tool_calls_buffer: list[dict] = []
 
     try:
         if _response.status_code != 200:
@@ -257,6 +314,20 @@ async def stream_chat_completion(
                     full_content += content
                     yield json.dumps({"type": "stream", "content": content})
 
+                # Accumulate tool calls from streaming deltas
+                tc_deltas = delta.get("tool_calls", [])
+                for tc_delta in tc_deltas:
+                    idx = tc_delta.get("index", 0)
+                    while len(tool_calls_buffer) <= idx:
+                        tool_calls_buffer.append({"id": "", "function": {"name": "", "arguments": ""}})
+                    if "id" in tc_delta and tc_delta["id"]:
+                        tool_calls_buffer[idx]["id"] = tc_delta["id"]
+                    fn = tc_delta.get("function", {})
+                    if "name" in fn and fn["name"]:
+                        tool_calls_buffer[idx]["function"]["name"] = fn["name"]
+                    if "arguments" in fn:
+                        tool_calls_buffer[idx]["function"]["arguments"] += fn["arguments"]
+
             usage = chunk.get("usage")
             if usage:
                 tokens_input = usage.get("prompt_tokens", 0)
@@ -272,6 +343,117 @@ async def stream_chat_completion(
     finally:
         await _stream_ctx.__aexit__(None, None, None)
         await _probe_client.aclose()
+
+    # ── 5b. Tool loop — execute tool calls and re-call LLM ─────────────────
+    if tool_calls_buffer and tools_definitions:
+        from app.services.tool_service import execute_tool
+
+        # Add the assistant message with tool_calls to history
+        assistant_msg_with_tools = {"role": "assistant", "content": full_content or None}
+        assistant_msg_with_tools["tool_calls"] = [
+            {
+                "id": tc["id"],
+                "type": "function",
+                "function": {
+                    "name": tc["function"]["name"],
+                    "arguments": tc["function"]["arguments"],
+                },
+            }
+            for tc in tool_calls_buffer
+        ]
+        history.append(assistant_msg_with_tools)
+
+        for iteration in range(_MAX_TOOL_ITERATIONS):
+            # Execute each tool call
+            for tc in tool_calls_buffer:
+                fn_name = tc["function"]["name"]
+                try:
+                    fn_args = json.loads(tc["function"]["arguments"])
+                except json.JSONDecodeError:
+                    fn_args = {}
+
+                yield json.dumps({
+                    "type": "tool_call",
+                    "tool": fn_name,
+                    "arguments": fn_args,
+                })
+
+                try:
+                    tool_result = await execute_tool(
+                        agent_id=agent.id,
+                        container_id=agent.container_id,
+                        tool_name=fn_name,
+                        arguments=fn_args,
+                    )
+                except Exception as texc:
+                    tool_result = f"Tool execution error: {texc}"
+
+                yield json.dumps({
+                    "type": "tool_result",
+                    "tool": fn_name,
+                    "result": tool_result[:2000],
+                })
+
+                # Append tool result to history
+                history.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": tool_result[:4000],
+                })
+
+            # Re-call LLM with tool results (non-streaming for intermediate calls)
+            tool_payload = {
+                "model": model_to_use,
+                "messages": history,
+                "max_tokens": 8192,
+                "tools": tools_definitions,
+            }
+
+            llm_result = await _non_streaming_completion(
+                active_url, active_headers, tool_payload, active_timeout,
+            )
+
+            if llm_result is None:
+                yield json.dumps({
+                    "type": "error",
+                    "code": "tool_loop_error",
+                    "message": "LLM call failed during tool loop",
+                })
+                break
+
+            choice = llm_result.get("choices", [{}])[0]
+            msg = choice.get("message", {})
+
+            # Track token usage from tool loop
+            loop_usage = llm_result.get("usage", {})
+            tokens_input += loop_usage.get("prompt_tokens", 0)
+            tokens_output += loop_usage.get("completion_tokens", 0)
+
+            new_tool_calls = msg.get("tool_calls", [])
+            new_content = msg.get("content", "")
+
+            if new_content:
+                full_content += new_content
+                yield json.dumps({"type": "stream", "content": new_content})
+
+            if new_tool_calls:
+                # More tool calls — add to history and continue loop
+                history.append(msg)
+                tool_calls_buffer = [
+                    {
+                        "id": tc["id"],
+                        "function": {
+                            "name": tc["function"]["name"],
+                            "arguments": tc["function"]["arguments"]
+                                if isinstance(tc["function"]["arguments"], str)
+                                else json.dumps(tc["function"]["arguments"]),
+                        },
+                    }
+                    for tc in new_tool_calls
+                ]
+            else:
+                # No more tool calls — done
+                break
 
     if not full_content:
         yield json.dumps({
@@ -318,6 +500,28 @@ async def stream_chat_completion(
 
     agent.last_active_at = datetime.now(timezone.utc)
     await db.commit()
+
+    # ── 7b. Fire-and-forget memory extraction ──────────────────────────────
+    if agent.memory_enabled and full_content:
+        try:
+            from app.services.memory_service import extract_memories
+            # Use asyncio.create_task for fire-and-forget
+            # We need a fresh db session since the current one may be closed
+            from app.core.database import async_session
+
+            async def _extract_bg():
+                try:
+                    async with async_session() as bg_db:
+                        await extract_memories(
+                            bg_db, agent.id, conversation_id,
+                            user_content, full_content,
+                        )
+                except Exception as exc:
+                    logger.warning("Background memory extraction failed: %s", exc)
+
+            asyncio.create_task(_extract_bg())
+        except Exception as exc:
+            logger.warning("Failed to schedule memory extraction: %s", exc)
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one()

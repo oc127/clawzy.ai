@@ -68,7 +68,7 @@ struct MarketView: View {
                     if let msg = toastMessage {
                         ToastView(message: msg, isError: toastIsError)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
-                            .padding(.bottom, 24)
+                            .padding(.bottom, 100)
                     }
                 }
                 .animation(.easeInOut(duration: 0.25), value: toastMessage)

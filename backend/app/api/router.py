@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from app.api.v1 import auth, users, agents, models, billing, chat, templates, clawhub, backup
+from app.api.v1 import workspace, memories, tools
+from app.api.v1 import skills, mcp, scheduler, approvals, channels, webhooks
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -13,3 +15,12 @@ api_router.include_router(chat.router)
 api_router.include_router(templates.router)
 api_router.include_router(clawhub.router)
 api_router.include_router(backup.router)
+api_router.include_router(workspace.router)
+api_router.include_router(memories.router)
+api_router.include_router(tools.router)
+api_router.include_router(skills.router)
+api_router.include_router(mcp.router)
+api_router.include_router(scheduler.router)
+api_router.include_router(approvals.router)
+api_router.include_router(channels.router)
+api_router.include_router(webhooks.router)

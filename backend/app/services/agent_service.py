@@ -9,6 +9,7 @@ from app.config import settings
 from app.core.docker_manager import docker_manager
 from app.models.agent import Agent, AgentStatus
 from app.models.subscription import Subscription, PlanType
+from app.services.workspace_service import init_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,13 @@ async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
             agent.config = {**(agent.config or {}), "gateway_token": gateway_token}
 
         agent.status = AgentStatus.running
+
+        # Initialize workspace directories inside the container
+        try:
+            await init_workspace(agent.container_id)
+        except Exception as ws_exc:
+            logger.warning("Failed to init workspace for agent %s: %s", agent.id, ws_exc)
+
     except Exception as exc:
         logger.warning("Failed to start container for agent %s: %s", agent.id, exc)
         agent.status = AgentStatus.error

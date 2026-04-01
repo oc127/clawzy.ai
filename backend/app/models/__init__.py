@@ -4,6 +4,13 @@ from app.models.credits import CreditTransaction
 from app.models.agent import Agent
 from app.models.chat import Conversation, Message
 from app.models.template import AgentTemplate
+from app.models.memory import AgentMemory
+from app.models.tool import AgentTool
+from app.models.skill import AgentSkill
+from app.models.mcp import AgentMCPServer
+from app.models.task import ScheduledTask, TaskRun
+from app.models.approval import ApprovalRequest
+from app.models.channel import AgentChannel
 
 __all__ = [
     "User",
@@ -13,4 +20,12 @@ __all__ = [
     "Conversation",
     "Message",
     "AgentTemplate",
+    "AgentMemory",
+    "AgentTool",
+    "AgentSkill",
+    "AgentMCPServer",
+    "ScheduledTask",
+    "TaskRun",
+    "ApprovalRequest",
+    "AgentChannel",
 ]

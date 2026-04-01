@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Enum as SAEnum, JSON, Text
+from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Enum as SAEnum, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -26,6 +26,7 @@ class Agent(Base):
     status: Mapped[AgentStatus] = mapped_column(SAEnum(AgentStatus), default=AgentStatus.creating)
     system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    memory_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     ws_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

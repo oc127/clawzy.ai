@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     cors_origins: list[str] = ["https://clawzy.ai", "https://www.clawzy.ai"]
 
+    # --- Multi-channel ---
+    telegram_bot_api_url: str = "https://api.telegram.org"
+    line_api_url: str = "https://api.line.me/v2"
+
     # --- Apple ---
     apple_shared_secret: str = ""
 
