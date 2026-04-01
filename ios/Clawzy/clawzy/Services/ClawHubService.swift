@@ -61,32 +61,18 @@ final class ClawHubService {
         }
     }
 
-    /// Load popular skills: try empty query first, fallback to keywords.
-    func searchPopular(limit: Int = 10) async {
+    /// Load popular skills from the backend's curated /popular endpoint.
+    func searchPopular(limit: Int = 20) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
-        // Try empty query first
-        if let items = await fetchRaw(query: "", limit: limit), !items.isEmpty {
-            plugins = items
-            return
-        }
-
-        // Fallback: merge results from multiple keywords
-        var seen = Set<String>()
-        var merged: [ClawHubPlugin] = []
-        for kw in ["coding", "writing", "assistant"] {
-            if let items = await fetchRaw(query: kw, limit: 10) {
-                for p in items where !seen.contains(p.slug) {
-                    seen.insert(p.slug)
-                    merged.append(p)
-                }
-            }
-        }
-        plugins = Array(merged.prefix(limit))
-        if plugins.isEmpty {
-            errorMessage = "No skills found"
+        do {
+            let response: ClawHubSearchResponse = try await api.request(Constants.API.clawHubPopular)
+            totalCount = response.total
+            plugins = response.items
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

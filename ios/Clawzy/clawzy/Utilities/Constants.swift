@@ -26,6 +26,7 @@ enum Constants {
         static let backupExport = "/api/v1/backup/export"
 
         static let clawHubSearch = "/api/v1/clawhub/search"
+        static let clawHubPopular = "/api/v1/clawhub/popular"
         static let clawHubInstall = "/api/v1/clawhub/install"
 
         static func agent(_ id: String) -> String { "/api/v1/agents/\(id)" }
