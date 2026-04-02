@@ -48,12 +48,12 @@ final class ClawHubService {
     private let api = APIClient.shared
 
     /// Search plugins. Pass `page > 1` to append results.
-    func search(query: String = "", page: Int = 1, limit: Int = 20) async {
+    func search(query: String = "", page: Int = 1, limit: Int = 20, lang: String = "ja") async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
-        guard let items = await fetchRaw(query: query, page: page, limit: limit) else { return }
+        guard let items = await fetchRaw(query: query, page: page, limit: limit, lang: lang) else { return }
         if page == 1 {
             plugins = items
         } else {
@@ -62,12 +62,12 @@ final class ClawHubService {
     }
 
     /// Load popular skills from backend (server handles curation for empty query).
-    func searchPopular(limit: Int = 10) async {
+    func searchPopular(limit: Int = 10, lang: String = "ja") async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
-        if let items = await fetchRaw(query: "", limit: limit), !items.isEmpty {
+        if let items = await fetchRaw(query: "", limit: limit, lang: lang), !items.isEmpty {
             plugins = items
         } else {
             errorMessage = "No skills found"
@@ -86,12 +86,13 @@ final class ClawHubService {
 
     // MARK: - Private
 
-    private func fetchRaw(query: String = "", page: Int = 1, limit: Int = 20) async -> [ClawHubPlugin]? {
+    private func fetchRaw(query: String = "", page: Int = 1, limit: Int = 20, lang: String = "ja") async -> [ClawHubPlugin]? {
         var components = URLComponents()
         components.queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "page", value: "\(page)"),
             URLQueryItem(name: "limit", value: "\(limit)"),
+            URLQueryItem(name: "lang", value: lang),
         ]
         let qs = components.percentEncodedQuery.map { "?\($0)" } ?? ""
         let path = Constants.API.clawHubSearch + qs

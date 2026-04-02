@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 import httpx
@@ -6,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.database import get_db
 from app.core.docker_manager import docker_manager
+from app.core.redis import get_redis
 from app.deps import get_current_user
 from app.models.user import User
 from app.services.agent_service import get_agent
@@ -16,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 CLAWHUB_BASE = "https://clawhub.ai/api/v1"
 _TIMEOUT = 10.0
+_TRANSLATE_TTL = 7 * 24 * 3600  # 7 days
+
+_LANG_NAMES = {"ja": "Japanese", "zh": "Chinese", "ko": "Korean"}
 
 # Popular keywords used to build curated results when query is empty
 _POPULAR_KEYWORDS = ["coding", "writing", "assistant", "data", "research"]
@@ -173,6 +179,106 @@ async def _popular_plugins(limit: int) -> list[ClawHubPlugin]:
 
 
 # ---------------------------------------------------------------------------
+# Translation
+# ---------------------------------------------------------------------------
+
+async def _translate_plugins(
+    plugins: list[ClawHubPlugin], lang: str
+) -> list[ClawHubPlugin]:
+    """Translate plugin names/descriptions via LiteLLM, with Redis caching."""
+    if lang == "en" or not plugins:
+        return plugins
+
+    lang_name = _LANG_NAMES.get(lang)
+    if not lang_name:
+        return plugins
+
+    rd = await get_redis()
+
+    # Check cache for each plugin
+    cached: dict[str, dict] = {}
+    uncached: list[ClawHubPlugin] = []
+    for p in plugins:
+        key = f"clawhub:translate:{p.slug}:{lang}"
+        raw = await rd.get(key)
+        if raw:
+            try:
+                cached[p.slug] = json.loads(raw)
+            except Exception:
+                uncached.append(p)
+        else:
+            uncached.append(p)
+
+    # Batch-translate uncached plugins in one LLM call
+    if uncached:
+        input_items = [
+            {"slug": p.slug, "name": p.name, "description": p.description or ""}
+            for p in uncached
+        ]
+        prompt = (
+            f"Translate the following plugin names and descriptions to {lang_name}. "
+            "Keep technical terms, brand names, and proper nouns in English. "
+            "Return ONLY a JSON array, no markdown.\n"
+            f"Input: {json.dumps(input_items, ensure_ascii=False)}\n"
+            'Output: [{"slug":"...","name":"translated...","description":"translated..."}]'
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{settings.litellm_url}/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+                    json={
+                        "model": "deepseek-chat",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.1,
+                    },
+                )
+                resp.raise_for_status()
+                content = resp.json()["choices"][0]["message"]["content"]
+                # Strip markdown code fences if present
+                content = content.strip()
+                if content.startswith("```"):
+                    content = content.split("\n", 1)[-1]
+                if content.endswith("```"):
+                    content = content.rsplit("```", 1)[0]
+                content = content.strip()
+                translated = json.loads(content)
+
+                # Cache each result
+                for item in translated:
+                    slug = item.get("slug", "")
+                    if slug:
+                        cache_val = {
+                            "name": item.get("name", ""),
+                            "description": item.get("description", ""),
+                        }
+                        cached[slug] = cache_val
+                        cache_key = f"clawhub:translate:{slug}:{lang}"
+                        await rd.set(cache_key, json.dumps(cache_val, ensure_ascii=False), ex=_TRANSLATE_TTL)
+        except Exception as exc:
+            logger.warning("Plugin translation failed: %s", exc)
+            # Fall through with whatever we have cached
+
+    # Build result list preserving order
+    result: list[ClawHubPlugin] = []
+    for p in plugins:
+        t = cached.get(p.slug)
+        if t:
+            result.append(ClawHubPlugin(
+                slug=p.slug,
+                name=t.get("name") or p.name,
+                description=t.get("description") or p.description,
+                author=p.author,
+                downloads=p.downloads,
+                version=p.version,
+                tags=p.tags,
+            ))
+        else:
+            result.append(p)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -181,12 +287,14 @@ async def search_plugins(
     q: str = "",
     page: int = 1,
     limit: int = 20,
+    lang: str = "ja",
 ):
     """Proxy ClawHub search. Empty query returns curated popular results."""
 
     # Empty query → return curated popular list (server-side, single request from iOS)
     if not q.strip():
         items = await _popular_plugins(limit)
+        items = await _translate_plugins(items, lang)
         return SearchResponse(items=items, total=len(items))
 
     data = await _clawhub_get("/search", params={"q": q, "page": page, "limit": limit})
@@ -199,6 +307,7 @@ async def search_plugins(
         enriched = await asyncio.gather(*[_enrich_plugin(p) for p in items[:limit]])
         items = list(enriched)
 
+    items = await _translate_plugins(items, lang)
     return SearchResponse(items=items, total=total)
 
 
@@ -221,14 +330,14 @@ async def install_plugin(
     if not agent.container_id:
         raise HTTPException(status_code=400, detail="Agent container is not running")
 
-    pkg = f"clawhub:{body.slug}"
+    cmd = ["npx", "clawhub", "install", body.slug, "--no-input"]
     if body.version and body.version != "latest":
-        pkg = f"{pkg}@{body.version}"
+        cmd += ["--version", body.version]
 
     try:
         container = docker_manager.client.containers.get(agent.container_id)
         exit_code, output_bytes = container.exec_run(
-            ["openclaw", "plugins", "install", pkg],
+            cmd,
             demux=False,
         )
     except Exception as exc:

@@ -102,7 +102,7 @@ struct MarketView: View {
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedTemplate != nil)
         .onChange(of: selectedTab) { _, newVal in
             if newVal == 1 && clawHubService.plugins.isEmpty {
-                Task { await clawHubService.search() }
+                Task { await clawHubService.search(lang: lang.current) }
             }
         }
     }
@@ -444,7 +444,7 @@ struct MarketView: View {
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
-            await clawHubService.search(query: searchText)
+            await clawHubService.search(query: searchText, lang: lang.current)
         }
     }
 
