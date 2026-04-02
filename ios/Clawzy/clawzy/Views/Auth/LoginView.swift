@@ -3,6 +3,7 @@ import SwiftUI
 struct LoginView: View {
     @Environment(AuthManager.self) var authManager
     @Environment(\.dismiss) var dismiss
+    @Environment(\.lang) var lang
     @State private var email = ""
     @State private var password = ""
     @State private var showRegister = false
@@ -68,7 +69,7 @@ struct LoginView: View {
                                 .textContentType(.password)
                         }
 
-                        BrandButton(title: "ログイン", isLoading: authManager.isLoading) {
+                        BrandButton(title: lang.t("ログイン", en: "Login", zh: "登录", ko: "로그인"), isLoading: authManager.isLoading) {
                             Task {
                                 await authManager.login(email: email, password: password)
                                 if authManager.isAuthenticated { dismiss() }

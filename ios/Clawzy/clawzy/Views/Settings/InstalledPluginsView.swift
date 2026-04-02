@@ -80,7 +80,7 @@ struct InstalledPluginsView: View {
         .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
                isPresented: Binding(get: { errorMessage != nil },
                                     set: { if !$0 { errorMessage = nil } })) {
-            Button("OK") { errorMessage = nil }
+            Button(lang.t("OK", en: "OK", zh: "确定", ko: "확인")) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }

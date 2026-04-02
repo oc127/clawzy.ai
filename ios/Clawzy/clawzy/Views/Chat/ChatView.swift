@@ -16,7 +16,15 @@ struct ChatAttachment: Identifiable {
 
     var displayName: String {
         switch type {
-        case .image: return "Image"
+        case .image:
+                return {
+                    switch Locale.current.language.languageCode?.identifier {
+                    case "en": return "Image"
+                    case "zh": return "图片"
+                    case "ko": return "이미지"
+                    default: return "画像"
+                    }
+                }()
         case .file(let name, _): return name
         }
     }

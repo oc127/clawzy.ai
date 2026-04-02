@@ -3,6 +3,7 @@ import SwiftUI
 struct RegisterView: View {
     @Environment(AuthManager.self) var authManager
     @Environment(\.dismiss) var dismiss
+    @Environment(\.lang) var lang
 
     @State private var name = ""
     @State private var email = ""
@@ -95,7 +96,7 @@ struct RegisterView: View {
                                 .foregroundStyle(BrandConfig.brand)
                         }
 
-                        BrandButton(title: "新規登録", isLoading: authManager.isLoading) {
+                        BrandButton(title: lang.t("新規登録", en: "Register", zh: "注册", ko: "회원가입"), isLoading: authManager.isLoading) {
                             Task {
                                 await authManager.register(name: name, email: email, password: password)
                                 if authManager.isAuthenticated { dismiss() }
@@ -127,7 +128,7 @@ struct RegisterView: View {
             .background(BrandConfig.backgroundColor)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("閉じる") { dismiss() }
+                    Button(lang.t("閉じる", en: "Close", zh: "关闭", ko: "닫기")) { dismiss() }
                         .foregroundStyle(BrandConfig.brand)
                 }
             }

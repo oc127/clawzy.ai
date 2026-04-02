@@ -164,7 +164,7 @@ struct SettingsView: View {
                         Text("1.0.0").foregroundStyle(.secondary)
                     }
                     Link(destination: URL(string: BrandConfig.privacyURL)!) {
-                        Label("\(BrandConfig.appName) を開く", systemImage: "safari")
+                        Label(lang.t("\(BrandConfig.appName) を開く", en: "Open \(BrandConfig.appName)", zh: "打开 \(BrandConfig.appName)", ko: "\(BrandConfig.appName) 열기"), systemImage: "safari")
                             .foregroundStyle(BrandConfig.brand)
                     }
                     Link(destination: URL(string: BrandConfig.termsURL)!) {
@@ -191,7 +191,7 @@ struct SettingsView: View {
             .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
                    isPresented: Binding(get: { exportError != nil },
                                         set: { if !$0 { exportError = nil } })) {
-                Button("OK") { exportError = nil }
+                Button(lang.t("OK", en: "OK", zh: "确定", ko: "확인")) { exportError = nil }
             } message: {
                 Text(exportError ?? "")
             }

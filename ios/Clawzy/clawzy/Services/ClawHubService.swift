@@ -70,7 +70,7 @@ final class ClawHubService {
         if let items = await fetchRaw(query: "", limit: limit, lang: lang), !items.isEmpty {
             plugins = items
         } else {
-            errorMessage = "No skills found"
+            errorMessage = "スキルが見つかりません"
         }
     }
 

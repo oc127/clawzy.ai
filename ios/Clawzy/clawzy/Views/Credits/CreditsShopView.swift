@@ -33,7 +33,7 @@ struct CreditsShopView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         // Plan name + price
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Pro")
+                            Text(lang.t("Pro", en: "Pro", zh: "Pro", ko: "Pro"))
                                 .font(.headline).fontWeight(.bold)
 
                             HStack(alignment: .firstTextBaseline, spacing: 2) {
@@ -41,7 +41,7 @@ struct CreditsShopView: View {
                                     Text(product.displayPrice)
                                         .font(.system(size: 36, weight: .bold, design: .rounded))
                                 } else {
-                                    Text("--")
+                                    Text(lang.t("--", en: "--", zh: "--", ko: "--"))
                                         .font(.system(size: 36, weight: .bold, design: .rounded))
                                         .foregroundStyle(.secondary)
                                 }
