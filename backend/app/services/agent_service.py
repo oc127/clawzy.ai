@@ -114,11 +114,11 @@ async def start_agent(db: AsyncSession, agent: Agent) -> Agent:
     try:
         if agent.container_id:
             # Container exists — just start it
-            docker_manager.start_container(agent.container_id)
+            await docker_manager.start_container(agent.container_id)
         else:
             # First start — provision a new container
             gateway_token = secrets.token_urlsafe(32)
-            container_id = docker_manager.create_agent_container(
+            container_id = await docker_manager.create_agent_container(
                 agent_id=agent.id,
                 gateway_token=gateway_token,
                 litellm_key=settings.litellm_master_key,
@@ -150,7 +150,7 @@ async def stop_agent(db: AsyncSession, agent: Agent) -> Agent:
     """Stop the agent's dedicated OpenClaw container (if any)."""
     if agent.container_id:
         try:
-            docker_manager.stop_container(agent.container_id)
+            await docker_manager.stop_container(agent.container_id)
         except Exception as exc:
             logger.warning("Failed to stop container for agent %s: %s", agent.id, exc)
 

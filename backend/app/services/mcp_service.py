@@ -85,10 +85,9 @@ async def discover_tools(agent_id: str, server: AgentMCPServer) -> list[dict]:
         try:
             from app.models.agent import Agent
             # We need the container_id — caller should ensure agent is running
-            container = docker_manager.client.containers.get(f"clawzy-agent-{agent_id}")
-            exit_code, output_bytes = container.exec_run(
+            exit_code, output_bytes = await docker_manager.exec_in_container(
+                f"clawzy-agent-{agent_id}",
                 ["sh", "-c", f"{server.command} --list-tools"],
-                demux=False,
             )
             output = (output_bytes or b"").decode("utf-8", errors="replace")
             if exit_code == 0:
@@ -127,11 +126,10 @@ async def execute_mcp_tool(
 
     elif server.transport == "stdio" and server.command:
         try:
-            container = docker_manager.client.containers.get(f"clawzy-agent-{agent_id}")
             tool_input = json.dumps({"name": tool_name, "arguments": arguments or {}})
-            exit_code, output_bytes = container.exec_run(
+            exit_code, output_bytes = await docker_manager.exec_in_container(
+                f"clawzy-agent-{agent_id}",
                 ["sh", "-c", f"echo '{tool_input}' | {server.command}"],
-                demux=False,
             )
             output = (output_bytes or b"").decode("utf-8", errors="replace")
             if exit_code == 0:

@@ -247,11 +247,8 @@ async def _handle_list_files(container_id: str, arguments: dict) -> str:
 
 async def _handle_execute_command(container_id: str, arguments: dict) -> str:
     command = arguments["command"]
-    container = docker_manager.client.containers.get(container_id)
-    exit_code, output_bytes = container.exec_run(
-        ["sh", "-c", command],
-        workdir=WORKSPACE_ROOT,
-        demux=False,
+    exit_code, output_bytes = await docker_manager.exec_in_container(
+        container_id, ["sh", "-c", command]
     )
     output = (output_bytes or b"").decode("utf-8", errors="replace")[:4000]
     if exit_code != 0:

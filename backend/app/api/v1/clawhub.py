@@ -291,11 +291,35 @@ async def search_plugins(
 ):
     """Proxy ClawHub search. Empty query returns curated popular results."""
 
-    # Empty query → return curated popular list (server-side, single request from iOS)
+    # Empty query → return curated popular list with full caching
     if not q.strip():
+        rd = await get_redis()
+        cache_key = f"clawhub:popular:{lang}:{limit}"
+        cached = await rd.get(cache_key)
+        if cached:
+            try:
+                items = [ClawHubPlugin(**p) for p in json.loads(cached)]
+                return SearchResponse(items=items, total=len(items))
+            except Exception:
+                pass
+        # Cache miss — build fresh (slow, ~5-10s)
         items = await _popular_plugins(limit)
         items = await _translate_plugins(items, lang)
+        # Cache for 6 hours
+        await rd.set(cache_key, json.dumps([p.model_dump() for p in items], ensure_ascii=False), ex=21600)
         return SearchResponse(items=items, total=len(items))
+
+    # Check search cache first (1 hour TTL)
+    rd = await get_redis()
+    search_cache_key = f"clawhub:search:{q}:{page}:{limit}:{lang}"
+    cached_search = await rd.get(search_cache_key)
+    if cached_search:
+        try:
+            data = json.loads(cached_search)
+            items = [ClawHubPlugin(**p) for p in data["items"]]
+            return SearchResponse(items=items, total=data["total"])
+        except Exception:
+            pass
 
     data = await _clawhub_get("/search", params={"q": q, "page": page, "limit": limit})
     raw_items, total = _extract_items(data)
@@ -308,6 +332,13 @@ async def search_plugins(
         items = list(enriched)
 
     items = await _translate_plugins(items, lang)
+
+    # Cache the final result for 1 hour
+    await rd.set(search_cache_key, json.dumps(
+        {"items": [p.model_dump() for p in items], "total": total},
+        ensure_ascii=False
+    ), ex=3600)
+
     return SearchResponse(items=items, total=total)
 
 
@@ -335,10 +366,8 @@ async def install_plugin(
         cmd += ["--version", body.version]
 
     try:
-        container = docker_manager.client.containers.get(agent.container_id)
-        exit_code, output_bytes = container.exec_run(
-            cmd,
-            demux=False,
+        exit_code, output_bytes = await docker_manager.exec_in_container(
+            agent.container_id, cmd
         )
     except Exception as exc:
         logger.error("Docker exec error for agent %s: %s", body.agent_id, exc)

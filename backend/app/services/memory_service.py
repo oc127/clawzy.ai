@@ -37,24 +37,20 @@ Respond with ONLY the summary text, no JSON or formatting."""
 
 
 async def _call_llm(prompt: str) -> str:
-    """Make a non-streaming LLM call via LiteLLM for memory operations."""
-    url = f"{settings.litellm_url}/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {settings.litellm_master_key}",
-        "Content-Type": "application/json",
-    }
+    """Make a non-streaming LLM call via shared LiteLLM client."""
+    from app.core.http_client import get_litellm_client
+
     payload = {
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 1024,
         "temperature": 0.3,
     }
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(url, headers=headers, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+    client = get_litellm_client()
+    resp = await client.post("/v1/chat/completions", json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+    return data["choices"][0]["message"]["content"]
 
 
 async def extract_memories(

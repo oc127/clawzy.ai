@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -38,22 +38,31 @@ async def deduct_credits(
     tokens_output: int,
     agent_id: str | None = None,
 ) -> int:
-    """Deduct credits from user balance. Returns credits used."""
+    """Deduct credits from user balance atomically. Returns credits used."""
     credits_used = calculate_credits(model_name, tokens_input, tokens_output)
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise ValueError("User not found")
-    if user.credit_balance < credits_used:
+    # Atomic UPDATE: only succeeds if balance >= credits_used (no race condition)
+    result = await db.execute(
+        update(User)
+        .where(User.id == user_id, User.credit_balance >= credits_used)
+        .values(credit_balance=User.credit_balance - credits_used)
+        .returning(User.credit_balance)
+    )
+    row = result.first()
+    if row is None:
+        # Either user not found or insufficient balance
+        check = await db.execute(select(User.credit_balance).where(User.id == user_id))
+        user_row = check.first()
+        if user_row is None:
+            raise ValueError("User not found")
         raise InsufficientCreditsError()
 
-    user.credit_balance -= credits_used
+    new_balance = row[0]
 
     txn = CreditTransaction(
         user_id=user_id,
         amount=-credits_used,
-        balance_after=user.credit_balance,
+        balance_after=new_balance,
         reason=CreditReason.usage,
         model_name=model_name,
         tokens_input=tokens_input,

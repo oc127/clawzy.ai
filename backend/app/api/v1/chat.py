@@ -42,6 +42,16 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
       {"type": "done", "usage": {...}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
+    # Validate WebSocket origin (prevent cross-site WebSocket hijacking)
+    origin = websocket.headers.get("origin", "")
+    allowed_origins = {"https://clawzy.ai", "https://www.clawzy.ai", "https://nipponclaw.com", "https://www.nipponclaw.com"}
+    if origin and not any(origin.startswith(ao) for ao in allowed_origins):
+        # Allow iOS app (no origin header) and localhost for dev
+        if origin and "localhost" not in origin and "127.0.0.1" not in origin:
+            logger.warning("WebSocket rejected: invalid origin %s", origin)
+            await websocket.close(code=4003, reason="Invalid origin")
+            return
+
     # Authenticate via query param token
     token = websocket.query_params.get("token")
     if not token:
@@ -67,6 +77,15 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
         if agent is None:
             await websocket.close(code=4004, reason="Agent not found")
             return
+
+        # Auto-start agent if stopped
+        if agent.status.value == "stopped" or not agent.container_id:
+            try:
+                from app.services.agent_service import start_agent
+                agent = await start_agent(db, agent)
+                logger.info("Auto-started agent %s on WebSocket connect", agent_id)
+            except Exception as exc:
+                logger.warning("Auto-start agent %s failed: %s", agent_id, exc)
 
     await websocket.accept()
 

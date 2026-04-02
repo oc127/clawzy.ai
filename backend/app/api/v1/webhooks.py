@@ -25,6 +25,9 @@ async def telegram_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     """Receive Telegram webhook updates."""
+    # Verify Telegram webhook secret (prevents forged requests)
+    secret_token = request.headers.get("x-telegram-bot-api-secret-token", "")
+
     payload = await request.json()
 
     # Find the Telegram channel config for this agent
@@ -40,6 +43,15 @@ async def telegram_webhook(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Telegram channel not configured for this agent",
+        )
+
+    # Verify webhook secret if configured
+    expected_secret = channel.config.get("webhook_secret", "")
+    if expected_secret and secret_token != expected_secret:
+        logger.warning("Telegram webhook rejected: invalid secret for agent %s", agent_id)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook secret",
         )
 
     chat_id, text = telegram_parse(payload)

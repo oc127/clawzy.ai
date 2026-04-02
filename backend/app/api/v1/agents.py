@@ -43,6 +43,13 @@ async def create_my_agent(
         agent = await create_agent(db, user.id, body.name, body.model_name, body.system_prompt)
     except AgentLimitError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+
+    # Auto-start the agent container after creation
+    try:
+        agent = await start_agent(db, agent)
+    except Exception as exc:
+        logger.warning("Auto-start failed for agent %s: %s", agent.id, exc)
+
     return agent
 
 
@@ -125,10 +132,8 @@ async def list_agent_plugins(
         return {"plugins": []}
 
     try:
-        container = docker_manager.client.containers.get(agent.container_id)
-        exit_code, output_bytes = container.exec_run(
-            ["openclaw", "plugins", "list", "--json"],
-            demux=False,
+        exit_code, output_bytes = await docker_manager.exec_in_container(
+            agent.container_id, ["openclaw", "plugins", "list", "--json"]
         )
     except Exception as exc:
         logger.error("Docker exec error for agent %s: %s", agent_id, exc)
@@ -167,10 +172,8 @@ async def uninstall_agent_plugin(
         raise HTTPException(status_code=400, detail="Agent container is not running")
 
     try:
-        container = docker_manager.client.containers.get(agent.container_id)
-        exit_code, output_bytes = container.exec_run(
-            ["openclaw", "plugins", "uninstall", f"clawhub:{slug}"],
-            demux=False,
+        exit_code, output_bytes = await docker_manager.exec_in_container(
+            agent.container_id, ["openclaw", "plugins", "uninstall", f"clawhub:{slug}"]
         )
     except Exception as exc:
         logger.error("Docker exec error for agent %s: %s", agent_id, exc)
