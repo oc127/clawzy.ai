@@ -33,6 +33,14 @@ enum Constants {
         static func agentStop(_ id: String) -> String { "/api/v1/agents/\(id)/stop" }
         static func agentPlugins(_ id: String) -> String { "/api/v1/agents/\(id)/plugins" }
         static func agentPlugin(_ id: String, slug: String) -> String { "/api/v1/agents/\(id)/plugins/\(slug)" }
+        static func agentTools(_ id: String) -> String { "/api/v1/agents/\(id)/tools" }
+        static func agentMemories(_ id: String) -> String { "/api/v1/agents/\(id)/memories" }
+        static func agentMemory(_ id: String, memoryId: String) -> String { "/api/v1/agents/\(id)/memories/\(memoryId)" }
+        static func agentSkills(_ id: String) -> String { "/api/v1/agents/\(id)/skills" }
+        static func agentTasks(_ id: String) -> String { "/api/v1/agents/\(id)/tasks" }
+        static func agentTask(_ id: String, taskId: String) -> String { "/api/v1/agents/\(id)/tasks/\(taskId)" }
+        static func agentChannels(_ id: String) -> String { "/api/v1/agents/\(id)/channels" }
+        static func agentChannel(_ id: String, channelId: String) -> String { "/api/v1/agents/\(id)/channels/\(channelId)" }
         static func wsChat(_ agentId: String) -> String { "/api/v1/ws/chat/\(agentId)" }
         static func conversations(_ agentId: String) -> String { "/api/v1/agents/\(agentId)/conversations" }
         static func messages(_ conversationId: String) -> String { "/api/v1/conversations/\(conversationId)/messages" }

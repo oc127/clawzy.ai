@@ -1,13 +1,15 @@
 import Foundation
 import Observation
 
-/// WebSocket 聊天服务
+/// WebSocket 聊天服務
 @Observable
 final class ChatService {
     var messages: [ChatBubble] = []
     var isConnected = false
     var isStreaming = false
     var creditBalance: Int = 0
+    var currentConversationId: String?
+    var currentConversationTitle: String?
 
     private var webSocketTask: URLSessionWebSocketTask?
     private var currentStreamText = ""
@@ -134,8 +136,35 @@ final class ChatService {
         await MainActor.run {
             if messages.isEmpty {
                 messages = bubbles
+                currentConversationId = latest.id
+                currentConversationTitle = latest.title
             }
         }
+    }
+
+    /// Switch to a specific conversation by loading its messages
+    func switchConversation(_ conversation: Conversation) async {
+        let msgs = await loadMessages(conversationId: conversation.id)
+        let bubbles = msgs.compactMap { msg -> ChatBubble? in
+            guard msg.role == .user || msg.role == .assistant else { return nil }
+            return ChatBubble(role: msg.role, content: msg.content)
+        }
+        await MainActor.run {
+            messages = bubbles
+            currentConversationId = conversation.id
+            currentConversationTitle = conversation.title
+            isStreaming = false
+            currentStreamText = ""
+        }
+    }
+
+    /// Start a new conversation (clear messages, nil conversation ID)
+    func startNewConversation() {
+        messages = []
+        currentConversationId = nil
+        currentConversationTitle = nil
+        isStreaming = false
+        currentStreamText = ""
     }
 
     func loadConversations(agentId: String) async -> [Conversation] {

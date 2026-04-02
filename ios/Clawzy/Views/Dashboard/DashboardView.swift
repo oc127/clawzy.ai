@@ -79,12 +79,26 @@ struct DashboardView: View {
                 // Agent cards
                 VStack(spacing: 1) {
                     ForEach(agentService.agents) { agent in
-                        NavigationLink {
-                            ChatView(agent: agent)
-                        } label: {
-                            AgentRowView(agent: agent)
+                        HStack(spacing: 0) {
+                            NavigationLink {
+                                ChatView(agent: agent)
+                            } label: {
+                                AgentRowView(agent: agent)
+                            }
+                            .buttonStyle(.plain)
+
+                            NavigationLink {
+                                AgentDetailView(agent: agent)
+                            } label: {
+                                Image(systemName: "gearshape")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 4)
+                            .background(BrandConfig.cardBackground)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .background(BrandConfig.cardBackground)

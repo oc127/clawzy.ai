@@ -50,6 +50,8 @@ struct ChatView: View {
     @State private var showFilePicker = false
     @State private var showOpenClaw = false
     @State private var showModelPicker = false
+    @State private var showConversationList = false
+    @State private var conversations: [Conversation] = []
     @State private var availableModels: [AIModel] = []
     @State private var currentModelName: String = ""
     @Environment(HealthMonitor.self) var healthMonitor
@@ -85,6 +87,7 @@ struct ChatView: View {
             Task {
                 await chatService.loadHistory(agentId: agent.id)
                 await loadModels()
+                await loadConversations()
             }
             withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = false }
         }
@@ -108,19 +111,33 @@ struct ChatView: View {
             SafariView(url: URL(string: "https://clawzy.ai/openclaw/")!)
                 .ignoresSafeArea()
         }
-        .confirmationDialog(
-            lang.t("モデルを選択", en: "Select Model", zh: "选择模型", ko: "모델 선택"),
-            isPresented: $showModelPicker,
-            titleVisibility: .visible
-        ) {
-            ForEach(availableModels) { model in
-                Button {
-                    Task { await switchModel(to: model.id) }
-                } label: {
-                    Text(model.name + (model.id == currentModelName ? " ✓" : ""))
+        .sheet(isPresented: $showModelPicker) {
+            ModelPickerView(
+                models: availableModels,
+                currentModelId: currentModelName,
+                onSelect: { modelId in
+                    Task { await switchModel(to: modelId) }
+                    showModelPicker = false
                 }
-            }
-            Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"), role: .cancel) {}
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showConversationList) {
+            ConversationListView(
+                conversations: conversations,
+                currentConversationId: chatService.currentConversationId,
+                onSelect: { conversation in
+                    showConversationList = false
+                    Task { await chatService.switchConversation(conversation) }
+                },
+                onNewConversation: {
+                    showConversationList = false
+                    chatService.startNewConversation()
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -156,14 +173,35 @@ struct ChatView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            VStack(spacing: 1) {
-                Text(agent.name).fontWeight(.semibold)
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(chatService.isConnected ? Color.green : Color(UIColor.systemGray3))
-                        .frame(width: 6, height: 6)
-                    Text(currentModelName.isEmpty ? agent.modelName : currentModelName)
-                        .font(.caption2).foregroundStyle(.secondary)
+            Button {
+                Task { await loadConversations() }
+                showConversationList = true
+            } label: {
+                VStack(spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(agent.name).fontWeight(.semibold)
+                            .foregroundStyle(.primary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    if let title = chatService.currentConversationTitle, !title.isEmpty {
+                        let isNewConvo = title == "New conversation"
+                        Text(title)
+                            .font(.caption2)
+                            .foregroundStyle(isNewConvo ? .tertiary : .secondary)
+                            .italic(isNewConvo)
+                            .lineLimit(1)
+                    } else {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(chatService.isConnected ? Color.green : Color(UIColor.systemGray3))
+                                .frame(width: 6, height: 6)
+                            Text(lang.t("新しい会話", en: "New conversation", zh: "新对话", ko: "새 대화"))
+                                .font(.caption2).foregroundStyle(.tertiary)
+                                .italic()
+                        }
+                    }
                 }
             }
         }
@@ -174,8 +212,16 @@ struct ChatView: View {
         }
         ToolbarItem(placement: .navigationBarTrailing) {
             Button { showModelPicker = true } label: {
-                Image(systemName: "cpu")
-                    .font(.system(size: 15))
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(chatService.isConnected ? Color.green : Color(UIColor.systemGray3))
+                        .frame(width: 5, height: 5)
+                    Text(shortModelName(currentModelName.isEmpty ? agent.modelName : currentModelName))
+                        .font(.caption2).fontWeight(.medium)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Color(UIColor.systemGray5))
+                .clipShape(Capsule())
             }
         }
         ToolbarItem(placement: .automatic) {
@@ -192,6 +238,15 @@ struct ChatView: View {
         }
     }
 
+    /// Shorten model name for the pill display (e.g. "gpt-4o-mini" -> "GPT-4o Mini")
+    private func shortModelName(_ name: String) -> String {
+        // Just show the raw model id, truncated if needed
+        if name.count > 16 {
+            return String(name.prefix(14)) + "..."
+        }
+        return name
+    }
+
     // MARK: - Model switching
 
     private func loadModels() async {
@@ -201,6 +256,11 @@ struct ChatView: View {
         } catch {
             // Silent — model picker just won't show options
         }
+    }
+
+    private func loadConversations() async {
+        let loaded = await chatService.loadConversations(agentId: agent.id)
+        await MainActor.run { conversations = loaded }
     }
 
     private func switchModel(to modelId: String) async {
@@ -564,5 +624,175 @@ private struct TypingIndicator: View {
             Spacer(minLength: 64)
         }
         .onAppear { phase = 1 }
+    }
+}
+
+// MARK: - Conversation List View
+
+struct ConversationListView: View {
+    let conversations: [Conversation]
+    let currentConversationId: String?
+    let onSelect: (Conversation) -> Void
+    let onNewConversation: () -> Void
+    @Environment(\.lang) var lang
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    onNewConversation()
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(BrandConfig.brand)
+                            .font(.title3)
+                        Text(lang.t("新しい会話", en: "New conversation", zh: "新对话", ko: "새 대화"))
+                            .fontWeight(.medium)
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                if conversations.isEmpty {
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 8) {
+                            Image(systemName: "bubble.left.and.bubble.right")
+                                .font(.largeTitle)
+                                .foregroundStyle(.tertiary)
+                            Text(lang.t("会話履歴はありません", en: "No conversations yet", zh: "暂无对话记录", ko: "대화 기록 없음"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 32)
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                } else {
+                    ForEach(conversations) { conversation in
+                        Button {
+                            onSelect(conversation)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(conversation.title)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .lineLimit(2)
+                                        .foregroundStyle(.primary)
+                                    Text(formatDate(conversation.updatedAt))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if conversation.id == currentConversationId {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(BrandConfig.brand)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(lang.t("会話一覧", en: "Conversations", zh: "对话列表", ko: "대화 목록"))
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func formatDate(_ isoString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = formatter.date(from: isoString) ?? ISO8601DateFormatter().date(from: isoString) else {
+            return isoString
+        }
+        let relative = RelativeDateTimeFormatter()
+        relative.unitsStyle = .short
+        return relative.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Model Picker View
+
+struct ModelPickerView: View {
+    let models: [AIModel]
+    let currentModelId: String
+    let onSelect: (String) -> Void
+    @Environment(\.lang) var lang
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(models) { model in
+                        let isSelected = model.id == currentModelId
+                        Button {
+                            onSelect(model.id)
+                        } label: {
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(spacing: 6) {
+                                        Text(model.name)
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                            .foregroundStyle(.primary)
+                                        Text(model.tier.uppercased())
+                                            .font(.system(size: 9, weight: .bold))
+                                            .padding(.horizontal, 5).padding(.vertical, 2)
+                                            .background(tierColor(model.tier).opacity(0.15))
+                                            .foregroundStyle(tierColor(model.tier))
+                                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    }
+                                    Text(model.description)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                    HStack(spacing: 12) {
+                                        Label(
+                                            lang.t("入力", en: "In", zh: "输入", ko: "입력") + ": \(String(format: "%.1f", model.creditsPerInputK))",
+                                            systemImage: "arrow.down.circle"
+                                        )
+                                        Label(
+                                            lang.t("出力", en: "Out", zh: "输出", ko: "출력") + ": \(String(format: "%.1f", model.creditsPerOutputK))",
+                                            systemImage: "arrow.up.circle"
+                                        )
+                                    }
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                }
+                                Spacer()
+                                if isSelected {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(BrandConfig.brand)
+                                        .font(.title3)
+                                }
+                            }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(isSelected ? BrandConfig.brand.opacity(0.06) : BrandConfig.cardBackground)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(isSelected ? BrandConfig.brand.opacity(0.3) : BrandConfig.separator, lineWidth: 1)
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 16).padding(.vertical, 12)
+            }
+            .background(BrandConfig.backgroundColor)
+            .navigationTitle(lang.t("モデルを選択", en: "Select Model", zh: "选择模型", ko: "모델 선택"))
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func tierColor(_ tier: String) -> Color {
+        switch tier.lowercased() {
+        case "premium": return .purple
+        case "standard": return .blue
+        case "economy", "budget": return .green
+        default: return .secondary
+        }
     }
 }
