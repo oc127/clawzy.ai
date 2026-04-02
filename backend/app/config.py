@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     # --- CORS ---
     environment: str = "development"
-    cors_origins: list[str] = ["https://clawzy.ai", "https://www.clawzy.ai"]
+    cors_origins: list[str] = ["https://clawzy.ai", "https://www.clawzy.ai", "https://nipponclaw.com", "https://www.nipponclaw.com"]
 
     # --- Multi-channel ---
     telegram_bot_api_url: str = "https://api.telegram.org"

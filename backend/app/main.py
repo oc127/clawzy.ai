@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.api.v1.legal import router as legal_router
 from app.config import settings
 from app.middleware.rate_limit import RateLimitMiddleware
 
@@ -38,7 +39,27 @@ app.add_middleware(
 
 app.add_middleware(RateLimitMiddleware)
 
+app.include_router(legal_router)   # /privacy, /terms (root-level for Apple/legal)
 app.include_router(api_router)
+
+
+@app.on_event("startup")
+async def validate_secrets():
+    """Crash in production if secrets still contain placeholder defaults."""
+    import sys
+
+    warnings = []
+    if "change-me" in settings.jwt_secret:
+        warnings.append("jwt_secret contains default value! Set JWT_SECRET in .env")
+    if "change-me" in settings.litellm_master_key:
+        warnings.append("litellm_master_key contains default value! Set LITELLM_MASTER_KEY in .env")
+
+    for w in warnings:
+        print(f"CRITICAL: {w}", file=sys.stderr)
+
+    if warnings and settings.environment.lower() == "production":
+        print("FATAL: refusing to start with default secrets in production", file=sys.stderr)
+        sys.exit(1)
 
 
 @app.on_event("startup")

@@ -3,9 +3,9 @@ import Foundation
 enum Constants {
     // ⚠️ 修改为你的后端地址
     // 本地开发时用 http://localhost:8000
-    // 部署后改为 https://clawzy.ai
-    static let baseURL = "https://clawzy.ai"
-    static let wsBaseURL = "wss://clawzy.ai"
+    // 部署后改为 https://nipponclaw.com
+    static let baseURL = "https://nipponclaw.com"
+    static let wsBaseURL = "wss://nipponclaw.com"
 
     // Keychain keys
     static let accessTokenKey = "clawzy_access_token"

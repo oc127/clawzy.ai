@@ -29,8 +29,8 @@ struct BrandConfig {
 
     // MARK: - App Store
     static let appStoreID     = ""   // fill after App Store Connect submission
-    static let privacyURL     = "https://clawzy.ai/privacy"
-    static let termsURL       = "https://clawzy.ai/terms"
+    static let privacyURL     = "https://nipponclaw.com/privacy"
+    static let termsURL       = "https://nipponclaw.com/terms"
 }
 
 // MARK: - Shared brand components

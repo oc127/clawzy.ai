@@ -1,7 +1,7 @@
 import logging
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,12 +25,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+_REGISTER_LIMIT_MAX = 3
+_REGISTER_LIMIT_TTL = 3600  # 1 hour
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    # Per-IP registration rate limiting: max 3 registrations per hour
+    client_ip = request.client.host if request.client else "unknown"
+    redis_key = f"register_limit:{client_ip}"
+
+    r = await get_redis()
+    count_raw = await r.get(redis_key)
+    count = int(count_raw) if count_raw else 0
+
+    if count >= _REGISTER_LIMIT_MAX:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registrations from this IP. Try again later.",
+        )
+
     try:
         user, access, refresh = await register_user(db, body.email, body.password, body.name)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
+
+    # Increment registration counter only on successful registration
+    pipe = r.pipeline()
+    pipe.incr(redis_key)
+    pipe.expire(redis_key, _REGISTER_LIMIT_TTL)
+    await pipe.execute()
+
     return TokenResponse(access_token=access, refresh_token=refresh)
 
 
