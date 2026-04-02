@@ -132,6 +132,11 @@ const zh: Translations = {
     viewModels: "查看模型",
     noActivity: "暂无活动记录",
   },
+  chat: {
+    reconnecting: "重新连接中...",
+    connectionLost: "连接断开，等待网络恢复...",
+    connectionRestored: "已连接",
+  },
 };
 
 export default zh;

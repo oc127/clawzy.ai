@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/context/language-context";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -247,7 +248,8 @@ export default function AgentDetailPage() {
   const [uninstalling, setUninstalling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages, setMessages, isStreaming, error, sendMessage, cancelStream } = useChat({
+  const { t } = useLanguage();
+  const { messages, setMessages, isStreaming, error, sendMessage, cancelStream, connectionStatus } = useChat({
     agentId,
     conversationId: activeConvId,
     onConversationCreated: (id) => {
@@ -627,8 +629,34 @@ export default function AgentDetailPage() {
           )}
         </div>
 
+        {/* Connection status banner */}
+        {connectionStatus !== "connected" && (
+          <div
+            className={cn(
+              "mt-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm",
+              connectionStatus === "reconnecting"
+                ? "bg-amber-50 border border-amber-200 text-amber-700"
+                : "bg-red-50 border border-red-200 text-red-600",
+            )}
+            role="status"
+            aria-live="polite"
+          >
+            {connectionStatus === "reconnecting" ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                <span>{t.chat.reconnecting}</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>{t.chat.connectionLost}</span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Error */}
-        {error && (
+        {error && connectionStatus === "connected" && (
           <div className="mt-2 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600" role="alert" aria-live="polite">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{error}</span>
@@ -641,7 +669,7 @@ export default function AgentDetailPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={`Message ${agent.name}...`}
-            disabled={isStreaming}
+            disabled={isStreaming || connectionStatus !== "connected"}
             className="flex-1"
           />
           {isStreaming ? (
@@ -658,7 +686,7 @@ export default function AgentDetailPage() {
           ) : (
             <Button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() || connectionStatus !== "connected"}
               aria-label="Send message"
               className="bg-[#ff385c] hover:bg-[#e31c5f] text-white rounded-xl shadow-sm"
             >

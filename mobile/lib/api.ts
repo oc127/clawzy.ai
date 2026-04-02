@@ -3,11 +3,18 @@ import { getAccessToken, clearTokens } from "./storage";
 import { router } from "expo-router";
 
 /** Dev: set `extra.apiBaseUrl` in app.json to your backend LAN IP (same Wi‑Fi as the phone/simulator Mac). */
-function getApiBase(): string {
+export function getApiBase(): string {
   if (!__DEV__) return "https://www.nipponclaw.com/api/v1";
   const fromConfig = Constants.expoConfig?.extra?.apiBaseUrl as string | undefined;
   if (fromConfig?.startsWith("http")) return fromConfig.replace(/\/$/, "");
   return "http://192.168.2.172/api/v1";
+}
+
+/** Returns the origin (scheme + host) without the /api/v1 path. */
+export function getApiHost(): string {
+  const base = getApiBase();
+  const idx = base.indexOf("/api/v1");
+  return idx !== -1 ? base.slice(0, idx) : base;
 }
 
 const API_BASE = getApiBase();

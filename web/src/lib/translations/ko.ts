@@ -132,6 +132,11 @@ const ko: Translations = {
     viewModels: "모델 보기",
     noActivity: "최근 활동 없음",
   },
+  chat: {
+    reconnecting: "재연결 중...",
+    connectionLost: "연결이 끊어졌습니다. 네트워크를 확인하세요...",
+    connectionRestored: "연결됨",
+  },
 };
 
 export default ko;

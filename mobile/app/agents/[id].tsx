@@ -7,12 +7,11 @@ import { useLocalSearchParams, router } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   getAgent, getConversations, getMessages, createConversation,
+  getApiHost,
   type Agent, type Message, type Conversation,
 } from "@/lib/api";
 import { getAccessToken } from "@/lib/storage";
 import { colors, spacing, radius, typography } from "@/lib/theme";
-
-const API_BASE = __DEV__ ? "http://192.168.2.172" : "https://www.nipponclaw.com";
 
 function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === "user";
@@ -103,7 +102,7 @@ export default function AgentChatScreen() {
     try {
       const token = await getAccessToken();
       const res = await fetch(
-        `${API_BASE}/api/v1/agents/${id}/conversations/${convId}/messages`,
+        `${getApiHost()}/api/v1/agents/${id}/conversations/${convId}/messages`,
         {
           method: "POST",
           headers: {

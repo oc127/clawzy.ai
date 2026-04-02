@@ -132,6 +132,11 @@ const ja: Translations = {
     viewModels: "モデルを表示",
     noActivity: "最近のアクティビティはありません",
   },
+  chat: {
+    reconnecting: "再接続中...",
+    connectionLost: "接続が切断されました。ネットワークを確認してください...",
+    connectionRestored: "接続されました",
+  },
 };
 
 export default ja;

@@ -17,13 +17,15 @@ export interface ChatMessage {
   usage?: MessageUsage;
 }
 
+export type ConnectionStatus = "connected" | "reconnecting" | "disconnected";
+
 interface UseChatOptions {
   agentId: string;
   conversationId: string | null;
   onConversationCreated?: (id: string) => void;
 }
 
-const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
+const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
 
 export function useChat({
   agentId,
@@ -33,6 +35,7 @@ export function useChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const wsRef = useRef<WebSocket | null>(null);
   const streamBufferRef = useRef("");
   const onConversationCreatedRef = useRef(onConversationCreated);
@@ -47,9 +50,26 @@ export function useChat({
   useEffect(() => {
     let unmounted = false;
 
+    function clearReconnectTimer() {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    }
+
     function connect() {
+      if (unmounted) return;
+
+      // Prevent duplicate connections
+      const existing = wsRef.current;
+      if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+
       const token = getAccessToken();
-      if (!token || unmounted) return;
+      if (!token) return;
+
+      setConnectionStatus("reconnecting");
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const ws = new WebSocket(
@@ -57,7 +77,9 @@ export function useChat({
       );
 
       ws.onopen = () => {
+        if (unmounted) return;
         setError(null);
+        setConnectionStatus("connected");
         reconnectAttemptRef.current = 0;
       };
 
@@ -105,31 +127,56 @@ export function useChat({
         }
       };
 
-      ws.onerror = () => setError("Connection error");
+      ws.onerror = () => {
+        if (!unmounted) setError("Connection error");
+      };
 
       ws.onclose = () => {
         if (unmounted) return;
         const attempt = reconnectAttemptRef.current;
         if (attempt < RECONNECT_DELAYS.length) {
+          setConnectionStatus("reconnecting");
           reconnectTimerRef.current = setTimeout(() => {
             reconnectAttemptRef.current = attempt + 1;
             connect();
           }, RECONNECT_DELAYS[attempt]);
         } else {
-          setError("Connection lost. Please refresh the page.");
+          setConnectionStatus("disconnected");
         }
       };
 
       wsRef.current = ws;
     }
 
+    function handleOnline() {
+      if (unmounted) return;
+      clearReconnectTimer();
+      reconnectAttemptRef.current = 0;
+      connect();
+    }
+
+    function handleVisibilityChange() {
+      if (unmounted) return;
+      if (
+        document.visibilityState === "visible" &&
+        (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
+      ) {
+        clearReconnectTimer();
+        reconnectAttemptRef.current = 0;
+        connect();
+      }
+    }
+
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     connect();
 
     return () => {
       unmounted = true;
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-      }
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearReconnectTimer();
       wsRef.current?.close();
     };
   }, [agentId]);
@@ -169,5 +216,5 @@ export function useChat({
     });
   }, []);
 
-  return { messages, setMessages, isStreaming, error, sendMessage, cancelStream };
+  return { messages, setMessages, isStreaming, error, sendMessage, cancelStream, connectionStatus };
 }

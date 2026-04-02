@@ -141,6 +141,11 @@ const en = {
     viewModels: "View Models",
     noActivity: "No recent activity",
   },
+  chat: {
+    reconnecting: "Reconnecting...",
+    connectionLost: "Connection lost. Waiting for network...",
+    connectionRestored: "Connected",
+  },
 };
 
 export default en;
