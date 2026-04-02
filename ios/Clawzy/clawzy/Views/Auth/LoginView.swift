@@ -25,10 +25,10 @@ struct LoginView: View {
                     // Form area
                     VStack(alignment: .leading, spacing: 20) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("おかえりなさい")
+                            Text(lang.t("おかえりなさい", en: "Welcome back", zh: "欢迎回来", ko: "다시 오신 것을 환영합니다"))
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
-                            Text("\(BrandConfig.appName) にログイン")
+                            Text(lang.t("\(BrandConfig.appName) にログイン", en: "Sign in to \(BrandConfig.appName)", zh: "登录 \(BrandConfig.appName)", ko: "\(BrandConfig.appName)에 로그인"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -51,7 +51,7 @@ struct LoginView: View {
                             )
                         }
 
-                        LabeledField(label: "メール") {
+                        LabeledField(label: lang.t("メール", en: "Email", zh: "邮箱", ko: "이메일")) {
                             TextField("", text: $email)
                                 .textFieldStyle(.plain)
                                 .textContentType(.emailAddress)
@@ -63,7 +63,7 @@ struct LoginView: View {
                                 }
                         }
 
-                        LabeledField(label: "パスワード") {
+                        LabeledField(label: lang.t("パスワード", en: "Password", zh: "密码", ko: "비밀번호")) {
                             SecureField("", text: $password)
                                 .textFieldStyle(.plain)
                                 .textContentType(.password)
@@ -84,9 +84,9 @@ struct LoginView: View {
                                 showRegister = true
                             } label: {
                                 HStack(spacing: 4) {
-                                    Text("アカウントがない？")
+                                    Text(lang.t("アカウントがない？", en: "Don't have an account?", zh: "没有账号？", ko: "계정이 없으신가요?"))
                                         .foregroundStyle(.secondary)
-                                    Text("登録")
+                                    Text(lang.t("登録", en: "Register", zh: "注册", ko: "가입"))
                                         .foregroundStyle(BrandConfig.brand)
                                 }
                                 .font(.footnote)

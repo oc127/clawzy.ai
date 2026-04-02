@@ -33,10 +33,10 @@ struct RegisterView: View {
 
                     VStack(alignment: .leading, spacing: 20) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("アカウント作成")
+                            Text(lang.t("アカウント作成", en: "Create Account", zh: "创建账号", ko: "계정 만들기"))
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
-                            Text("登録で 500 クレジットプレゼント")
+                            Text(lang.t("登録で 500 クレジットプレゼント", en: "Get 500 free credits on signup", zh: "注册即送500积分", ko: "가입 시 500 크레딧 증정"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -59,14 +59,14 @@ struct RegisterView: View {
                             )
                         }
 
-                        LabeledField(label: "ニックネーム") {
+                        LabeledField(label: lang.t("ニックネーム", en: "Nickname", zh: "昵称", ko: "닉네임")) {
                             TextField("", text: $name)
                                 .textFieldStyle(.plain)
                                 .textContentType(.name)
                                 .autocorrectionDisabled()
                         }
 
-                        LabeledField(label: "メール") {
+                        LabeledField(label: lang.t("メール", en: "Email", zh: "邮箱", ko: "이메일")) {
                             TextField("", text: $email)
                                 .textFieldStyle(.plain)
                                 .textContentType(.emailAddress)
@@ -78,20 +78,20 @@ struct RegisterView: View {
                                 }
                         }
 
-                        LabeledField(label: "パスワード") {
+                        LabeledField(label: lang.t("パスワード", en: "Password", zh: "密码", ko: "비밀번호")) {
                             SecureField("", text: $password)
                                 .textFieldStyle(.plain)
                                 .textContentType(.newPassword)
                         }
 
-                        LabeledField(label: "パスワード（確認）") {
+                        LabeledField(label: lang.t("パスワード（確認）", en: "Confirm Password", zh: "确认密码", ko: "비밀번호 확인")) {
                             SecureField("", text: $confirmPassword)
                                 .textFieldStyle(.plain)
                                 .textContentType(.newPassword)
                         }
 
                         if !confirmPassword.isEmpty && !passwordsMatch {
-                            Text("パスワードが一致しません")
+                            Text(lang.t("パスワードが一致しません", en: "Passwords do not match", zh: "密码不匹配", ko: "비밀번호가 일치하지 않습니다"))
                                 .font(.caption)
                                 .foregroundStyle(BrandConfig.brand)
                         }
@@ -111,9 +111,9 @@ struct RegisterView: View {
                                 dismiss()
                             } label: {
                                 HStack(spacing: 4) {
-                                    Text("すでにアカウントがある？")
+                                    Text(lang.t("すでにアカウントがある？", en: "Already have an account?", zh: "已有账号？", ko: "이미 계정이 있으신가요?"))
                                         .foregroundStyle(.secondary)
-                                    Text("ログイン")
+                                    Text(lang.t("ログイン", en: "Login", zh: "登录", ko: "로그인"))
                                         .foregroundStyle(BrandConfig.brand)
                                 }
                                 .font(.footnote)

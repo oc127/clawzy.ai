@@ -26,8 +26,12 @@ from app.services.credits_service import (
 
 logger = logging.getLogger(__name__)
 
-# Minimum credits required to start a request (rough guard against zero-balance calls)
-_MIN_CREDITS_GUARD = 1
+# Minimum credits required to start a request.
+# Set to 50 to prevent overdraft: a single conversation turn can easily cost
+# 50+ credits, so we reject the call up-front if the user can't cover at least
+# one small turn.  Without this guard a user with 1 credit could receive a full
+# response before the post-completion deduction discovers the shortfall.
+_MIN_CREDITS_GUARD = 50
 
 # How long to wait for OpenClaw to accept the connection before falling back
 _OPENCLAW_CONNECT_TIMEOUT = 5.0

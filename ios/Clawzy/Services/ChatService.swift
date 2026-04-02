@@ -78,6 +78,15 @@ final class ChatService {
                     print("WebSocket 接收失败: \(error)")
                     self.isConnected = false
                     self.isStreaming = false
+                    // Auto-reconnect after 2 seconds on network change
+                    if self.currentAgentId != nil {
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            if !self.isConnected && self.currentAgentId != nil {
+                                self.reconnect()
+                            }
+                        }
+                    }
                 }
             }
         }
