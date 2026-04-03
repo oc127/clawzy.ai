@@ -153,18 +153,28 @@ struct ChatView: View {
                     if chatService.isStreaming && chatService.messages.last?.role != .assistant {
                         TypingIndicator().id("typing")
                     }
+                    // Invisible anchor at bottom for scrolling
+                    Color.clear.frame(height: 1).id("bottom")
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             .onChange(of: chatService.messages.count) {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    if chatService.isStreaming {
-                        proxy.scrollTo("typing", anchor: .bottom)
-                    } else if let lastId = chatService.messages.last?.id {
-                        proxy.scrollTo(lastId, anchor: .bottom)
-                    }
+                scrollToBottom(proxy: proxy)
+            }
+            .onChange(of: chatService.currentStreamText) {
+                // Auto-scroll while AI is streaming
+                if chatService.isStreaming {
+                    scrollToBottom(proxy: proxy)
                 }
             }
+        }
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.15)) {
+            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 
@@ -551,14 +561,22 @@ private struct TextBubbleView: View {
     }
 
     var body: some View {
-        Text(text)
-            .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(bg)
-            .foregroundStyle(isUser ? .white : .primary)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(
-                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1)
-            )
+        Group {
+            if isUser {
+                Text(text)
+            } else {
+                // Render Markdown for AI responses (supports **bold**, *italic*, `code`, lists, etc.)
+                Text(LocalizedStringKey(text))
+            }
+        }
+        .textSelection(.enabled)
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(bg)
+        .foregroundStyle(isUser ? .white : .primary)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay(
+            isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1)
+        )
     }
 }
 
