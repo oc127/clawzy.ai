@@ -49,6 +49,12 @@ struct WSSendMessage: Codable {
     let content: String?
     let model: String?
     let images: [String]?   // base64 data-URLs: "data:image/jpeg;base64,..."
+    let conversationId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, content, model, images
+        case conversationId = "conversation_id"
+    }
 }
 
 /// 服务端推送给客户端的消息
@@ -83,4 +89,10 @@ struct WSRawMessage: Codable {
     let message: String?
     let status: String?
     let usage: WSUsage?
+    let conversationId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, content, code, message, status, usage
+        case conversationId = "conversation_id"
+    }
 }

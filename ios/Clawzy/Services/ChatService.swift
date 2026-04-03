@@ -56,7 +56,8 @@ final class ChatService {
         messages.append(bubble)
 
         let msg = WSSendMessage(type: "message", content: content, model: nil,
-                                images: b64Images.isEmpty ? nil : b64Images)
+                                images: b64Images.isEmpty ? nil : b64Images,
+                                conversationId: currentConversationId)
         guard let data = try? JSONEncoder().encode(msg),
               let string = String(data: data, encoding: .utf8) else { return }
         webSocketTask?.send(.string(string)) { error in
@@ -110,6 +111,7 @@ final class ChatService {
         case "done":
             isStreaming = false
             if let usage = raw.usage { creditBalance = usage.balance }
+            if let convId = raw.conversationId { currentConversationId = convId }
         case "error":
             isStreaming = false
             if let lastIndex = messages.indices.last {
