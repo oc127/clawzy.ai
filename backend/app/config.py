@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # --- App ---
-    app_name: str = "Clawzy.ai"
+    app_name: str = "NipponClaw"
     debug: bool = False
 
     # --- Database ---

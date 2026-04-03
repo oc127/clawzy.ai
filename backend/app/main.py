@@ -121,6 +121,6 @@ async def health():
 
     return {
         "status": "ok",
-        "service": "clawzy-backend",
+        "service": "nipponclaw-backend",
         "openclaw": openclaw_status,
     }
