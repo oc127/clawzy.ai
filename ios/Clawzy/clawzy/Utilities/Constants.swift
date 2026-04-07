@@ -46,5 +46,11 @@ enum Constants {
         static func conversations(_ agentId: String) -> String { "/api/v1/agents/\(agentId)/conversations" }
         static func messages(_ conversationId: String) -> String { "/api/v1/conversations/\(conversationId)/messages" }
         static func clawHubSkill(_ slug: String) -> String { "/api/v1/clawhub/skills/\(slug)" }
+
+        // Connectors
+        static let connectorsValidateTelegram = "/api/v1/connectors/telegram/validate"
+        static let connectorsConnectTelegram  = "/api/v1/connectors/telegram/connect"
+        static let connectorsValidateLine     = "/api/v1/connectors/line/validate"
+        static let connectorsConnectLine      = "/api/v1/connectors/line/connect"
     }
 }
