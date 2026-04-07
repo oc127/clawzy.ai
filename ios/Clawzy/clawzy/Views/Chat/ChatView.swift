@@ -345,10 +345,14 @@ struct ChatView: View {
                 Button {
                     showSkillsPanel = true
                 } label: {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 22))
-                        .foregroundStyle(BrandConfig.brand.opacity(0.8))
-                        .frame(width: 28, height: 28)
+                    Circle()
+                        .fill(BrandConfig.brand)
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Text("N")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(.white)
+                        )
                 }
 
                 TextField(
@@ -689,19 +693,19 @@ struct SkillsPanelView: View {
                 icon: "newspaper.fill",
                 name: lang.t("AI日報速覧", en: "AI Daily Brief", zh: "AI日报速览", ko: "AI 일일 브리핑"),
                 description: lang.t("今日のAIニュースを要約", en: "Summarize today's AI news", zh: "总结今日AI新闻", ko: "오늘의 AI 뉴스 요약"),
-                prompt: "今日のAIニュースを要約してください"
+                prompt: lang.t("今日のAIニュースを要約してください", en: "Summarize today's AI news", zh: "请总结今天的AI新闻", ko: "오늘의 AI 뉴스를 요약해 주세요")
             ),
             BuiltinSkill(
                 icon: "tablecells.fill",
                 name: "XLSX",
                 description: lang.t("Excelファイルを作成・処理", en: "Create or process Excel files", zh: "创建或处理Excel文件", ko: "Excel 파일 생성/처리"),
-                prompt: "Excelファイルを作成してください"
+                prompt: lang.t("Excelファイルを作成してください", en: "Create or process an Excel file", zh: "请创建或处理Excel文件", ko: "Excel 파일을 생성하거나 처리해 주세요")
             ),
             BuiltinSkill(
                 icon: "doc.richtext.fill",
                 name: "PDF",
                 description: lang.t("PDFを処理・生成", en: "Process or generate PDFs", zh: "处理或生成PDF", ko: "PDF 처리/생성"),
-                prompt: "PDFを処理してください"
+                prompt: lang.t("PDFを処理してください", en: "Process or generate a PDF", zh: "请处理或生成PDF", ko: "PDF를 처리하거나 생성해 주세요")
             ),
         ]
     }
