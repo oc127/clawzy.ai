@@ -12,7 +12,7 @@ final class ChatService {
     var currentConversationTitle: String?
 
     private var webSocketTask: URLSessionWebSocketTask?
-    private var currentStreamText = ""
+    var currentStreamText = ""
     private var currentAgentId: String?
 
     // MARK: - 连接

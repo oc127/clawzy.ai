@@ -92,6 +92,15 @@ struct SettingsView: View {
                     }
                 }
 
+                Section(lang.t("連携", en: "Integrations", zh: "集成", ko: "연동")) {
+                    NavigationLink {
+                        ConnectorsView()
+                    } label: {
+                        Label(lang.t("コネクター", en: "Connectors", zh: "连接器", ko: "커넥터"),
+                              systemImage: "link.circle.fill")
+                    }
+                }
+
                 Section(lang.t("外観", en: "Appearance", zh: "外观", ko: "외관")) {
                     HStack {
                         Label(lang.t("テーマ", en: "Theme", zh: "主题", ko: "테마"),

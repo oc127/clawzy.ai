@@ -45,6 +45,7 @@
 		BB0001052F7F000000000005 /* ChannelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001052F7F000000000005 /* ChannelsView.swift */; };
 		BB0001062F7F000000000006 /* AgentDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001062F7F000000000006 /* AgentDetail.swift */; };
 		BB0001072F7F000000000007 /* AgentDetailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001072F7F000000000007 /* AgentDetailService.swift */; };
+		CC0001012F8F000000000001 /* ConnectorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0008012F8F000000000001 /* ConnectorsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,6 +89,7 @@
 		AA0001052F7F000000000005 /* ChannelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsView.swift; sourceTree = "<group>"; };
 		AA0001062F7F000000000006 /* AgentDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetail.swift; sourceTree = "<group>"; };
 		AA0001072F7F000000000007 /* AgentDetailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetailService.swift; sourceTree = "<group>"; };
+		AA0008012F8F000000000001 /* ConnectorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -256,6 +258,14 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		CC0002012F8F000000000002 /* Connectors */ = {
+			isa = PBXGroup;
+			children = (
+				AA0008012F8F000000000001 /* ConnectorsView.swift */,
+			);
+			path = Connectors;
+			sourceTree = "<group>";
+		};
 		4EBD3CC52F71354F00F4A127 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -263,6 +273,7 @@
 				4EBD3CBC2F71354F00F4A127 /* Auth */,
 				4EBD3CBE2F71354F00F4A127 /* Chat */,
 				4EBD3CBF2F71354F00F4A127 /* Components */,
+				CC0002012F8F000000000002 /* Connectors */,
 				A2B14337D2B341FDB2B3622D /* Credits */,
 				4EBD3CC22F71354F00F4A127 /* Dashboard */,
 				F2A3B4C5D6E7F80923456789 /* Market */,
@@ -411,6 +422,7 @@
 				F5A6B7C8D9E0005278F5A6B7 /* PluginsStore.swift in Sources */,
 				C1D2E3F4A5B6078923C1D2E3 /* HealthMonitor.swift in Sources */,
 				E3F4A5B6C7D8090145E3F4A5 /* InstalledPluginsView.swift in Sources */,
+				CC0001012F8F000000000001 /* ConnectorsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
