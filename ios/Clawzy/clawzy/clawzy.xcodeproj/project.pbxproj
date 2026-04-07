@@ -31,13 +31,8 @@
 		4EBD3CDD2F7163EC00F4A127 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */; };
 		4EBD3CE12F717B5500F4A127 /* MarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CDF2F717B5500F4A127 /* MarketView.swift */; };
 		4EBD3CE32F71900000F4A127 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CE22F71900000F4A127 /* LanguageManager.swift */; };
-
-		F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */; };
 		7566003396D948279B9EB8FE /* CreditsShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */; };
 		B1C2D3E4F5A6071823B1C2D3 /* ClawHubService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */; };
-		C1D2E3F4A5B6078923C1D2E3 /* HealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */; };
-		E3F4A5B6C7D8090145E3F4A5 /* InstalledPluginsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */; };
-		F5A6B7C8D9E0005278F5A6B7 /* PluginsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */; };
 		BB0001012F7F000000000001 /* AgentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001012F7F000000000001 /* AgentDetailView.swift */; };
 		BB0001022F7F000000000002 /* MemoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001022F7F000000000002 /* MemoryListView.swift */; };
 		BB0001032F7F000000000003 /* ToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001032F7F000000000003 /* ToolsView.swift */; };
@@ -46,10 +41,15 @@
 		BB0001062F7F000000000006 /* AgentDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001062F7F000000000006 /* AgentDetail.swift */; };
 		BB0001072F7F000000000007 /* AgentDetailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001072F7F000000000007 /* AgentDetailService.swift */; };
 		CC0001012F8F000000000001 /* ConnectorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0008012F8F000000000001 /* ConnectorsView.swift */; };
+		C1D2E3F4A5B6078923C1D2E3 /* HealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */; };
+		E3F4A5B6C7D8090145E3F4A5 /* InstalledPluginsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */; };
+		F5A6B7C8D9E0005278F5A6B7 /* PluginsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */; };
+		F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		4E3C33572F5EE10E00EC6244 /* clawzy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = clawzy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsShopView.swift; sourceTree = "<group>"; };
+		4E3C33572F5EE10E00EC6244 /* clawzy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = clawzy.app; path = NipponClaw.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E5235102F72B0E90089F71E /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		4EBD3CA32F71354F00F4A127 /* ClawzyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClawzyApp.swift; sourceTree = "<group>"; };
 		4EBD3CA42F71354F00F4A127 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -73,15 +73,8 @@
 		4EBD3CC32F71354F00F4A127 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		4EBD3CDF2F717B5500F4A127 /* MarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketView.swift; sourceTree = "<group>"; };
-		F1A2B3C4D5E6F70812345678 /* clawzy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = clawzy.entitlements; sourceTree = "<group>"; };
 		4EBD3CE22F71900000F4A127 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
-
-		D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
-		473B7B847EA942E3BFB54EB1 /* CreditsShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsShopView.swift; sourceTree = "<group>"; };
 		A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClawHubService.swift; sourceTree = "<group>"; };
-		D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMonitor.swift; sourceTree = "<group>"; };
-		F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledPluginsView.swift; sourceTree = "<group>"; };
-		E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginsStore.swift; sourceTree = "<group>"; };
 		AA0001012F7F000000000001 /* AgentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetailView.swift; sourceTree = "<group>"; };
 		AA0001022F7F000000000002 /* MemoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryListView.swift; sourceTree = "<group>"; };
 		AA0001032F7F000000000003 /* ToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsView.swift; sourceTree = "<group>"; };
@@ -90,6 +83,11 @@
 		AA0001062F7F000000000006 /* AgentDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetail.swift; sourceTree = "<group>"; };
 		AA0001072F7F000000000007 /* AgentDetailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetailService.swift; sourceTree = "<group>"; };
 		AA0008012F8F000000000001 /* ConnectorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorsView.swift; sourceTree = "<group>"; };
+		D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMonitor.swift; sourceTree = "<group>"; };
+		D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
+		E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginsStore.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F70812345678 /* clawzy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = clawzy.entitlements; sourceTree = "<group>"; };
+		F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledPluginsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -146,9 +144,9 @@
 		4EBD3CA62F71354F00F4A127 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				4EBD3CA52F71354F00F4A127 /* MainTabView.swift */,
 				4EBD3CA32F71354F00F4A127 /* ClawzyApp.swift */,
 				4EBD3CA42F71354F00F4A127 /* ContentView.swift */,
-				4EBD3CA52F71354F00F4A127 /* MainTabView.swift */,
 				4EBD3CDC2F7163EC00F4A127 /* SplashView.swift */,
 				F1A2B3C4D5E6F70812345678 /* clawzy.entitlements */,
 			);
@@ -201,7 +199,8 @@
 				A0B1C2D3E4F5067812A0B1C2 /* ClawHubService.swift */,
 				E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */,
 				D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */,
-				D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */,);
+				D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */,
+			);
 			path = Services;
 			sourceTree = "<group>";
 		};
@@ -282,16 +281,6 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-
-		F2A3B4C5D6E7F80923456789 /* Market */ = {
-			isa = PBXGroup;
-			children = (
-				4EBD3CDF2F717B5500F4A127 /* MarketView.swift */,
-			);
-			path = Market;
-			sourceTree = "<group>";
-		};
-
 		A2B14337D2B341FDB2B3622D /* Credits */ = {
 			isa = PBXGroup;
 			children = (
@@ -310,6 +299,14 @@
 				AA0001052F7F000000000005 /* ChannelsView.swift */,
 			);
 			path = Agent;
+			sourceTree = "<group>";
+		};
+		F2A3B4C5D6E7F80923456789 /* Market */ = {
+			isa = PBXGroup;
+			children = (
+				4EBD3CDF2F717B5500F4A127 /* MarketView.swift */,
+			);
+			path = Market;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
