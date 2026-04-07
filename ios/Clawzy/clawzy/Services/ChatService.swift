@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 /// WebSocket 聊天服務
 @Observable
@@ -102,10 +103,12 @@ final class ChatService {
         case "stream":
             if let content = raw.content {
                 currentStreamText += content
-                if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
-                    messages[lastIndex].content = currentStreamText
-                } else {
-                    messages.append(ChatBubble(role: .assistant, content: currentStreamText))
+                withAnimation(.none) {
+                    if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
+                        messages[lastIndex].content = currentStreamText
+                    } else {
+                        messages.append(ChatBubble(role: .assistant, content: currentStreamText))
+                    }
                 }
             }
         case "done":

@@ -180,19 +180,17 @@ struct ChatView: View {
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             .onChange(of: chatService.messages.count) {
-                scrollToBottom(proxy: proxy)
-            }
-            .onChange(of: chatService.currentStreamText) {
-                if chatService.isStreaming {
-                    scrollToBottom(proxy: proxy)
+                withAnimation(.easeOut(duration: 0.15)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
-        }
-    }
-
-    private func scrollToBottom(proxy: ScrollViewProxy) {
-        withAnimation(.easeOut(duration: 0.15)) {
-            proxy.scrollTo("bottom", anchor: .bottom)
+            .onChange(of: chatService.isStreaming) { _, streaming in
+                if !streaming {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    }
+                }
+            }
         }
     }
 

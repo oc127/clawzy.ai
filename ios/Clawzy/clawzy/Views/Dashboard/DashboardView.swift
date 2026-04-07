@@ -338,12 +338,14 @@ struct AgentRowView: View {
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(BrandConfig.brand.opacity(0.10))
-                    .frame(width: 42, height: 42)
-                Text("🤖")
-                    .font(.title3)
+                Circle()
+                    .fill(BrandConfig.brand)
+                    .frame(width: 36, height: 36)
+                Text("N")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
             }
+            .frame(width: 42, height: 42)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
