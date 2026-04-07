@@ -36,10 +36,16 @@ struct SettingsView: View {
     @Environment(AgentService.self) var agentService
     @Environment(\.lang) var lang
     @AppStorage("appColorScheme") private var colorScheme: String = "system"
+    @AppStorage("securityEnvProtection")  private var envProtection: Bool  = true
+    @AppStorage("securityDataProtection") private var dataProtection: Bool = true
+    @AppStorage("securitySkillScan")      private var skillScan: Bool      = true
     @State private var isExporting = false
     @State private var exportData: Data?
     @State private var exportError: String?
     @State private var showExportShare = false
+    @State private var showDeleteConfirm = false
+    @State private var isDeletingData = false
+    @State private var deleteError: String?
 
     var body: some View {
         NavigationStack {
@@ -98,6 +104,15 @@ struct SettingsView: View {
                     } label: {
                         Label(lang.t("コネクター", en: "Connectors", zh: "连接器", ko: "커넥터"),
                               systemImage: "link.circle.fill")
+                    }
+                }
+
+                Section(lang.t("ツール", en: "Tools", zh: "工具", ko: "도구")) {
+                    NavigationLink {
+                        CronTasksView()
+                    } label: {
+                        Label(lang.t("定時タスク", en: "Cron Tasks", zh: "定时任务", ko: "크론 작업"),
+                              systemImage: "clock.badge.checkmark.fill")
                     }
                 }
 
@@ -183,6 +198,114 @@ struct SettingsView: View {
                     }
                 }
 
+                // MARK: Security Section
+                Section(lang.t("セキュリティ", en: "Security", zh: "安全", ko: "보안")) {
+                    Toggle(isOn: $envProtection) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(lang.t("PC環境保護", en: "Environment Protection", zh: "环境保护", ko: "환경 보호"))
+                                    .font(.subheadline).fontWeight(.medium)
+                                Text(lang.t("Active Defense", en: "Active Defense", zh: "主动防御", ko: "능동 방어"))
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(BrandConfig.brand.opacity(0.12))
+                                    .foregroundStyle(BrandConfig.brand)
+                                    .clipShape(Capsule())
+                            }
+                            Text(lang.t(
+                                "エージェントがタスクを実行する際、フルプロセスのセキュリティ制御を適用",
+                                en: "Applies full-process security controls when an agent executes tasks",
+                                zh: "代理执行任务时应用完整的安全控制",
+                                ko: "에이전트가 작업을 실행할 때 전체 프로세스 보안 제어 적용"
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(BrandConfig.brand)
+
+                    Toggle(isOn: $dataProtection) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(lang.t("ユーザーデータ保護", en: "User Data Protection", zh: "用户数据保护", ko: "사용자 데이터 보호"))
+                                    .font(.subheadline).fontWeight(.medium)
+                                Text(lang.t("Smart Detection", en: "Smart Detection", zh: "智能检测", ko: "스마트 감지"))
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.12))
+                                    .foregroundStyle(Color.blue)
+                                    .clipShape(Capsule())
+                            }
+                            Text(lang.t(
+                                "エージェントに送信されるデータを自動スキャンして個人情報を検出",
+                                en: "Automatically scans data sent to agents to detect personal information",
+                                zh: "自动扫描发送给代理的数据以检测个人信息",
+                                ko: "에이전트로 전송되는 데이터를 자동으로 스캔하여 개인 정보 감지"
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(BrandConfig.brand)
+
+                    Toggle(isOn: $skillScan) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(lang.t("スキルセキュリティスキャン", en: "Skill Security Scan", zh: "技能安全扫描", ko: "스킬 보안 스캔"))
+                                    .font(.subheadline).fontWeight(.medium)
+                                Text(lang.t("Multi-layer Check", en: "Multi-layer Check", zh: "多层检查", ko: "다중 레이어 검사"))
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.green.opacity(0.12))
+                                    .foregroundStyle(Color.green)
+                                    .clipShape(Capsule())
+                            }
+                            Text(lang.t(
+                                "スキルのインストール前にマルチレベルのセキュリティチェックを実行",
+                                en: "Runs multi-level security checks before installing skills",
+                                zh: "在安装技能之前运行多级安全检查",
+                                ko: "스킬 설치 전에 다단계 보안 검사 실행"
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(BrandConfig.brand)
+                }
+
+                Section {
+                    Text(lang.t(
+                        "すべての操作はシステム保護下で実行されます",
+                        en: "All operations run under system protection",
+                        zh: "所有操作均在系统保护下运行",
+                        ko: "모든 작업은 시스템 보호 하에 실행됩니다"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowBackground(Color.clear)
+
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isDeletingData {
+                                ProgressView()
+                                    .padding(.trailing, 4)
+                            } else {
+                                Label(lang.t("すべてのデータを削除", en: "Delete All Data", zh: "删除所有数据", ko: "모든 데이터 삭제"),
+                                      systemImage: "trash.fill")
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isDeletingData)
+                }
+
                 Section {
                     Button(role: .destructive) {
                         authManager.logout()
@@ -204,6 +327,58 @@ struct SettingsView: View {
             } message: {
                 Text(exportError ?? "")
             }
+            .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
+                   isPresented: Binding(get: { deleteError != nil },
+                                        set: { if !$0 { deleteError = nil } })) {
+                Button("OK") { deleteError = nil }
+            } message: {
+                Text(deleteError ?? "")
+            }
+            .confirmationDialog(
+                lang.t("本当に削除しますか？", en: "Are you sure?", zh: "确定要删除吗？", ko: "정말 삭제하시겠습니까?"),
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button(lang.t("すべてのデータを削除", en: "Delete All Data", zh: "删除所有数据", ko: "모든 데이터 삭제"),
+                       role: .destructive) {
+                    Task { await deleteAllData() }
+                }
+                Button(lang.t("キャンセル", en: "Cancel", zh: "取消", ko: "취소"), role: .cancel) {}
+            } message: {
+                Text(lang.t(
+                    "本当に削除しますか？この操作は取り消せません",
+                    en: "This action cannot be undone. All agents, conversations, and messages will be permanently deleted.",
+                    zh: "此操作无法撤销。所有助手、对话和消息将被永久删除。",
+                    ko: "이 작업은 취소할 수 없습니다. 모든 에이전트, 대화 및 메시지가 영구적으로 삭제됩니다."
+                ))
+            }
+        }
+    }
+
+    // MARK: - Delete All Data
+
+    private func deleteAllData() async {
+        await MainActor.run { isDeletingData = true }
+        defer { Task { @MainActor in isDeletingData = false } }
+
+        guard let url = URL(string: Constants.baseURL + Constants.API.deleteAllUserData) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainHelper.shared.readString(for: Constants.accessTokenKey) {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            if let http = response as? HTTPURLResponse, http.statusCode < 300 {
+                await MainActor.run { authManager.logout() }
+            } else {
+                await MainActor.run {
+                    deleteError = lang.t("削除に失敗しました", en: "Failed to delete data", zh: "删除失败", ko: "데이터 삭제 실패")
+                }
+            }
+        } catch {
+            await MainActor.run { deleteError = error.localizedDescription }
         }
     }
 
