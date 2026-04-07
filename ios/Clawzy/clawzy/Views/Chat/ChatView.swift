@@ -180,15 +180,11 @@ struct ChatView: View {
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             .onChange(of: chatService.messages.count) {
-                withAnimation(.easeOut(duration: 0.15)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
+                proxy.scrollTo("bottom", anchor: .bottom)
             }
             .onChange(of: chatService.isStreaming) { _, streaming in
                 if !streaming {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        proxy.scrollTo("bottom", anchor: .bottom)
-                    }
+                    proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
         }
@@ -597,7 +593,7 @@ struct MessageBubbleView: View {
                             ImageGridView(images: bubble.images, isUser: false)
                         }
                         if !bubble.content.isEmpty {
-                            Text(LocalizedStringKey(bubble.content))
+                            Text(bubble.content)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .foregroundStyle(.primary)
