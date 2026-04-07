@@ -24,6 +24,7 @@ enum Constants {
         static let creditsTransactions = "/api/v1/billing/credits/transactions"
 
         static let backupExport = "/api/v1/backup/export"
+        static let deleteAllUserData = "/api/v1/users/me/data"
 
         static let clawHubSearch = "/api/v1/clawhub/search"
         static let clawHubInstall = "/api/v1/clawhub/install"
