@@ -23,11 +23,26 @@ struct MarketView: View {
     @State private var isLoadingTemplates = true
     @State private var selectedCategory = ""
 
+    // Plugin categories
+    @State private var selectedPluginCategory = "おすすめ"
+    private let pluginCategories = ["おすすめ", "NipponClaw", "日本", "ビジネス", "ライティング", "マーケティング", "教育", "デザイン", "開発", "ファイナンス", "生活"]
+    private let pluginCategoryKeywords: [String: String] = [
+        "おすすめ": "", "NipponClaw": "NipponClaw", "日本": "japan",
+        "ビジネス": "business", "ライティング": "writing", "マーケティング": "marketing",
+        "教育": "education", "デザイン": "design", "開発": "development",
+        "ファイナンス": "finance", "生活": "lifestyle"
+    ]
+
     // Toast state
     @State private var toastMessage: String?
     @State private var toastIsError = false
 
     private var allLabel: String { lang.t("すべて", en: "All", zh: "全部", ko: "전체") }
+
+    private var installedSlugs: Set<String> {
+        guard let agentId = agentService.agents.first?.id else { return [] }
+        return Set(pluginsStore.plugins(for: agentId).map(\.slug))
+    }
 
     private var categories: [String] {
         let cats = templates.map(\.category)
@@ -150,8 +165,9 @@ struct MarketView: View {
                 .clipShape(Capsule())
                 .padding(.bottom, 20)
 
+            let alreadyInstalled = installedSlugs.contains(plugin.slug)
             Button {
-                guard !isConfirmInstalling else { return }
+                guard !isConfirmInstalling && !alreadyInstalled else { return }
                 isConfirmInstalling = true
                 Task {
                     let ok = await installPlugin(plugin: plugin)
@@ -162,21 +178,25 @@ struct MarketView: View {
                 HStack(spacing: 8) {
                     if isConfirmInstalling {
                         ProgressView().tint(.white).scaleEffect(0.85)
+                    } else if alreadyInstalled {
+                        Image(systemName: "checkmark.circle.fill")
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
                     }
                     Text(isConfirmInstalling
                          ? lang.t("インストール中...", en: "Installing...", zh: "安装中...", ko: "설치 중...")
+                         : alreadyInstalled
+                         ? lang.t("インストール済み ✓", en: "Installed ✓", zh: "已安装 ✓", ko: "설치됨 ✓")
                          : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(alreadyInstalled ? Color.secondary : Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
+                .background(alreadyInstalled ? BrandConfig.disabledGray : isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .disabled(isConfirmInstalling)
+            .disabled(isConfirmInstalling || alreadyInstalled)
         }
         .padding(24)
         .frame(width: 320)
@@ -380,6 +400,28 @@ struct MarketView: View {
 
     private var pluginsTab: some View {
         VStack(spacing: 0) {
+            // Category bar
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(pluginCategories, id: \.self) { cat in
+                        Button {
+                            withAnimation { selectedPluginCategory = cat }
+                            searchText = ""
+                            triggerSearch()
+                        } label: {
+                            Text(cat)
+                                .font(.footnote).fontWeight(.medium)
+                                .foregroundStyle(selectedPluginCategory == cat ? .white : .primary)
+                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .background(selectedPluginCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .padding(.horizontal, 16).padding(.vertical, 10)
+            }
+
+            // Search bar
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -402,7 +444,7 @@ struct MarketView: View {
             .background(BrandConfig.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.bottom, 10)
             .onChange(of: searchText) { _, _ in triggerSearch() }
 
             if clawHubService.isLoading && clawHubService.plugins.isEmpty {
@@ -422,10 +464,11 @@ struct MarketView: View {
                     subtitle: lang.t("別のキーワードで検索してみてください",          en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
                 )
             } else {
+                let slugs = installedSlugs
                 ScrollView {
                     LazyVStack(spacing: 10) {
                         ForEach(clawHubService.plugins) { plugin in
-                            PluginCard(plugin: plugin) {
+                            PluginCard(plugin: plugin, isInstalled: slugs.contains(plugin.slug)) {
                                 selectedPlugin = plugin
                             }
                         }
@@ -441,10 +484,13 @@ struct MarketView: View {
 
     private func triggerSearch() {
         searchTask?.cancel()
+        let query = searchText.isEmpty
+            ? (pluginCategoryKeywords[selectedPluginCategory] ?? "")
+            : searchText
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
-            await clawHubService.search(query: searchText, lang: lang.current)
+            await clawHubService.search(query: query, lang: lang.current)
         }
     }
 
@@ -461,11 +507,18 @@ struct MarketView: View {
             return false
         }
         do {
-            try await clawHubService.install(agentId: agentId, slug: plugin.slug)
-            showToast(
-                "\(plugin.name) \(lang.t("をインストールしました", en: "installed", zh: "已安装", ko: "설치됨"))",
-                isError: false
-            )
+            let resp = try await clawHubService.install(agentId: agentId, slug: plugin.slug)
+            if resp.status == "already_installed" {
+                showToast(
+                    "\(plugin.name) \(lang.t("はインストール済みです", en: "is already installed", zh: "已安装", ko: "이미 설치됨"))",
+                    isError: false
+                )
+            } else {
+                showToast(
+                    "\(plugin.name) \(lang.t("をインストールしました", en: "installed", zh: "已安装", ko: "설치됨"))",
+                    isError: false
+                )
+            }
             await pluginsStore.fetch(agentId: agentId)
             return true
         } catch {
@@ -590,6 +643,7 @@ private struct TemplateCard: View {
 
 private struct PluginCard: View {
     let plugin: ClawHubPlugin
+    let isInstalled: Bool
     let onTap: () -> Void
 
     @Environment(\.lang) var lang
@@ -607,16 +661,19 @@ private struct PluginCard: View {
                 Spacer()
                 Button { onTap() } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle").font(.caption.bold())
-                        Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
+                        Image(systemName: isInstalled ? "checkmark.circle.fill" : "arrow.down.circle").font(.caption.bold())
+                        Text(isInstalled
+                             ? lang.t("インストール済み ✓", en: "Installed ✓", zh: "已安装 ✓", ko: "설치됨 ✓")
+                             : lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
                             .font(.caption).fontWeight(.medium)
                     }
-                    .foregroundStyle(BrandConfig.brand)
+                    .foregroundStyle(isInstalled ? .secondary : BrandConfig.brand)
                     .frame(minWidth: 80)
                     .padding(.vertical, 6).padding(.horizontal, 10)
-                    .background(BrandConfig.brand.opacity(0.09))
+                    .background(isInstalled ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
+                .disabled(isInstalled)
             }
 
             if let desc = plugin.description, !desc.isEmpty {

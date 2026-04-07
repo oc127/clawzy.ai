@@ -22,6 +22,7 @@ struct ClawHubSearchResponse: Decodable {
 struct ClawHubInstallResponse: Decodable {
     let success: Bool
     let output: String?
+    let status: String?  // "already_installed" when already present
 }
 
 private struct ClawHubInstallRequest: Encodable {
@@ -74,10 +75,11 @@ final class ClawHubService {
         }
     }
 
-    /// Install a plugin into an agent's container.
-    func install(agentId: String, slug: String, version: String = "latest") async throws {
+    /// Install a plugin into an agent's container. Returns the response (check `.status == "already_installed"`).
+    @discardableResult
+    func install(agentId: String, slug: String, version: String = "latest") async throws -> ClawHubInstallResponse {
         let body = ClawHubInstallRequest(agentId: agentId, slug: slug, version: version)
-        let _: ClawHubInstallResponse = try await api.request(
+        return try await api.request(
             Constants.API.clawHubInstall,
             method: "POST",
             body: body
