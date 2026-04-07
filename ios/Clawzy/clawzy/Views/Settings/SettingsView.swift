@@ -185,7 +185,7 @@ struct SettingsView: View {
                         Label(lang.t("バージョン", en: "Version", zh: "版本", ko: "버전"),
                               systemImage: "info.circle")
                         Spacer()
-                        Text("1.0.0").foregroundStyle(.secondary)
+                        Text("1.0.0").font(.caption).foregroundStyle(.secondary)
                     }
                     Link(destination: URL(string: BrandConfig.privacyURL)!) {
                         Label(lang.t("\(BrandConfig.appName) を開く", en: "Open \(BrandConfig.appName)", zh: "打开 \(BrandConfig.appName)", ko: "\(BrandConfig.appName) 열기"), systemImage: "safari")

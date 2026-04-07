@@ -569,9 +569,9 @@ struct MessageBubbleView: View {
                         Text(bubble.content)
                             .textSelection(.enabled)
                             .padding(.horizontal, 14).padding(.vertical, 10)
-                            .background(BrandConfig.brand.opacity(0.10))
-                            .foregroundStyle(.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 18))
+                            .background(BrandConfig.brand)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     Text(bubble.timestamp, style: .time)
                         .font(.caption2).foregroundStyle(.tertiary)
@@ -586,11 +586,11 @@ struct MessageBubbleView: View {
                 HStack(alignment: .top, spacing: 10) {
                     ZStack {
                         Circle()
-                            .fill(BrandConfig.brand.opacity(0.10))
-                            .frame(width: 28, height: 28)
+                            .fill(BrandConfig.brand)
+                            .frame(width: 32, height: 32)
                         Text("N")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(BrandConfig.brand)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         if !bubble.images.isEmpty {
@@ -654,8 +654,8 @@ private struct TypingIndicator: View {
                 .padding(.bottom, 10)
             HStack(alignment: .top, spacing: 10) {
                 ZStack {
-                    Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 28, height: 28)
-                    Text("N").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(BrandConfig.brand)
+                    Circle().fill(BrandConfig.brand).frame(width: 32, height: 32)
+                    Text("N").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(.white)
                 }
                 HStack(spacing: 4) {
                     ForEach(0..<3) { i in

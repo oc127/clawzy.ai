@@ -56,7 +56,7 @@ struct DashboardView: View {
                     CreditsCard(balance: user.creditBalance)
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 14)
                 }
 
                 // Section header
@@ -350,7 +350,7 @@ struct AgentRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(agent.name)
-                        .fontWeight(.medium)
+                        .font(.headline)
                         .foregroundStyle(.primary)
                     if isNew {
                         Text(lang.t("新着", en: "NEW", zh: "新", ko: "NEW"))
@@ -371,7 +371,7 @@ struct AgentRowView: View {
             HStack(spacing: 5) {
                 Circle()
                     .fill(statusColor)
-                    .frame(width: 7, height: 7)
+                    .frame(width: 8, height: 8)
                 Text(statusLabel)
                     .font(.caption)
                     .foregroundStyle(statusColor)

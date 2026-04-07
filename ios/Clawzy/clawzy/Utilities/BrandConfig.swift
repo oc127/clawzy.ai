@@ -10,9 +10,9 @@ struct BrandConfig {
     static let marketRegion   = "JP"
 
     // MARK: - Colors
-    /// Japan crimson — #ED1A3A  (primary brand red)
-    static let brand          = Color(red: 0.93, green: 0.10, blue: 0.23)
-    static let brandDeep      = Color(red: 0.78, green: 0.04, blue: 0.17)
+    /// NipponClaw brand red — #E53935
+    static let brand          = Color(red: 0.898, green: 0.224, blue: 0.208)
+    static let brandDeep      = Color(red: 0.776, green: 0.157, blue: 0.157)
     static let primaryColor   = brand
     static let accentColor    = brand
 
