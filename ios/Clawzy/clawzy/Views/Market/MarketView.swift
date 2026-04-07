@@ -1,5 +1,57 @@
 import SwiftUI
 
+// MARK: - Skill Category
+
+enum SkillCategory: String, CaseIterable, Identifiable {
+    case featured    = "featured"
+    case nipponClaw  = "nipponclaw"
+    case japan       = "japan"
+    case business    = "business"
+    case writing     = "writing"
+    case marketing   = "marketing"
+    case education   = "education"
+    case design      = "design"
+    case development = "development"
+    case finance     = "finance"
+    case lifestyle   = "lifestyle"
+
+    var id: String { rawValue }
+
+    /// ClawHub search keyword for this category (empty = curated popular).
+    /// `.nipponClaw` is handled via `nipponClawSlugs` instead.
+    var keyword: String {
+        switch self {
+        case .featured:    return ""
+        case .nipponClaw:  return ""
+        case .japan:       return "japanese"
+        case .business:    return "business"
+        case .writing:     return "writing"
+        case .marketing:   return "marketing"
+        case .education:   return "education"
+        case .design:      return "design"
+        case .development: return "coding"
+        case .finance:     return "finance"
+        case .lifestyle:   return "lifestyle"
+        }
+    }
+
+    /// Hand-picked slugs for the NipponClaw founder's picks section.
+    static let nipponClawSlugs: [String] = [
+        "japanese-tutor",
+        "japanese-translation-and-tutor",
+        "japanese-daily-drill",
+        "japanese-news-briefing",
+        "business-writing",
+        "marketing-strategy-pmm",
+        "finance-report-analyzer",
+        "agentic-coding",
+        "graphic-design",
+        "human-writing",
+    ]
+}
+
+// MARK: - MarketView
+
 struct MarketView: View {
     @Environment(AgentService.self) var agentService
     @Environment(PluginsStore.self) var pluginsStore
@@ -9,6 +61,7 @@ struct MarketView: View {
     @State private var clawHubService = ClawHubService()
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
+    @State private var selectedSkillCategory: SkillCategory = .featured
 
     // Plugin popup state
     @State private var selectedPlugin: ClawHubPlugin?
@@ -21,7 +74,7 @@ struct MarketView: View {
     // Templates state
     @State private var templates: [AppTemplate] = []
     @State private var isLoadingTemplates = true
-    @State private var selectedCategory = ""
+    @State private var selectedTemplateCategory = ""
 
     // Toast state
     @State private var toastMessage: String?
@@ -29,7 +82,7 @@ struct MarketView: View {
 
     private var allLabel: String { lang.t("すべて", en: "All", zh: "全部", ko: "전체") }
 
-    private var categories: [String] {
+    private var templateCategories: [String] {
         let cats = templates.map(\.category)
         var seen = Set<String>()
         let unique = cats.filter { seen.insert($0).inserted }
@@ -37,19 +90,19 @@ struct MarketView: View {
     }
 
     private var filteredTemplates: [AppTemplate] {
-        selectedCategory == allLabel || selectedCategory.isEmpty
+        selectedTemplateCategory == allLabel || selectedTemplateCategory.isEmpty
             ? templates
-            : templates.filter { $0.category == selectedCategory }
+            : templates.filter { $0.category == selectedTemplateCategory }
     }
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Layer 1: Normal content
+            // Layer 1: Main content
             NavigationStack {
                 VStack(spacing: 0) {
                     Picker("", selection: $selectedTab) {
                         Text(lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿")).tag(0)
-                        Text(lang.t("プラグイン",   en: "Plugins",   zh: "插件", ko: "플러그인")).tag(1)
+                        Text(lang.t("スキル",       en: "Skills",    zh: "技能", ko: "스킬")).tag(1)
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal, 16)
@@ -59,7 +112,7 @@ struct MarketView: View {
                     if selectedTab == 0 {
                         templatesTab
                     } else {
-                        pluginsTab
+                        skillsTab
                     }
                 }
                 .background(BrandConfig.backgroundColor)
@@ -74,25 +127,21 @@ struct MarketView: View {
                 .animation(.easeInOut(duration: 0.25), value: toastMessage)
             }
 
-            // Layer 2: Plugin popup at TOP
+            // Layer 2: Plugin install popup
             if let plugin = selectedPlugin {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
-                    .onTapGesture {
-                        if !isConfirmInstalling { selectedPlugin = nil }
-                    }
+                    .onTapGesture { if !isConfirmInstalling { selectedPlugin = nil } }
 
                 popupCard(plugin: plugin)
                     .padding(.top, 80)
             }
 
-            // Layer 3: Template popup at TOP
+            // Layer 3: Template add popup
             if let template = selectedTemplate {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
-                    .onTapGesture {
-                        if !isConfirmAdding { selectedTemplate = nil }
-                    }
+                    .onTapGesture { if !isConfirmAdding { selectedTemplate = nil } }
 
                 templatePopupCard(template: template)
                     .padding(.top, 80)
@@ -102,12 +151,17 @@ struct MarketView: View {
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedTemplate != nil)
         .onChange(of: selectedTab) { _, newVal in
             if newVal == 1 && clawHubService.plugins.isEmpty {
-                Task { await clawHubService.search(lang: lang.current) }
+                Task { await loadSkillsForCategory(selectedSkillCategory) }
             }
+        }
+        .onChange(of: selectedSkillCategory) { _, cat in
+            guard selectedTab == 1 else { return }
+            searchText = ""
+            Task { await loadSkillsForCategory(cat) }
         }
     }
 
-    // MARK: - Popup card
+    // MARK: - Plugin install popup
 
     @ViewBuilder
     private func popupCard(plugin: ClawHubPlugin) -> some View {
@@ -185,7 +239,7 @@ struct MarketView: View {
         .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
     }
 
-    // MARK: - Template popup card
+    // MARK: - Template add popup
 
     @ViewBuilder
     private func templatePopupCard(template: AppTemplate) -> some View {
@@ -257,7 +311,7 @@ struct MarketView: View {
                     }
                     Text(isConfirmAdding
                          ? lang.t("作成中...", en: "Creating...", zh: "创建中...", ko: "생성 중...")
-                         : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추가"))
+                         : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추加"))
                         .fontWeight(.semibold)
                 }
                 .foregroundStyle(.white)
@@ -292,13 +346,13 @@ struct MarketView: View {
                     VStack(spacing: 0) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
-                                ForEach(categories, id: \.self) { cat in
-                                    Button { withAnimation { selectedCategory = cat } } label: {
+                                ForEach(templateCategories, id: \.self) { cat in
+                                    Button { withAnimation { selectedTemplateCategory = cat } } label: {
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
                                             .font(.footnote).fontWeight(.medium)
-                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
+                                            .foregroundStyle(selectedTemplateCategory == cat ? .white : .primary)
                                             .padding(.horizontal, 14).padding(.vertical, 8)
-                                            .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
+                                            .background(selectedTemplateCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
                                             .clipShape(Capsule())
                                     }
                                 }
@@ -376,17 +430,21 @@ struct MarketView: View {
                     desc: (en: "Research, summary & information organisation", zh: "调研、总结和信息整理", ko: "조사, 요약 및 정보 정리")),
     ]
 
-    // MARK: - Plugins tab
+    // MARK: - Skills tab
 
-    private var pluginsTab: some View {
+    private var skillsTab: some View {
         VStack(spacing: 0) {
+            // Search bar
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                TextField(lang.t("プラグインを検索...", en: "Search plugins...", zh: "搜索插件...", ko: "플러그인 검색..."), text: $searchText)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .onSubmit { triggerSearch() }
+                TextField(
+                    lang.t("スキルを検索...", en: "Search skills...", zh: "搜索技能...", ko: "스킬 검색..."),
+                    text: $searchText
+                )
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .onSubmit { triggerSearch() }
                 if !searchText.isEmpty {
                     Button {
                         searchText = ""
@@ -397,14 +455,50 @@ struct MarketView: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 12).padding(.vertical, 10)
             .background(BrandConfig.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 16).padding(.vertical, 10)
             .onChange(of: searchText) { _, _ in triggerSearch() }
 
+            // Category tabs
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(SkillCategory.allCases) { cat in
+                        Button {
+                            withAnimation { selectedSkillCategory = cat }
+                        } label: {
+                            HStack(spacing: 4) {
+                                if cat == .nipponClaw {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 9, weight: .bold))
+                                }
+                                Text(lang.skillCategoryLabel(cat.rawValue))
+                                    .font(.footnote).fontWeight(.medium)
+                            }
+                            .foregroundStyle(selectedSkillCategory == cat ? .white : (cat == .nipponClaw ? BrandConfig.brand : .primary))
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(
+                                selectedSkillCategory == cat
+                                    ? (cat == .nipponClaw ? BrandConfig.brand : BrandConfig.brand)
+                                    : (cat == .nipponClaw ? BrandConfig.brand.opacity(0.12) : BrandConfig.disabledGray)
+                            )
+                            .clipShape(Capsule())
+                            .overlay(
+                                cat == .nipponClaw && selectedSkillCategory != cat
+                                    ? Capsule().strokeBorder(BrandConfig.brand.opacity(0.4), lineWidth: 1)
+                                    : nil
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 4).padding(.bottom, 8)
+            }
+
+            Divider()
+
+            // Content area
             if clawHubService.isLoading && clawHubService.plugins.isEmpty {
                 Spacer()
                 ProgressView()
@@ -412,39 +506,85 @@ struct MarketView: View {
             } else if let err = clawHubService.errorMessage, clawHubService.plugins.isEmpty {
                 emptyState(
                     icon: "wifi.slash",
-                    title: lang.t("接続エラー",      en: "Connection Error", zh: "连接错误", ko: "연결 오류"),
+                    title: lang.t("接続エラー",  en: "Connection Error", zh: "连接错误", ko: "연결 오류"),
                     subtitle: err
                 )
             } else if clawHubService.plugins.isEmpty {
                 emptyState(
                     icon: "tray",
-                    title: lang.t("プラグインが見つかりません", en: "No plugins found",         zh: "未找到插件",       ko: "플러그인 없음"),
-                    subtitle: lang.t("別のキーワードで検索してみてください",          en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
+                    title: lang.t("スキルが見つかりません", en: "No skills found",       zh: "未找到技能",       ko: "스킬 없음"),
+                    subtitle: lang.t("別のキーワードで検索してみてください", en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
                 )
             } else {
                 ScrollView {
+                    // NipponClaw section header
+                    if selectedSkillCategory == .nipponClaw && searchText.isEmpty {
+                        nipponClawHeader
+                            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 4)
+                    }
                     LazyVStack(spacing: 10) {
                         ForEach(clawHubService.plugins) { plugin in
-                            PluginCard(plugin: plugin) {
+                            SkillCard(
+                                plugin: plugin,
+                                icon: iconForPlugin(plugin),
+                                showBadge: selectedSkillCategory == .nipponClaw && searchText.isEmpty
+                            ) {
                                 selectedPlugin = plugin
                             }
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
+                    .padding(.horizontal, 16).padding(.bottom, 24)
                 }
+            }
+        }
+        .task {
+            if clawHubService.plugins.isEmpty {
+                await loadSkillsForCategory(.featured)
             }
         }
     }
 
+    // MARK: - NipponClaw header banner
+
+    private var nipponClawHeader: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "star.fill")
+                .font(.title3)
+                .foregroundStyle(BrandConfig.brand)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(lang.t("NipponClaw 厳選", en: "NipponClaw Picks", zh: "NipponClaw 精选", ko: "NipponClaw 픽"))
+                    .font(.footnote).fontWeight(.bold)
+                    .foregroundStyle(BrandConfig.brand)
+                Text(lang.t("創業者が厳選したスキル", en: "Founder's curated selections", zh: "创始人精选", ko: "창업자 큐레이션"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(BrandConfig.brand.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
     // MARK: - Helpers
+
+    private func loadSkillsForCategory(_ cat: SkillCategory) async {
+        if cat == .nipponClaw {
+            await clawHubService.fetchCurated(slugs: SkillCategory.nipponClawSlugs)
+        } else {
+            await clawHubService.search(query: cat.keyword, lang: lang.current)
+        }
+    }
 
     private func triggerSearch() {
         searchTask?.cancel()
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
-            await clawHubService.search(query: searchText, lang: lang.current)
+            if searchText.isEmpty {
+                await loadSkillsForCategory(selectedSkillCategory)
+            } else {
+                await clawHubService.search(query: searchText, lang: lang.current)
+            }
         }
     }
 
@@ -484,20 +624,24 @@ struct MarketView: View {
     }
 
     private func iconForPlugin(_ p: ClawHubPlugin) -> String {
-        let name = p.name.lowercased()
-        let slug = p.slug.lowercased()
-        let combined = name + " " + slug
-        if combined.contains("writ") || combined.contains("copy") { return "✍️" }
-        if combined.contains("code") || combined.contains("dev") || combined.contains("git") { return "💻" }
-        if combined.contains("data") || combined.contains("analy") { return "📊" }
+        let combined = (p.name + " " + p.slug).lowercased()
+        if combined.contains("japan") || combined.contains("日本")    { return "🗾" }
+        if combined.contains("writ") || combined.contains("copy")     { return "✍️" }
         if combined.contains("translat") || combined.contains("lang") { return "🌐" }
+        if combined.contains("code") || combined.contains("dev") || combined.contains("git") { return "💻" }
+        if combined.contains("data") || combined.contains("analy")    { return "📊" }
         if combined.contains("research") || combined.contains("search") { return "🔍" }
-        if combined.contains("business") || combined.contains("meet") || combined.contains("email") { return "💼" }
-        if combined.contains("agent") { return "🤖" }
+        if combined.contains("market") || combined.contains("ads")    { return "📣" }
+        if combined.contains("financ") || combined.contains("account") { return "💰" }
+        if combined.contains("business") || combined.contains("email") { return "💼" }
+        if combined.contains("educat") || combined.contains("learn")  { return "📚" }
+        if combined.contains("design") || combined.contains("figma")  { return "🎨" }
+        if combined.contains("life") || combined.contains("health")   { return "🌿" }
+        if combined.contains("agent")     { return "🤖" }
         if combined.contains("assistant") { return "🧠" }
-        if combined.contains("image") || combined.contains("art") || combined.contains("design") { return "🎨" }
-        if combined.contains("music") || combined.contains("audio") { return "🎵" }
-        if combined.contains("video") || combined.contains("stream") { return "🎬" }
+        if combined.contains("image") || combined.contains("art")     { return "🖼️" }
+        if combined.contains("music") || combined.contains("audio")   { return "🎵" }
+        if combined.contains("video") || combined.contains("stream")  { return "🎬" }
         return "🔌"
     }
 
@@ -516,6 +660,90 @@ struct MarketView: View {
                 .padding(.horizontal, 32)
             Spacer()
         }
+    }
+}
+
+// MARK: - Skill Card (store listing)
+
+private struct SkillCard: View {
+    let plugin: ClawHubPlugin
+    let icon: String
+    let showBadge: Bool
+    let onTap: () -> Void
+
+    @Environment(\.lang) var lang
+
+    var body: some View {
+        Button { onTap() } label: {
+            HStack(alignment: .top, spacing: 14) {
+                // Icon badge
+                Text(icon)
+                    .font(.system(size: 30))
+                    .frame(width: 54, height: 54)
+                    .background(BrandConfig.brand.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                // Info
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .center) {
+                        Text(plugin.name)
+                            .font(.subheadline).fontWeight(.semibold)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        if showBadge {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(BrandConfig.brand)
+                        }
+                        Spacer()
+                        // + Add button
+                        HStack(spacing: 3) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                            Text(lang.t("追加", en: "Add", zh: "添加", ko: "추가"))
+                                .font(.caption).fontWeight(.semibold)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.vertical, 5).padding(.horizontal, 10)
+                        .background(BrandConfig.brand)
+                        .clipShape(Capsule())
+                    }
+
+                    if let desc = plugin.description, !desc.isEmpty {
+                        Text(desc)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    HStack(spacing: 8) {
+                        if let author = plugin.author {
+                            Text(author)
+                                .font(.caption2).foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
+                        if let dl = plugin.downloads {
+                            Label(dl >= 1000 ? "\(dl / 1000)k" : "\(dl)", systemImage: "arrow.down.circle")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                        if let tags = plugin.tags, let first = tags.first {
+                            Text(first)
+                                .font(.caption2).fontWeight(.medium)
+                                .foregroundStyle(BrandConfig.brand)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(BrandConfig.brand.opacity(0.10))
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(BrandConfig.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -585,69 +813,6 @@ private struct TemplateCard: View {
         .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
-    }
-}
-
-private struct PluginCard: View {
-    let plugin: ClawHubPlugin
-    let onTap: () -> Void
-
-    @Environment(\.lang) var lang
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(plugin.name)
-                        .font(.subheadline).fontWeight(.semibold)
-                    if let author = plugin.author {
-                        Text(author).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-                Button { onTap() } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle").font(.caption.bold())
-                        Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
-                            .font(.caption).fontWeight(.medium)
-                    }
-                    .foregroundStyle(BrandConfig.brand)
-                    .frame(minWidth: 80)
-                    .padding(.vertical, 6).padding(.horizontal, 10)
-                    .background(BrandConfig.brand.opacity(0.09))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-            }
-
-            if let desc = plugin.description, !desc.isEmpty {
-                Text(desc)
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-            }
-
-            HStack(spacing: 10) {
-                if let version = plugin.version {
-                    Label(version, systemImage: "tag")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-                if let dl = plugin.downloads {
-                    Label(dl >= 1000 ? "\(dl / 1000)k" : "\(dl)", systemImage: "arrow.down.circle")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-                if let tags = plugin.tags, let first = tags.first {
-                    Text(first)
-                        .font(.caption2).fontWeight(.medium)
-                        .foregroundStyle(BrandConfig.brand)
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(BrandConfig.brand.opacity(0.10))
-                        .clipShape(Capsule())
-                }
-                Spacer()
-            }
-        }
-        .padding(14)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
     }
 }
 

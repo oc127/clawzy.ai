@@ -36,6 +36,31 @@ private struct ClawHubInstallRequest: Encodable {
     }
 }
 
+// Minimal shape of the skill detail endpoint response
+private struct SkillDetailEnvelope: Decodable {
+    struct SkillInfo: Decodable {
+        let slug: String?
+        let name: String?
+        let displayName: String?
+        let description: String?
+        struct Stats: Decodable { let downloads: Int? }
+        let stats: Stats?
+    }
+    struct Owner: Decodable {
+        let handle: String?
+        let displayName: String?
+    }
+    struct LatestVersion: Decodable { let version: String? }
+
+    let skill: SkillInfo?
+    let owner: Owner?
+    let latestVersion: LatestVersion?
+    // Fallback flat fields
+    let slug: String?
+    let name: String?
+    let description: String?
+}
+
 // MARK: - Service
 
 @Observable
@@ -61,16 +86,31 @@ final class ClawHubService {
         }
     }
 
-    /// Load popular skills from backend (server handles curation for empty query).
-    func searchPopular(limit: Int = 10, lang: String = "ja") async {
+    /// Fetch a curated list of skills by slug (for NipponClaw section).
+    func fetchCurated(slugs: [String]) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
-        if let items = await fetchRaw(query: "", limit: limit, lang: lang), !items.isEmpty {
-            plugins = items
-        } else {
-            errorMessage = "スキルが見つかりません"
+        var results: [ClawHubPlugin] = []
+        await withTaskGroup(of: ClawHubPlugin?.self) { group in
+            for slug in slugs {
+                group.addTask { [weak self] in
+                    guard let self else { return nil }
+                    return await self.fetchSkillBySlug(slug)
+                }
+            }
+            for await result in group {
+                if let p = result { results.append(p) }
+            }
+        }
+
+        // Preserve the original curated order
+        let orderMap = Dictionary(uniqueKeysWithValues: slugs.enumerated().map { ($1, $0) })
+        plugins = results.sorted { (orderMap[$0.slug] ?? 99) < (orderMap[$1.slug] ?? 99) }
+
+        if plugins.isEmpty {
+            errorMessage = "No skills found"
         }
     }
 
@@ -85,6 +125,25 @@ final class ClawHubService {
     }
 
     // MARK: - Private
+
+    private func fetchSkillBySlug(_ slug: String) async -> ClawHubPlugin? {
+        let path = Constants.API.clawHubSkill(slug)
+        guard let env: SkillDetailEnvelope = try? await api.request(path) else { return nil }
+        let info = env.skill
+        let displayName = info?.displayName
+            ?? info?.name
+            ?? env.name
+            ?? slug.replacingOccurrences(of: "-", with: " ").capitalized
+        return ClawHubPlugin(
+            slug: slug,
+            name: displayName,
+            description: info?.description ?? env.description,
+            author: env.owner?.handle ?? env.owner?.displayName,
+            downloads: info?.stats?.downloads,
+            version: env.latestVersion?.version,
+            tags: nil
+        )
+    }
 
     private func fetchRaw(query: String = "", page: Int = 1, limit: Int = 20, lang: String = "ja") async -> [ClawHubPlugin]? {
         var components = URLComponents()
