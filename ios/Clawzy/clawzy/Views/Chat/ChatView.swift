@@ -51,6 +51,9 @@ struct ChatView: View {
     @State private var showOpenClaw = false
     @State private var showModelPicker = false
     @State private var showConversationList = false
+    @State private var showSkillsPanel = false
+    @State private var showCameraComingSoon = false
+    @State private var pluginsStore = PluginsStore()
     @State private var conversations: [Conversation] = []
     @State private var availableModels: [AIModel] = []
     @State private var currentModelName: String = ""
@@ -88,6 +91,7 @@ struct ChatView: View {
                 await chatService.loadHistory(agentId: agent.id)
                 await loadModels()
                 await loadConversations()
+                await pluginsStore.fetch(agentId: agent.id)
             }
             withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = false }
         }
@@ -139,6 +143,22 @@ struct ChatView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showSkillsPanel) {
+            SkillsPanelView(
+                plugins: pluginsStore.plugins(for: agent.id),
+                onSendSkill: { message in
+                    showSkillsPanel = false
+                    sendPresetMessage(message)
+                }
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .alert(lang.t("カメラ機能", en: "Camera", zh: "拍照", ko: "카메라"), isPresented: $showCameraComingSoon) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(lang.t("カメラ機能は近日公開予定です", en: "Camera feature coming soon", zh: "拍照功能即将推出", ko: "카메라 기능 준비 중"))
+        }
     }
 
     // MARK: - Message list
@@ -146,17 +166,16 @@ struct ChatView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 8) {
+                LazyVStack(spacing: 0) {
                     ForEach(chatService.messages) { bubble in
                         MessageBubbleView(bubble: bubble).id(bubble.id)
                     }
                     if chatService.isStreaming && chatService.messages.last?.role != .assistant {
                         TypingIndicator().id("typing")
                     }
-                    // Invisible anchor at bottom for scrolling
                     Color.clear.frame(height: 1).id("bottom")
                 }
-                .padding(.horizontal, 16).padding(.vertical, 12)
+                .padding(.horizontal, 16).padding(.top, 12)
             }
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
@@ -164,7 +183,6 @@ struct ChatView: View {
                 scrollToBottom(proxy: proxy)
             }
             .onChange(of: chatService.currentStreamText) {
-                // Auto-scroll while AI is streaming
                 if chatService.isStreaming {
                     scrollToBottom(proxy: proxy)
                 }
@@ -248,9 +266,7 @@ struct ChatView: View {
         }
     }
 
-    /// Shorten model name for the pill display (e.g. "gpt-4o-mini" -> "GPT-4o Mini")
     private func shortModelName(_ name: String) -> String {
-        // Just show the raw model id, truncated if needed
         if name.count > 16 {
             return String(name.prefix(14)) + "..."
         }
@@ -303,23 +319,38 @@ struct ChatView: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 8) {
-                // Attach menu
+            HStack(alignment: .bottom, spacing: 6) {
+                // ⊕ Attach button
                 Menu {
+                    Button {
+                        showCameraComingSoon = true
+                    } label: {
+                        Label(lang.t("写真を撮る", en: "Take Photo", zh: "拍照", ko: "사진 찍기"), systemImage: "camera")
+                    }
                     Button {
                         showPhotoPicker = true
                     } label: {
-                        Label(lang.t("写真・画像", en: "Photos & Images", zh: "图片", ko: "사진"), systemImage: "photo")
+                        Label(lang.t("アルバムから選ぶ", en: "Photo Library", zh: "从相册选择", ko: "앨범에서 선택"), systemImage: "photo")
                     }
                     Button {
                         showFilePicker = true
                     } label: {
-                        Label(lang.t("ファイル", en: "File", zh: "文件", ko: "파일"), systemImage: "doc")
+                        Label(lang.t("ファイルを選ぶ", en: "Choose File", zh: "选择文件", ko: "파일 선택"), systemImage: "doc")
                     }
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
+                        .font(.system(size: 26))
                         .foregroundStyle(attachments.isEmpty ? BrandConfig.brand.opacity(0.8) : BrandConfig.brand)
+                }
+
+                // 🎵 Skills button
+                Button {
+                    showSkillsPanel = true
+                } label: {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 22))
+                        .foregroundStyle(BrandConfig.brand.opacity(0.8))
+                        .frame(width: 28, height: 28)
                 }
 
                 TextField(
@@ -343,6 +374,12 @@ struct ChatView: View {
                 .animation(.easeInOut(duration: 0.15), value: canSend)
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
+
+            // AI generated content disclaimer
+            Text(lang.t("内容はAIが生成しています", en: "AI-generated content", zh: "内容由AI生成", ko: "AI 생성 콘텐츠"))
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .padding(.bottom, 8)
         }
         .background(BrandConfig.backgroundColor)
         .overlay(Rectangle().fill(BrandConfig.separator).frame(height: 0.5), alignment: .top)
@@ -396,7 +433,6 @@ struct ChatView: View {
 
         guard !text.isEmpty || !imgs.isEmpty || !files.isEmpty else { return }
 
-        // Append file content to text
         for file in files {
             if let content = file.fileText {
                 text += "\n\n📄 **\(file.displayName)**\n```\n\(content.prefix(8000))\n```"
@@ -406,6 +442,11 @@ struct ChatView: View {
         inputText = ""
         attachments = []
         chatService.sendMessage(text, images: imgs)
+    }
+
+    private func sendPresetMessage(_ text: String) {
+        guard !chatService.isStreaming else { return }
+        chatService.sendMessage(text, images: [])
     }
 
     // MARK: - Loading helpers
@@ -514,69 +555,58 @@ struct MessageBubbleView: View {
     var isUser: Bool { bubble.role == .user }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if isUser { Spacer(minLength: 64) }
-
-            if !isUser {
-                ZStack {
-                    Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 30, height: 30)
-                    Text("N")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(BrandConfig.brand)
+        if isUser {
+            // User message: right-aligned with subtle background, wide but not full-bleed
+            HStack(alignment: .bottom, spacing: 8) {
+                Spacer(minLength: 48)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if !bubble.images.isEmpty {
+                        ImageGridView(images: bubble.images, isUser: true)
+                    }
+                    if !bubble.content.isEmpty {
+                        Text(bubble.content)
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(BrandConfig.brand.opacity(0.10))
+                            .foregroundStyle(.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
+                    }
+                    Text(bubble.timestamp, style: .time)
+                        .font(.caption2).foregroundStyle(.tertiary)
                 }
-                .alignmentGuide(.bottom) { d in d[.bottom] }
             }
-
-            VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-                // Image grid
-                if !bubble.images.isEmpty {
-                    ImageGridView(images: bubble.images, isUser: isUser)
+            .padding(.bottom, 12)
+        } else {
+            // AI message: full-width, no bubble, avatar on left
+            VStack(alignment: .leading, spacing: 0) {
+                Divider()
+                    .padding(.bottom, 10)
+                HStack(alignment: .top, spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(BrandConfig.brand.opacity(0.10))
+                            .frame(width: 28, height: 28)
+                        Text("N")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(BrandConfig.brand)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        if !bubble.images.isEmpty {
+                            ImageGridView(images: bubble.images, isUser: false)
+                        }
+                        if !bubble.content.isEmpty {
+                            Text(LocalizedStringKey(bubble.content))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .foregroundStyle(.primary)
+                        }
+                        Text(bubble.timestamp, style: .time)
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
                 }
-
-                // Text bubble
-                if !bubble.content.isEmpty {
-                    TextBubbleView(text: bubble.content, isUser: isUser)
-                }
-
-                Text(bubble.timestamp, style: .time)
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
-
-            if !isUser { Spacer(minLength: 64) }
-        }
-    }
-}
-
-// MARK: - Text bubble
-
-private struct TextBubbleView: View {
-    let text: String
-    let isUser: Bool
-
-    private var bg: LinearGradient {
-        isUser
-            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                             startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
-    }
-
-    var body: some View {
-        Group {
-            if isUser {
-                Text(text)
-            } else {
-                // Render Markdown for AI responses (supports **bold**, *italic*, `code`, lists, etc.)
-                Text(LocalizedStringKey(text))
+                .padding(.bottom, 12)
             }
         }
-        .textSelection(.enabled)
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(bg)
-        .foregroundStyle(isUser ? .white : .primary)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(
-            isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1)
-        )
     }
 }
 
@@ -589,12 +619,6 @@ private struct ImageGridView: View {
     private var cols: Int { min(images.count, 2) }
     private var imgSize: CGSize {
         images.count == 1 ? CGSize(width: 200, height: 160) : CGSize(width: 95, height: 95)
-    }
-    private var bg: LinearGradient {
-        isUser
-            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                             startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -612,7 +636,7 @@ private struct ImageGridView: View {
             }
         }
         .padding(4)
-        .background(bg)
+        .background(BrandConfig.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
@@ -623,25 +647,140 @@ private struct TypingIndicator: View {
     @State private var phase = 0
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            ZStack {
-                Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 30, height: 30)
-                Text("N").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(BrandConfig.brand)
-            }
-            HStack(spacing: 4) {
-                ForEach(0..<3) { i in
-                    Circle().fill(Color.secondary).frame(width: 7, height: 7)
-                        .scaleEffect(phase == i ? 1.3 : 0.8)
-                        .animation(.easeInOut(duration: 0.4).repeatForever().delay(Double(i) * 0.13), value: phase)
+        VStack(alignment: .leading, spacing: 0) {
+            Divider()
+                .padding(.bottom, 10)
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 28, height: 28)
+                    Text("N").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(BrandConfig.brand)
                 }
+                HStack(spacing: 4) {
+                    ForEach(0..<3) { i in
+                        Circle().fill(Color.secondary).frame(width: 7, height: 7)
+                            .scaleEffect(phase == i ? 1.3 : 0.8)
+                            .animation(.easeInOut(duration: 0.4).repeatForever().delay(Double(i) * 0.13), value: phase)
+                    }
+                }
+                .padding(.top, 6)
             }
-            .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(BrandConfig.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1))
-            Spacer(minLength: 64)
+            .padding(.bottom, 12)
         }
         .onAppear { phase = 1 }
+    }
+}
+
+// MARK: - Skills Panel
+
+private struct BuiltinSkill: Identifiable {
+    let id = UUID()
+    let icon: String
+    let name: String
+    let description: String
+    let prompt: String
+}
+
+struct SkillsPanelView: View {
+    let plugins: [InstalledPlugin]
+    let onSendSkill: (String) -> Void
+    @Environment(\.lang) var lang
+
+    private var builtinSkills: [BuiltinSkill] {
+        [
+            BuiltinSkill(
+                icon: "newspaper.fill",
+                name: lang.t("AI日報速覧", en: "AI Daily Brief", zh: "AI日报速览", ko: "AI 일일 브리핑"),
+                description: lang.t("今日のAIニュースを要約", en: "Summarize today's AI news", zh: "总结今日AI新闻", ko: "오늘의 AI 뉴스 요약"),
+                prompt: "今日のAIニュースを要約してください"
+            ),
+            BuiltinSkill(
+                icon: "tablecells.fill",
+                name: "XLSX",
+                description: lang.t("Excelファイルを作成・処理", en: "Create or process Excel files", zh: "创建或处理Excel文件", ko: "Excel 파일 생성/처리"),
+                prompt: "Excelファイルを作成してください"
+            ),
+            BuiltinSkill(
+                icon: "doc.richtext.fill",
+                name: "PDF",
+                description: lang.t("PDFを処理・生成", en: "Process or generate PDFs", zh: "处理或生成PDF", ko: "PDF 처리/생성"),
+                prompt: "PDFを処理してください"
+            ),
+        ]
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section(lang.t("ビルトインスキル", en: "Built-in Skills", zh: "内置技能", ko: "기본 기술")) {
+                    ForEach(builtinSkills) { skill in
+                        Button {
+                            onSendSkill(skill.prompt)
+                        } label: {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(BrandConfig.brand.opacity(0.12))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: skill.icon)
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(BrandConfig.brand)
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(skill.name)
+                                        .font(.subheadline).fontWeight(.medium)
+                                        .foregroundStyle(.primary)
+                                    Text(skill.description)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+
+                if !plugins.isEmpty {
+                    Section(lang.t("インストール済みスキル", en: "Installed Skills", zh: "已安装技能", ko: "설치된 기술")) {
+                        ForEach(plugins) { plugin in
+                            Button {
+                                let displayName = plugin.name ?? plugin.slug
+                                onSendSkill("「\(displayName)」スキルを使ってください")
+                            } label: {
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.purple.opacity(0.10))
+                                            .frame(width: 36, height: 36)
+                                        Image(systemName: "puzzlepiece.extension.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(Color.purple)
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(plugin.name ?? plugin.slug)
+                                            .font(.subheadline).fontWeight(.medium)
+                                            .foregroundStyle(.primary)
+                                        Text(plugin.slug)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(lang.t("スキル", en: "Skills", zh: "技能", ko: "기술"))
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
 
