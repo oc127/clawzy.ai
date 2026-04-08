@@ -77,7 +77,7 @@ struct ChatView: View {
             messageList
             inputBar
         }
-        .background(BrandConfig.backgroundColor)
+        .background(Color(UIColor.systemBackground))
         .navigationTitle(agent.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
@@ -238,9 +238,7 @@ struct ChatView: View {
         }
     }
 
-    /// Shorten model name for the pill display (e.g. "gpt-4o-mini" -> "GPT-4o Mini")
     private func shortModelName(_ name: String) -> String {
-        // Just show the raw model id, truncated if needed
         if name.count > 16 {
             return String(name.prefix(14)) + "..."
         }
@@ -273,7 +271,7 @@ struct ChatView: View {
             )
             await MainActor.run { currentModelName = modelId }
         } catch {
-            // Silent fail — UI stays with previous model name
+            // Silent fail
         }
     }
 
@@ -293,40 +291,41 @@ struct ChatView: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 8) {
-                // Attach menu
-                Menu {
-                    Button {
-                        showPhotoPicker = true
-                    } label: {
-                        Label(lang.t("写真・画像", en: "Photos & Images", zh: "图片", ko: "사진"), systemImage: "photo")
-                    }
-                    Button {
-                        showFilePicker = true
-                    } label: {
-                        Label(lang.t("ファイル", en: "File", zh: "文件", ko: "파일"), systemImage: "doc")
-                    }
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(attachments.isEmpty ? BrandConfig.brand.opacity(0.8) : BrandConfig.brand)
+            HStack(alignment: .bottom, spacing: 10) {
+                // Photo button
+                Button { showPhotoPicker = true } label: {
+                    Image(systemName: "photo")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color(UIColor.systemGray))
+                        .frame(width: 36, height: 36)
                 }
+                .accessibilityLabel(lang.t("写真", en: "Photo", zh: "图片", ko: "사진"))
 
+                // File button
+                Button { showFilePicker = true } label: {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color(UIColor.systemGray))
+                        .frame(width: 36, height: 36)
+                }
+                .accessibilityLabel(lang.t("ファイル", en: "File", zh: "文件", ko: "파일"))
+
+                // Text field
                 TextField(
                     lang.t("メッセージを入力...", en: "Type a message...", zh: "输入消息...", ko: "메시지 입력..."),
                     text: $inputText, axis: .vertical
                 )
                 .textFieldStyle(.plain).lineLimit(1...5).focused($isInputFocused)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(BrandConfig.fieldBackground)
+                .background(Color(UIColor.systemGray6))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(BrandConfig.separator, lineWidth: 1))
 
+                // Send button
                 Button { sendMessage() } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(canSend ? BrandConfig.brand : BrandConfig.disabledGray)
+                        .background(canSend ? BrandConfig.brand : Color(UIColor.systemGray4))
                         .clipShape(Circle())
                 }
                 .disabled(!canSend)
@@ -334,8 +333,13 @@ struct ChatView: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
         }
-        .background(BrandConfig.backgroundColor)
-        .overlay(Rectangle().fill(BrandConfig.separator).frame(height: 0.5), alignment: .top)
+        .background(Color(UIColor.systemBackground))
+        .overlay(
+            Rectangle()
+                .fill(Color(UIColor.separator))
+                .frame(height: 0.5),
+            alignment: .top
+        )
     }
 
     @ViewBuilder
@@ -386,7 +390,6 @@ struct ChatView: View {
 
         guard !text.isEmpty || !imgs.isEmpty || !files.isEmpty else { return }
 
-        // Append file content to text
         for file in files {
             if let content = file.fileText {
                 text += "\n\n📄 **\(file.displayName)**\n```\n\(content.prefix(8000))\n```"
@@ -504,15 +507,18 @@ struct MessageBubbleView: View {
     var isUser: Bool { bubble.role == .user }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if isUser { Spacer(minLength: 64) }
+        HStack(alignment: .bottom, spacing: 10) {
+            if isUser { Spacer(minLength: 60) }
 
+            // AI avatar — brand red circle with white N
             if !isUser {
                 ZStack {
-                    Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 30, height: 30)
+                    Circle()
+                        .fill(BrandConfig.brand)
+                        .frame(width: 32, height: 32)
                     Text("N")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(BrandConfig.brand)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
                 }
                 .alignmentGuide(.bottom) { d in d[.bottom] }
             }
@@ -532,7 +538,7 @@ struct MessageBubbleView: View {
                     .font(.caption2).foregroundStyle(.secondary)
             }
 
-            if !isUser { Spacer(minLength: 64) }
+            if !isUser { Spacer(minLength: 60) }
         }
     }
 }
@@ -543,22 +549,26 @@ private struct TextBubbleView: View {
     let text: String
     let isUser: Bool
 
-    private var bg: LinearGradient {
-        isUser
-            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                             startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
-    }
-
     var body: some View {
-        Text(text)
-            .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(bg)
-            .foregroundStyle(isUser ? .white : .primary)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(
-                isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1)
-            )
+        if isUser {
+            Text(text)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(
+                    LinearGradient(
+                        colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+        } else {
+            Text(text)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(Color(UIColor.secondarySystemBackground))
+                .foregroundStyle(.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
     }
 }
 
@@ -571,12 +581,6 @@ private struct ImageGridView: View {
     private var cols: Int { min(images.count, 2) }
     private var imgSize: CGSize {
         images.count == 1 ? CGSize(width: 200, height: 160) : CGSize(width: 95, height: 95)
-    }
-    private var bg: LinearGradient {
-        isUser
-            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                             startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -594,7 +598,11 @@ private struct ImageGridView: View {
             }
         }
         .padding(4)
-        .background(bg)
+        .background(
+            isUser
+                ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
+                : LinearGradient(colors: [Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
@@ -605,10 +613,14 @@ private struct TypingIndicator: View {
     @State private var phase = 0
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
+        HStack(alignment: .bottom, spacing: 10) {
             ZStack {
-                Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 30, height: 30)
-                Text("N").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(BrandConfig.brand)
+                Circle()
+                    .fill(BrandConfig.brand)
+                    .frame(width: 32, height: 32)
+                Text("N")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
             }
             HStack(spacing: 4) {
                 ForEach(0..<3) { i in
@@ -618,10 +630,9 @@ private struct TypingIndicator: View {
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(BrandConfig.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1))
-            Spacer(minLength: 64)
+            .background(Color(UIColor.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            Spacer(minLength: 60)
         }
         .onAppear { phase = 1 }
     }
@@ -769,19 +780,19 @@ struct ModelPickerView: View {
                             }
                             .padding(14)
                             .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(isSelected ? BrandConfig.brand.opacity(0.06) : BrandConfig.cardBackground)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(isSelected ? BrandConfig.brand.opacity(0.06) : Color(UIColor.secondarySystemBackground))
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(isSelected ? BrandConfig.brand.opacity(0.3) : BrandConfig.separator, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(isSelected ? BrandConfig.brand.opacity(0.3) : Color(UIColor.separator), lineWidth: 1)
                             )
                         }
                     }
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
             }
-            .background(BrandConfig.backgroundColor)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(lang.t("モデルを選択", en: "Select Model", zh: "选择模型", ko: "모델 선택"))
             .navigationBarTitleDisplayMode(.inline)
         }

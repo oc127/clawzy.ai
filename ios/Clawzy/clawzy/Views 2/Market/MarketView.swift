@@ -44,14 +44,19 @@ struct MarketView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Layer 1: Normal content
             NavigationStack {
                 VStack(spacing: 0) {
-                    Picker("", selection: $selectedTab) {
-                        Text(lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿")).tag(0)
-                        Text(lang.t("プラグイン",   en: "Plugins",   zh: "插件", ko: "플러그인")).tag(1)
+                    // Tab switcher
+                    HStack(spacing: 0) {
+                        TabSwitchButton(
+                            title: lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿"),
+                            isSelected: selectedTab == 0
+                        ) { withAnimation { selectedTab = 0 } }
+                        TabSwitchButton(
+                            title: lang.t("プラグイン", en: "Plugins", zh: "插件", ko: "플러그인"),
+                            isSelected: selectedTab == 1
+                        ) { withAnimation { selectedTab = 1 } }
                     }
-                    .pickerStyle(.segmented)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                     .padding(.bottom, 4)
@@ -62,7 +67,7 @@ struct MarketView: View {
                         pluginsTab
                     }
                 }
-                .background(BrandConfig.backgroundColor)
+                .background(Color(UIColor.systemBackground))
                 .navigationTitle(lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"))
                 .overlay(alignment: .bottom) {
                     if let msg = toastMessage {
@@ -74,26 +79,24 @@ struct MarketView: View {
                 .animation(.easeInOut(duration: 0.25), value: toastMessage)
             }
 
-            // Layer 2: Plugin popup at TOP
+            // Plugin popup
             if let plugin = selectedPlugin {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .onTapGesture {
                         if !isConfirmInstalling { selectedPlugin = nil }
                     }
-
                 popupCard(plugin: plugin)
                     .padding(.top, 80)
             }
 
-            // Layer 3: Template popup at TOP
+            // Template popup
             if let template = selectedTemplate {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .onTapGesture {
                         if !isConfirmAdding { selectedTemplate = nil }
                     }
-
                 templatePopupCard(template: template)
                     .padding(.top, 80)
             }
@@ -107,7 +110,9 @@ struct MarketView: View {
         }
     }
 
-    // MARK: - Popup card
+    // MARK: - Tab switch button
+
+    // MARK: - Popup card (plugin)
 
     @ViewBuilder
     private func popupCard(plugin: ClawHubPlugin) -> some View {
@@ -174,18 +179,18 @@ struct MarketView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(isConfirmInstalling)
         }
         .padding(24)
         .frame(width: 320)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .black.opacity(0.20), radius: 28, y: 10)
     }
 
-    // MARK: - Template popup card
+    // MARK: - Popup card (template)
 
     @ViewBuilder
     private func templatePopupCard(template: AppTemplate) -> some View {
@@ -264,15 +269,15 @@ struct MarketView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(isConfirmAdding)
         }
         .padding(24)
         .frame(width: 320)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .black.opacity(0.20), radius: 28, y: 10)
     }
 
     // MARK: - Templates tab
@@ -290,15 +295,17 @@ struct MarketView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 0) {
+                        // Category chips
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 ForEach(categories, id: \.self) { cat in
                                     Button { withAnimation { selectedCategory = cat } } label: {
+                                        let isSelected = selectedCategory == cat || (selectedCategory.isEmpty && cat == allLabel)
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
-                                            .font(.footnote).fontWeight(.medium)
-                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
-                                            .padding(.horizontal, 14).padding(.vertical, 8)
-                                            .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
+                                            .font(.footnote).fontWeight(.semibold)
+                                            .foregroundStyle(isSelected ? .white : .primary)
+                                            .padding(.horizontal, 16).padding(.vertical, 8)
+                                            .background(isSelected ? BrandConfig.brand : Color(UIColor.systemGray5))
                                             .clipShape(Capsule())
                                     }
                                 }
@@ -306,7 +313,7 @@ struct MarketView: View {
                             .padding(.horizontal, 16).padding(.vertical, 12)
                         }
 
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                             ForEach(filteredTemplates) { t in
                                 TemplateCard(template: t, agentService: agentService) {
                                     selectedTemplate = t
@@ -327,10 +334,10 @@ struct MarketView: View {
 
     private var skeletonGrid: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(0..<6, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(BrandConfig.disabledGray)
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(UIColor.systemGray5))
                         .frame(height: 180)
                 }
             }
@@ -380,6 +387,7 @@ struct MarketView: View {
 
     private var pluginsTab: some View {
         VStack(spacing: 0) {
+            // Search bar
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -397,12 +405,12 @@ struct MarketView: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(BrandConfig.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(UIColor.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
             .onChange(of: searchText) { _, _ in triggerSearch() }
 
             if clawHubService.isLoading && clawHubService.plugins.isEmpty {
@@ -419,7 +427,7 @@ struct MarketView: View {
                 emptyState(
                     icon: "tray",
                     title: lang.t("プラグインが見つかりません", en: "No plugins found",         zh: "未找到插件",       ko: "플러그인 없음"),
-                    subtitle: lang.t("別のキーワードで検索してみてください",          en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
+                    subtitle: lang.t("別のキーワードで検索してみてください", en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
                 )
             } else {
                 ScrollView {
@@ -519,6 +527,37 @@ struct MarketView: View {
     }
 }
 
+// MARK: - Tab switch button
+
+private struct TabSwitchButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline).fontWeight(.semibold)
+                .foregroundStyle(isSelected ? BrandConfig.brand : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    VStack {
+                        Spacer()
+                        if isSelected {
+                            BrandConfig.brand
+                                .frame(height: 2)
+                                .clipShape(Capsule())
+                        } else {
+                            Color.clear.frame(height: 2)
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Template Card
 
 private struct TemplateCard: View {
@@ -572,19 +611,23 @@ private struct TemplateCard: View {
                          : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추가"))
                         .font(.caption).fontWeight(.medium)
                 }
-                .foregroundStyle(alreadyAdded ? .secondary : BrandConfig.brand)
+                .foregroundStyle(alreadyAdded ? .secondary : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(alreadyAdded ? BrandConfig.disabledGray : BrandConfig.brand.opacity(0.09))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .background(alreadyAdded ? Color(UIColor.systemGray5) : BrandConfig.brand)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .disabled(alreadyAdded)
         }
         .padding(14)
         .frame(height: 180)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color(UIColor.separator), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -609,13 +652,13 @@ private struct PluginCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.down.circle").font(.caption.bold())
                         Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
-                            .font(.caption).fontWeight(.medium)
+                            .font(.caption).fontWeight(.semibold)
                     }
-                    .foregroundStyle(BrandConfig.brand)
+                    .foregroundStyle(.white)
                     .frame(minWidth: 80)
                     .padding(.vertical, 6).padding(.horizontal, 10)
-                    .background(BrandConfig.brand.opacity(0.09))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .background(BrandConfig.brand)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
 
@@ -644,10 +687,14 @@ private struct PluginCard: View {
                 Spacer()
             }
         }
-        .padding(14)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .padding(16)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color(UIColor.separator), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 }
 

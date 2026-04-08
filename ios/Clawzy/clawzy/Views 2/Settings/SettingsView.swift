@@ -43,150 +43,39 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if let user = authManager.currentUser {
-                    Section {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(BrandConfig.brand.opacity(0.12))
-                                    .frame(width: 54, height: 54)
-                                Text(String(user.name.prefix(1)).uppercased())
-                                    .font(.title2).fontWeight(.bold)
-                                    .foregroundStyle(BrandConfig.brand)
-                            }
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(user.name).fontWeight(.semibold)
-                                Text(user.email).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Profile card
+                    if let user = authManager.currentUser {
+                        profileCard(user: user)
+                        creditsCard(user: user)
                     }
 
-                    Section(lang.t("クレジット", en: "Credits", zh: "点数", ko: "크레딧")) {
-                        HStack {
-                            Label(lang.t("残高", en: "Balance", zh: "余额", ko: "잔액"),
-                                  systemImage: "bolt.fill")
-                            Spacer()
-                            Text("\(user.creditBalance)")
-                                .fontWeight(.bold)
-                                .foregroundStyle(BrandConfig.brand)
-                        }
-                    }
-
-                    // Installed plugins — show for each agent
+                    // Agent management
                     if !agentService.agents.isEmpty {
-                        Section(lang.t("エージェント管理", en: "Agent Management", zh: "助手管理", ko: "에이전트 관리")) {
-                            ForEach(agentService.agents) { agent in
-                                NavigationLink {
-                                    InstalledPluginsView(agent: agent)
-                                } label: {
-                                    Label(
-                                        lang.t("インストール済みプラグイン", en: "Installed Plugins", zh: "已安装插件", ko: "설치된 플러그인")
-                                        + " — " + agent.name,
-                                        systemImage: "puzzlepiece.extension"
-                                    )
-                                }
-                            }
-                        }
+                        agentManagementCard
                     }
-                }
 
-                Section(lang.t("外観", en: "Appearance", zh: "外观", ko: "외관")) {
-                    HStack {
-                        Label(lang.t("テーマ", en: "Theme", zh: "主题", ko: "테마"),
-                              systemImage: "circle.lefthalf.filled")
-                        Spacer()
-                        Picker("", selection: $colorScheme) {
-                            Text(lang.t("自動", en: "Auto", zh: "自动", ko: "자동")).tag("system")
-                            Image(systemName: "sun.max.fill").tag("light")
-                            Image(systemName: "moon.fill").tag("dark")
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 120)
-                    }
-                }
+                    // Appearance
+                    appearanceCard
 
-                Section(lang.t("言語", en: "Language", zh: "语言", ko: "언어")) {
-                    Picker(selection: Binding(
-                        get: { lang.current },
-                        set: { lang.current = $0 }
-                    )) {
-                        ForEach(AppLanguage.allCases) { language in
-                            HStack {
-                                Text(language.badge)
-                                    .font(.caption.bold())
-                                    .foregroundStyle(BrandConfig.brand)
-                                    .frame(width: 28, height: 20)
-                                    .background(BrandConfig.brand.opacity(0.10))
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                                Text(language.localName)
-                            }
-                            .tag(language.rawValue)
-                        }
-                    } label: {
-                        Label(
-                            AppLanguage(rawValue: lang.current)?.localName ?? "日本語",
-                            systemImage: "globe"
-                        )
-                    }
-                    .pickerStyle(.navigationLink)
-                }
+                    // Language
+                    languageCard
 
-                Section(lang.t("データ", en: "Data", zh: "数据", ko: "데이터")) {
-                    Button {
-                        Task { await exportUserData() }
-                    } label: {
-                        HStack {
-                            if isExporting {
-                                ProgressView()
-                                    .padding(.trailing, 4)
-                            } else {
-                                Label(lang.t("データをエクスポート", en: "Export Data", zh: "导出数据", ko: "데이터 내보내기"),
-                                      systemImage: "square.and.arrow.up")
-                            }
-                        }
-                        .foregroundStyle(BrandConfig.brand)
-                    }
-                    .disabled(isExporting)
-                    .sheet(isPresented: $showExportShare) {
-                        if let data = exportData {
-                            ShareSheet(items: [data as Any])
-                        }
-                    }
-                }
+                    // Data
+                    dataCard
 
-                Section(lang.t("このアプリについて", en: "About", zh: "关于", ko: "앱 정보")) {
-                    HStack {
-                        Label(lang.t("バージョン", en: "Version", zh: "版本", ko: "버전"),
-                              systemImage: "info.circle")
-                        Spacer()
-                        Text("1.0.0").foregroundStyle(.secondary)
-                    }
-                    Link(destination: URL(string: BrandConfig.privacyURL)!) {
-                        Label(lang.t("\(BrandConfig.appName) を開く", en: "Open \(BrandConfig.appName)", zh: "打开 \(BrandConfig.appName)", ko: "\(BrandConfig.appName) 열기"), systemImage: "safari")
-                            .foregroundStyle(BrandConfig.brand)
-                    }
-                    Link(destination: URL(string: BrandConfig.termsURL)!) {
-                        Label(lang.t("利用規約", en: "Terms", zh: "使用条款", ko: "이용약관"),
-                              systemImage: "doc.text")
-                        .foregroundStyle(BrandConfig.brand)
-                    }
-                }
+                    // About
+                    aboutCard
 
-                Section {
-                    Button(role: .destructive) {
-                        authManager.logout()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Label(lang.t("ログアウト", en: "Logout", zh: "退出登录", ko: "로그아웃"),
-                                  systemImage: "rectangle.portrait.and.arrow.right")
-                            Spacer()
-                        }
-                    }
+                    // Logout
+                    logoutCard
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 40)
             }
+            .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle(lang.t("設定", en: "Settings", zh: "设置", ko: "설정"))
             .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
                    isPresented: Binding(get: { exportError != nil },
@@ -194,6 +83,272 @@ struct SettingsView: View {
                 Button(lang.t("OK", en: "OK", zh: "确定", ko: "확인")) { exportError = nil }
             } message: {
                 Text(exportError ?? "")
+            }
+        }
+    }
+
+    // MARK: - Section cards
+
+    private func profileCard(user: User) -> some View {
+        SettingsCard {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(BrandConfig.brand.opacity(0.12))
+                        .frame(width: 60, height: 60)
+                    Text(String(user.name.prefix(1)).uppercased())
+                        .font(.title2).fontWeight(.bold)
+                        .foregroundStyle(BrandConfig.brand)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(user.name)
+                        .font(.headline).fontWeight(.semibold)
+                    Text(user.email)
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(16)
+        }
+    }
+
+    private func creditsCard(user: User) -> some View {
+        SettingsCard {
+            VStack(spacing: 0) {
+                SettingsSectionHeader(
+                    title: lang.t("クレジット", en: "Credits", zh: "点数", ko: "크레딧"),
+                    icon: "bolt.fill",
+                    color: Color(red: 1.0, green: 0.596, blue: 0.0)
+                )
+                Divider().padding(.horizontal, 16)
+                HStack {
+                    Text(lang.t("残高", en: "Balance", zh: "余额", ko: "잔액"))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text("\(user.creditBalance)")
+                        .font(.title3).fontWeight(.bold)
+                        .foregroundStyle(BrandConfig.brand)
+                    Text("pts")
+                        .font(.caption).fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    private var agentManagementCard: some View {
+        SettingsCard {
+            VStack(spacing: 0) {
+                SettingsSectionHeader(
+                    title: lang.t("エージェント管理", en: "Agent Management", zh: "助手管理", ko: "에이전트 관리"),
+                    icon: "person.crop.circle.fill",
+                    color: Color(red: 0.129, green: 0.588, blue: 0.953)
+                )
+                ForEach(Array(agentService.agents.enumerated()), id: \.element.id) { index, agent in
+                    if index > 0 { Divider().padding(.horizontal, 16) }
+                    NavigationLink {
+                        InstalledPluginsView(agent: agent)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text("🤖").font(.title3)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(agent.name)
+                                    .font(.subheadline).fontWeight(.medium)
+                                    .foregroundStyle(.primary)
+                                Text(lang.t("インストール済みプラグイン", en: "Installed Plugins", zh: "已安装插件", ko: "설치된 플러그인"))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption).fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(16)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var appearanceCard: some View {
+        SettingsCard {
+            VStack(spacing: 0) {
+                SettingsSectionHeader(
+                    title: lang.t("外観", en: "Appearance", zh: "外观", ko: "외관"),
+                    icon: "paintbrush.fill",
+                    color: Color(red: 0.612, green: 0.153, blue: 0.690)
+                )
+                Divider().padding(.horizontal, 16)
+                HStack {
+                    Text(lang.t("テーマ", en: "Theme", zh: "主题", ko: "테마"))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Picker("", selection: $colorScheme) {
+                        Text(lang.t("自動", en: "Auto", zh: "自动", ko: "자동")).tag("system")
+                        Image(systemName: "sun.max.fill").tag("light")
+                        Image(systemName: "moon.fill").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 130)
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    private var languageCard: some View {
+        SettingsCard {
+            VStack(spacing: 0) {
+                SettingsSectionHeader(
+                    title: lang.t("言語", en: "Language", zh: "语言", ko: "언어"),
+                    icon: "globe",
+                    color: Color(red: 0.298, green: 0.686, blue: 0.314)
+                )
+                Divider().padding(.horizontal, 16)
+                NavigationLink {
+                    languagePickerView
+                } label: {
+                    HStack {
+                        Text(AppLanguage(rawValue: lang.current)?.localName ?? "日本語")
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption).fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(16)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var languagePickerView: some View {
+        List {
+            ForEach(AppLanguage.allCases) { language in
+                Button {
+                    lang.current = language.rawValue
+                } label: {
+                    HStack(spacing: 12) {
+                        Text(language.badge)
+                            .font(.caption.bold())
+                            .foregroundStyle(BrandConfig.brand)
+                            .frame(width: 32, height: 22)
+                            .background(BrandConfig.brand.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        Text(language.localName)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if lang.current == language.rawValue {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(BrandConfig.brand)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle(lang.t("言語", en: "Language", zh: "语言", ko: "언어"))
+    }
+
+    private var dataCard: some View {
+        SettingsCard {
+            VStack(spacing: 0) {
+                SettingsSectionHeader(
+                    title: lang.t("データ", en: "Data", zh: "数据", ko: "데이터"),
+                    icon: "externaldrive.fill",
+                    color: Color(red: 0.914, green: 0.118, blue: 0.388)
+                )
+                Divider().padding(.horizontal, 16)
+                Button {
+                    Task { await exportUserData() }
+                } label: {
+                    HStack {
+                        if isExporting {
+                            ProgressView().padding(.trailing, 4)
+                            Text(lang.t("エクスポート中...", en: "Exporting...", zh: "导出中...", ko: "내보내는 중..."))
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(lang.t("データをエクスポート", en: "Export Data", zh: "导出数据", ko: "데이터 내보내기"))
+                                .foregroundStyle(BrandConfig.brand)
+                        }
+                        Spacer()
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundStyle(BrandConfig.brand)
+                    }
+                    .padding(16)
+                }
+                .buttonStyle(.plain)
+                .disabled(isExporting)
+                .sheet(isPresented: $showExportShare) {
+                    if let data = exportData {
+                        ShareSheet(items: [data as Any])
+                    }
+                }
+            }
+        }
+    }
+
+    private var aboutCard: some View {
+        SettingsCard {
+            VStack(spacing: 0) {
+                SettingsSectionHeader(
+                    title: lang.t("このアプリについて", en: "About", zh: "关于", ko: "앱 정보"),
+                    icon: "info.circle.fill",
+                    color: Color(red: 0.129, green: 0.588, blue: 0.953)
+                )
+                Divider().padding(.horizontal, 16)
+                HStack {
+                    Text(lang.t("バージョン", en: "Version", zh: "版本", ko: "버전"))
+                    Spacer()
+                    Text("1.0.0").foregroundStyle(.secondary)
+                }
+                .padding(16)
+
+                Divider().padding(.horizontal, 16)
+
+                Link(destination: URL(string: BrandConfig.privacyURL)!) {
+                    HStack {
+                        Text(lang.t("\(BrandConfig.appName) を開く", en: "Open \(BrandConfig.appName)", zh: "打开 \(BrandConfig.appName)", ko: "\(BrandConfig.appName) 열기"))
+                            .foregroundStyle(BrandConfig.brand)
+                        Spacer()
+                        Image(systemName: "safari")
+                            .foregroundStyle(BrandConfig.brand)
+                    }
+                    .padding(16)
+                }
+
+                Divider().padding(.horizontal, 16)
+
+                Link(destination: URL(string: BrandConfig.termsURL)!) {
+                    HStack {
+                        Text(lang.t("利用規約", en: "Terms", zh: "使用条款", ko: "이용약관"))
+                            .foregroundStyle(BrandConfig.brand)
+                        Spacer()
+                        Image(systemName: "doc.text")
+                            .foregroundStyle(BrandConfig.brand)
+                    }
+                    .padding(16)
+                }
+            }
+        }
+    }
+
+    private var logoutCard: some View {
+        SettingsCard {
+            Button(role: .destructive) {
+                authManager.logout()
+            } label: {
+                HStack {
+                    Spacer()
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                    Text(lang.t("ログアウト", en: "Logout", zh: "退出登录", ko: "로그아웃"))
+                        .fontWeight(.semibold)
+                    Spacer()
+                }
+                .padding(16)
+                .foregroundStyle(.red)
             }
         }
     }
@@ -219,6 +374,47 @@ struct SettingsView: View {
         } catch {
             await MainActor.run { exportError = error.localizedDescription }
         }
+    }
+}
+
+// MARK: - Reusable card container
+
+private struct SettingsCard<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content()
+        }
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Section header
+
+private struct SettingsSectionHeader: View {
+    let title: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(color.opacity(0.12))
+                    .frame(width: 32, height: 32)
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(color)
+            }
+            Text(title)
+                .font(.subheadline).fontWeight(.semibold)
+                .foregroundStyle(.primary)
+            Spacer()
+        }
+        .padding(16)
     }
 }
 
