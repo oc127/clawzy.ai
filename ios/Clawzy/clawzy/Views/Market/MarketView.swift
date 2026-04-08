@@ -179,7 +179,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmInstalling {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
                     }
@@ -188,7 +188,7 @@ struct MarketView: View {
                          : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -268,7 +268,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmAdding {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "plus.circle.fill")
                     }
@@ -277,7 +277,7 @@ struct MarketView: View {
                          : lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -342,7 +342,7 @@ struct MarketView: View {
                                     } label: {
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
                                             .font(.footnote).fontWeight(.medium)
-                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
+                                            .foregroundStyle(selectedCategory == cat ? Color.white : Color.primary)
                                             .padding(.horizontal, 14).padding(.vertical, 8)
                                             .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
                                             .clipShape(Capsule())
@@ -636,7 +636,7 @@ private struct TemplateCard: View {
                          : lang.t("インストール", en: "Install", zh: "安装",   ko: "설치"))
                         .font(.caption).fontWeight(.semibold)
                 }
-                .foregroundStyle(alreadyAdded ? .secondary : .white)
+                .foregroundStyle(alreadyAdded ? Color.secondary : Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(alreadyAdded ? BrandConfig.disabledGray : BrandConfig.brand)
@@ -676,7 +676,7 @@ private struct PluginCard: View {
                         Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
                             .font(.caption).fontWeight(.semibold)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.white)
                     .padding(.vertical, 6).padding(.horizontal, 10)
                     .background(BrandConfig.brand)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -723,7 +723,7 @@ private struct ToastView: View {
     var body: some View {
         Text(message)
             .font(.footnote).fontWeight(.medium)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.white)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(isError ? Color.red.opacity(0.9) : Color.green.opacity(0.85))
             .clipShape(Capsule())
