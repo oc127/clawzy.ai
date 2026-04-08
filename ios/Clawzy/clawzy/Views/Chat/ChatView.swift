@@ -337,23 +337,26 @@ struct ChatView: View {
                     }
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 26))
+                        .font(.system(size: 30))
                         .foregroundStyle(attachments.isEmpty ? BrandConfig.brand.opacity(0.8) : BrandConfig.brand)
+                        .frame(width: 32, height: 32)
                 }
+                .accessibilityLabel(lang.t("添付", en: "Attach", zh: "附件", ko: "첨부"))
 
-                // 🎵 Skills button
+                // N Skills button (32pt)
                 Button {
                     showSkillsPanel = true
                 } label: {
                     Circle()
                         .fill(BrandConfig.brand)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 32, height: 32)
                         .overlay(
                             Text("N")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         )
                 }
+                .accessibilityLabel(lang.t("スキル", en: "Skills", zh: "技能", ko: "스킬"))
 
                 TextField(
                     lang.t("メッセージを入力...", en: "Type a message...", zh: "输入消息...", ko: "메시지 입력..."),

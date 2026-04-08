@@ -50,8 +50,9 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // MARK: アカウント
                 if let user = authManager.currentUser {
-                    Section {
+                    Section(lang.t("アカウント", en: "Account", zh: "账户", ko: "계정")) {
                         HStack(spacing: 14) {
                             ZStack {
                                 Circle()
@@ -67,37 +68,22 @@ struct SettingsView: View {
                             }
                         }
                         .padding(.vertical, 4)
-                    }
 
-                    Section(lang.t("クレジット", en: "Credits", zh: "点数", ko: "크레딧")) {
-                        HStack {
-                            Label(lang.t("残高", en: "Balance", zh: "余额", ko: "잔액"),
-                                  systemImage: "bolt.fill")
-                            Spacer()
-                            Text("\(user.creditBalance)")
-                                .fontWeight(.bold)
-                                .foregroundStyle(BrandConfig.brand)
-                        }
-                    }
-
-                    // Installed plugins — show for each agent
-                    if !agentService.agents.isEmpty {
-                        Section(lang.t("エージェント管理", en: "Agent Management", zh: "助手管理", ko: "에이전트 관리")) {
-                            ForEach(agentService.agents) { agent in
-                                NavigationLink {
-                                    InstalledPluginsView(agent: agent)
-                                } label: {
-                                    Label(
-                                        lang.t("インストール済みプラグイン", en: "Installed Plugins", zh: "已安装插件", ko: "설치된 플러그인")
-                                        + " — " + agent.name,
-                                        systemImage: "puzzlepiece.extension"
-                                    )
-                                }
+                        // Credits balance row
+                        NavigationLink { CreditsShopView() } label: {
+                            HStack {
+                                Label(lang.t("クレジット残高", en: "Credits", zh: "点数余额", ko: "크레딧 잔액"),
+                                      systemImage: "bolt.fill")
+                                Spacer()
+                                Text("\(user.creditBalance)")
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(BrandConfig.brand)
                             }
                         }
                     }
                 }
 
+                // MARK: 連携
                 Section(lang.t("連携", en: "Integrations", zh: "集成", ko: "연동")) {
                     NavigationLink {
                         ConnectorsView()
@@ -107,6 +93,7 @@ struct SettingsView: View {
                     }
                 }
 
+                // MARK: ツール
                 Section(lang.t("ツール", en: "Tools", zh: "工具", ko: "도구")) {
                     NavigationLink {
                         CronTasksView()
@@ -114,24 +101,89 @@ struct SettingsView: View {
                         Label(lang.t("定時タスク", en: "Cron Tasks", zh: "定时任务", ko: "크론 작업"),
                               systemImage: "clock.badge.checkmark.fill")
                     }
-                }
 
-                Section(lang.t("外観", en: "Appearance", zh: "外观", ko: "외관")) {
-                    HStack {
-                        Label(lang.t("テーマ", en: "Theme", zh: "主题", ko: "테마"),
-                              systemImage: "circle.lefthalf.filled")
-                        Spacer()
-                        Picker("", selection: $colorScheme) {
-                            Text(lang.t("自動", en: "Auto", zh: "自动", ko: "자동")).tag("system")
-                            Image(systemName: "sun.max.fill").tag("light")
-                            Image(systemName: "moon.fill").tag("dark")
+                    // Installed plugins per agent
+                    if !agentService.agents.isEmpty {
+                        ForEach(agentService.agents) { agent in
+                            NavigationLink {
+                                InstalledPluginsView(agent: agent)
+                            } label: {
+                                Label(
+                                    lang.t("インストール済みプラグイン", en: "Installed Plugins", zh: "已安装插件", ko: "설치된 플러그인")
+                                    + " — " + agent.name,
+                                    systemImage: "puzzlepiece.extension"
+                                )
+                            }
                         }
-                        .pickerStyle(.segmented)
-                        .frame(width: 120)
                     }
                 }
 
-                Section(lang.t("言語", en: "Language", zh: "语言", ko: "언어")) {
+                // MARK: 安全
+                Section(lang.t("安全", en: "Security", zh: "安全", ko: "보안")) {
+                    Toggle(isOn: $envProtection) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(lang.t("PC環境保護", en: "Environment Protection", zh: "环境保护", ko: "환경 보호"))
+                                    .font(.subheadline).fontWeight(.medium)
+                                SecurityBadge(label: lang.t("Active Defense", en: "Active Defense", zh: "主动防御", ko: "능동 방어"),
+                                              color: BrandConfig.brand)
+                            }
+                            Text(lang.t(
+                                "エージェントがタスクを実行する際、フルプロセスのセキュリティ制御を適用",
+                                en: "Full-process security controls when an agent executes tasks",
+                                zh: "代理执行任务时应用完整的安全控制",
+                                ko: "에이전트가 작업을 실행할 때 전체 프로세스 보안 제어 적용"
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(BrandConfig.brand)
+
+                    Toggle(isOn: $dataProtection) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(lang.t("ユーザーデータ保護", en: "User Data Protection", zh: "用户数据保护", ko: "사용자 데이터 보호"))
+                                    .font(.subheadline).fontWeight(.medium)
+                                SecurityBadge(label: lang.t("Smart Detection", en: "Smart Detection", zh: "智能检测", ko: "스마트 감지"),
+                                              color: Color(UIColor.systemBlue))
+                            }
+                            Text(lang.t(
+                                "エージェントに送信されるデータを自動スキャンして個人情報を検出",
+                                en: "Automatically scans data sent to agents to detect personal information",
+                                zh: "自动扫描发送给代理的数据以检测个人信息",
+                                ko: "에이전트로 전송되는 데이터를 자동으로 스캔하여 개인 정보 감지"
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(BrandConfig.brand)
+
+                    Toggle(isOn: $skillScan) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(lang.t("スキルセキュリティスキャン", en: "Skill Security Scan", zh: "技能安全扫描", ko: "스킬 보안 스캔"))
+                                    .font(.subheadline).fontWeight(.medium)
+                                SecurityBadge(label: lang.t("Multi-layer Check", en: "Multi-layer Check", zh: "多层检查", ko: "다중 레이어 검사"),
+                                              color: Color(UIColor.systemGreen))
+                            }
+                            Text(lang.t(
+                                "スキルのインストール前にマルチレベルのセキュリティチェックを実行",
+                                en: "Runs multi-level security checks before installing skills",
+                                zh: "在安装技能之前运行多级安全检查",
+                                ko: "스킬 설치 전에 다단계 보안 검사 실행"
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(BrandConfig.brand)
+                }
+
+                // MARK: 外観（言語 + テーマ）
+                Section(lang.t("外観", en: "Appearance", zh: "外观", ko: "외관")) {
+                    // Language picker
                     Picker(selection: Binding(
                         get: { lang.current },
                         set: { lang.current = $0 }
@@ -155,22 +207,63 @@ struct SettingsView: View {
                         )
                     }
                     .pickerStyle(.navigationLink)
+
+                    // Theme picker
+                    HStack {
+                        Label(lang.t("テーマ", en: "Theme", zh: "主题", ko: "테마"),
+                              systemImage: "circle.lefthalf.filled")
+                        Spacer()
+                        Picker("", selection: $colorScheme) {
+                            Text(lang.t("自動", en: "Auto", zh: "自动", ko: "자동")).tag("system")
+                            Image(systemName: "sun.max.fill").tag("light")
+                            Image(systemName: "moon.fill").tag("dark")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 120)
+                    }
                 }
 
-                Section(lang.t("データ", en: "Data", zh: "数据", ko: "데이터")) {
+                // MARK: 関于
+                Section(lang.t("関于", en: "About", zh: "关于", ko: "앱 정보")) {
+                    HStack {
+                        Label(lang.t("バージョン", en: "Version", zh: "版本", ko: "버전"),
+                              systemImage: "info.circle")
+                        Spacer()
+                        Text("1.0.0")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Link(destination: URL(string: BrandConfig.privacyURL)!) {
+                        Label(lang.t("プライバシーポリシー", en: "Privacy Policy", zh: "隐私政策", ko: "개인정보 처리방침"),
+                              systemImage: "lock.shield")
+                            .foregroundStyle(BrandConfig.brand)
+                    }
+                    Link(destination: URL(string: BrandConfig.termsURL)!) {
+                        Label(lang.t("利用規約", en: "Terms of Service", zh: "使用条款", ko: "이용약관"),
+                              systemImage: "doc.text")
+                            .foregroundStyle(BrandConfig.brand)
+                    }
+                    Link(destination: URL(string: BrandConfig.privacyURL)!) {
+                        Label(lang.t("\(BrandConfig.appName) を開く", en: "Open \(BrandConfig.appName)", zh: "打开 \(BrandConfig.appName)", ko: "\(BrandConfig.appName) 열기"),
+                              systemImage: "safari")
+                            .foregroundStyle(BrandConfig.brand)
+                    }
+
+                    // Data export
                     Button {
                         Task { await exportUserData() }
                     } label: {
                         HStack {
                             if isExporting {
-                                ProgressView()
-                                    .padding(.trailing, 4)
+                                ProgressView().padding(.trailing, 4)
+                                Text(lang.t("エクスポート中...", en: "Exporting...", zh: "导出中...", ko: "내보내는 중..."))
+                                    .foregroundStyle(.secondary)
                             } else {
                                 Label(lang.t("データをエクスポート", en: "Export Data", zh: "导出数据", ko: "데이터 내보내기"),
                                       systemImage: "square.and.arrow.up")
+                                    .foregroundStyle(BrandConfig.brand)
                             }
                         }
-                        .foregroundStyle(BrandConfig.brand)
                     }
                     .disabled(isExporting)
                     .sheet(isPresented: $showExportShare) {
@@ -180,102 +273,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Section(lang.t("このアプリについて", en: "About", zh: "关于", ko: "앱 정보")) {
-                    HStack {
-                        Label(lang.t("バージョン", en: "Version", zh: "版本", ko: "버전"),
-                              systemImage: "info.circle")
-                        Spacer()
-                        Text("1.0.0").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Link(destination: URL(string: BrandConfig.privacyURL)!) {
-                        Label(lang.t("\(BrandConfig.appName) を開く", en: "Open \(BrandConfig.appName)", zh: "打开 \(BrandConfig.appName)", ko: "\(BrandConfig.appName) 열기"), systemImage: "safari")
-                            .foregroundStyle(BrandConfig.brand)
-                    }
-                    Link(destination: URL(string: BrandConfig.termsURL)!) {
-                        Label(lang.t("利用規約", en: "Terms", zh: "使用条款", ko: "이용약관"),
-                              systemImage: "doc.text")
-                        .foregroundStyle(BrandConfig.brand)
-                    }
-                }
-
-                // MARK: Security Section
-                Section(lang.t("セキュリティ", en: "Security", zh: "安全", ko: "보안")) {
-                    Toggle(isOn: $envProtection) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(lang.t("PC環境保護", en: "Environment Protection", zh: "环境保护", ko: "환경 보호"))
-                                    .font(.subheadline).fontWeight(.medium)
-                                Text(lang.t("Active Defense", en: "Active Defense", zh: "主动防御", ko: "능동 방어"))
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(BrandConfig.brand.opacity(0.12))
-                                    .foregroundStyle(BrandConfig.brand)
-                                    .clipShape(Capsule())
-                            }
-                            Text(lang.t(
-                                "エージェントがタスクを実行する際、フルプロセスのセキュリティ制御を適用",
-                                en: "Applies full-process security controls when an agent executes tasks",
-                                zh: "代理执行任务时应用完整的安全控制",
-                                ko: "에이전트가 작업을 실행할 때 전체 프로세스 보안 제어 적용"
-                            ))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                    .tint(BrandConfig.brand)
-
-                    Toggle(isOn: $dataProtection) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(lang.t("ユーザーデータ保護", en: "User Data Protection", zh: "用户数据保护", ko: "사용자 데이터 보호"))
-                                    .font(.subheadline).fontWeight(.medium)
-                                Text(lang.t("Smart Detection", en: "Smart Detection", zh: "智能检测", ko: "스마트 감지"))
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.blue.opacity(0.12))
-                                    .foregroundStyle(Color.blue)
-                                    .clipShape(Capsule())
-                            }
-                            Text(lang.t(
-                                "エージェントに送信されるデータを自動スキャンして個人情報を検出",
-                                en: "Automatically scans data sent to agents to detect personal information",
-                                zh: "自动扫描发送给代理的数据以检测个人信息",
-                                ko: "에이전트로 전송되는 데이터를 자동으로 스캔하여 개인 정보 감지"
-                            ))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                    .tint(BrandConfig.brand)
-
-                    Toggle(isOn: $skillScan) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(lang.t("スキルセキュリティスキャン", en: "Skill Security Scan", zh: "技能安全扫描", ko: "스킬 보안 스캔"))
-                                    .font(.subheadline).fontWeight(.medium)
-                                Text(lang.t("Multi-layer Check", en: "Multi-layer Check", zh: "多层检查", ko: "다중 레이어 검사"))
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.green.opacity(0.12))
-                                    .foregroundStyle(Color.green)
-                                    .clipShape(Capsule())
-                            }
-                            Text(lang.t(
-                                "スキルのインストール前にマルチレベルのセキュリティチェックを実行",
-                                en: "Runs multi-level security checks before installing skills",
-                                zh: "在安装技能之前运行多级安全检查",
-                                ko: "스킬 설치 전에 다단계 보안 검사 실행"
-                            ))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                    .tint(BrandConfig.brand)
-                }
-
+                // MARK: 危険ゾーン
                 Section {
                     Text(lang.t(
                         "すべての操作はシステム保護下で実行されます",
@@ -288,14 +286,14 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .listRowBackground(Color.clear)
 
+                    // Delete all data
                     Button(role: .destructive) {
                         showDeleteConfirm = true
                     } label: {
                         HStack {
                             Spacer()
                             if isDeletingData {
-                                ProgressView()
-                                    .padding(.trailing, 4)
+                                ProgressView().padding(.trailing, 4)
                             } else {
                                 Label(lang.t("すべてのデータを削除", en: "Delete All Data", zh: "删除所有数据", ko: "모든 데이터 삭제"),
                                       systemImage: "trash.fill")
@@ -304,9 +302,8 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(isDeletingData)
-                }
 
-                Section {
+                    // Logout
                     Button(role: .destructive) {
                         authManager.logout()
                     } label: {
@@ -317,13 +314,15 @@ struct SettingsView: View {
                             Spacer()
                         }
                     }
+                } header: {
+                    Text(lang.t("危険ゾーン", en: "Danger Zone", zh: "危险区域", ko: "위험 구역"))
                 }
             }
             .navigationTitle(lang.t("設定", en: "Settings", zh: "设置", ko: "설정"))
             .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
                    isPresented: Binding(get: { exportError != nil },
                                         set: { if !$0 { exportError = nil } })) {
-                Button(lang.t("OK", en: "OK", zh: "确定", ko: "확인")) { exportError = nil }
+                Button("OK") { exportError = nil }
             } message: {
                 Text(exportError ?? "")
             }
@@ -403,6 +402,23 @@ struct SettingsView: View {
         } catch {
             await MainActor.run { exportError = error.localizedDescription }
         }
+    }
+}
+
+// MARK: - Security badge
+
+private struct SecurityBadge: View {
+    let label: String
+    let color: Color
+
+    var body: some View {
+        Text(label)
+            .font(.caption2.bold())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
     }
 }
 
