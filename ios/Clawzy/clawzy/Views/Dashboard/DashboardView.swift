@@ -10,34 +10,14 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                Group {
-                    if agentService.isLoading && agentService.agents.isEmpty {
-                        ProgressView(lang.t("読み込み中...", en: "Loading...", zh: "加载中...", ko: "로딩 중..."))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if agentService.agents.isEmpty {
-                        EmptyAgentView { showCreateAgent = true }
-                    } else {
-                        agentList
-                    }
-                }
-
-                // Floating create button
-                if !agentService.agents.isEmpty {
-                    Button {
-                        showCreateAgent = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 56, height: 56)
-                            .background(BrandConfig.brand)
-                            .clipShape(Circle())
-                            .shadow(color: BrandConfig.brand.opacity(0.35), radius: 10, y: 4)
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
-                    .accessibilityLabel(lang.t("エージェントを作成", en: "Create Agent", zh: "创建助手", ko: "에이전트 만들기"))
+            Group {
+                if agentService.isLoading && agentService.agents.isEmpty {
+                    ProgressView(lang.t("読み込み中...", en: "Loading...", zh: "加载中...", ko: "로딩 중..."))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if agentService.agents.isEmpty {
+                    EmptyAgentView { showCreateAgent = true }
+                } else {
+                    agentList
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -55,9 +35,18 @@ struct DashboardView: View {
                     .buttonStyle(.plain)
                 }
 
-                // Trailing: health dot + credits badge
+                // Trailing: + create button, health dot, credits badge
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 8) {
+                        // Create agent button
+                        Button {
+                            showCreateAgent = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .accessibilityLabel(lang.t("エージェントを作成", en: "Create Agent", zh: "创建助手", ko: "에이전트 만들기"))
+
                         // Health status dot
                         Circle()
                             .fill(healthDotColor)
@@ -154,7 +143,7 @@ struct DashboardView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 16)
             }
-            .padding(.bottom, 96) // space for floating FAB
+            .padding(.bottom, 16)
         }
         .background(BrandConfig.backgroundColor)
     }
