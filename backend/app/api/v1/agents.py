@@ -133,7 +133,7 @@ async def list_agent_plugins(
 
     try:
         exit_code, output_bytes = await docker_manager.exec_in_container(
-            agent.container_id, ["openclaw", "plugins", "list", "--json"]
+            agent.container_id, ["npx", "clawhub", "list"]
         )
     except Exception as exc:
         logger.error("Docker exec error for agent %s: %s", agent_id, exc)
@@ -141,18 +141,15 @@ async def list_agent_plugins(
 
     output = (output_bytes or b"").decode("utf-8", errors="replace")
     plugins: list = []
-    try:
-        data = json.loads(output)
-        if isinstance(data, list):
-            plugins = data
-        elif isinstance(data, dict) and "plugins" in data:
-            plugins = data["plugins"]
-    except (json.JSONDecodeError, ValueError):
-        for line in output.strip().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                parts = line.split("@", 1)
-                plugins.append({"slug": parts[0], "version": parts[1] if len(parts) > 1 else "unknown"})
+    for line in output.strip().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if parts:
+            slug = parts[0]
+            version = parts[1] if len(parts) > 1 else None
+            plugins.append({"slug": slug, "name": slug.replace("-", " ").title(), "version": version})
 
     return {"plugins": plugins}
 

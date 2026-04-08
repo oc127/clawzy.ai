@@ -317,7 +317,7 @@ struct ChatView: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 6) {
+            HStack(alignment: .center, spacing: 8) {
                 // ⊕ Attach button
                 Menu {
                     Button {
@@ -333,24 +333,25 @@ struct ChatView: View {
                     Button {
                         showFilePicker = true
                     } label: {
-                        Label(lang.t("ファイルを選ぶ", en: "Choose File", zh: "选择文件", ko: "파일 선택"), systemImage: "doc")
+                        Label(lang.t("ファイルを選ぶ", en: "Choose File", zh: "选择文件", ko: "파일 選択"), systemImage: "doc")
                     }
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 26))
+                        .font(.system(size: 22))
                         .foregroundStyle(attachments.isEmpty ? BrandConfig.brand.opacity(0.8) : BrandConfig.brand)
+                        .frame(width: 32, height: 32)
                 }
 
-                // 🎵 Skills button
+                // N Skills button
                 Button {
                     showSkillsPanel = true
                 } label: {
                     Circle()
                         .fill(BrandConfig.brand)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 32, height: 32)
                         .overlay(
                             Text("N")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(.white)
                         )
                 }

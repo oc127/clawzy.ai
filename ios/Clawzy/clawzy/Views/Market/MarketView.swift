@@ -294,11 +294,12 @@ struct MarketView: View {
                             HStack(spacing: 8) {
                                 ForEach(categories, id: \.self) { cat in
                                     Button { withAnimation { selectedCategory = cat } } label: {
+                                        let isSelected = selectedCategory == cat || (cat == allLabel && selectedCategory.isEmpty)
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
                                             .font(.footnote).fontWeight(.medium)
-                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
+                                            .foregroundStyle(isSelected ? .white : .primary)
                                             .padding(.horizontal, 14).padding(.vertical, 8)
-                                            .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
+                                            .background(isSelected ? BrandConfig.brand : BrandConfig.disabledGray)
                                             .clipShape(Capsule())
                                     }
                                 }
@@ -400,7 +401,7 @@ struct MarketView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(BrandConfig.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .onChange(of: searchText) { _, _ in triggerSearch() }
@@ -583,7 +584,7 @@ private struct TemplateCard: View {
         .padding(14)
         .frame(height: 180)
         .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }
 }
