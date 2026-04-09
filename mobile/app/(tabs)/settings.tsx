@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   Modal, StyleSheet, Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage, type Locale } from "@/context/LanguageContext";
 import { colors, spacing, radius, typography } from "@/lib/theme";
@@ -32,6 +33,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { t, locale, setLocale, locales, labels, flags } = useLanguage();
   const [langModalVisible, setLangModalVisible] = useState(false);
@@ -47,13 +49,13 @@ export default function SettingsScreen() {
     free: colors.textMuted,
     starter: colors.success,
     pro: colors.primary,
-    team: "#8B5CF6",
+    team: colors.purple,
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Text style={styles.headerTitle}>{t.settings.title}</Text>
       </View>
 
@@ -116,7 +118,7 @@ export default function SettingsScreen() {
       {/* Language Modal */}
       <Modal visible={langModalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.sm }]}>
             <TouchableOpacity onPress={() => setLangModalVisible(false)}>
               <Text style={styles.modalCancel}>{t.common.cancel}</Text>
             </TouchableOpacity>
@@ -150,7 +152,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.white,
     paddingHorizontal: spacing.xl,
-    paddingTop: 60,
     paddingBottom: spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
   modal: { flex: 1, backgroundColor: colors.white },
   modalHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: spacing.xl, paddingTop: 60, paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl, paddingBottom: spacing.lg,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   modalCancel: { ...typography.base, color: colors.primary },

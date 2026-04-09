@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -33,6 +34,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
 export default function AgentChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -181,7 +183,7 @@ export default function AgentChatScreen() {
       keyboardVerticalOffset={0}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity
           onPress={() => {
             if (router.canGoBack()) router.back();
@@ -241,7 +243,7 @@ export default function AgentChatScreen() {
       </ScrollView>
 
       {/* Input */}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { paddingBottom: insets.bottom + spacing.sm }]}>
         <TextInput
           style={styles.textInput}
           placeholder={t.chat.placeholder}
@@ -273,7 +275,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: 56,
     paddingBottom: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
   bubbleRowUser: { justifyContent: "flex-end" },
   agentAvatar: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: colors.indigoLight,
     alignItems: "center", justifyContent: "center",
     marginBottom: 2,
   },
@@ -343,7 +344,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    paddingBottom: 28,
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,

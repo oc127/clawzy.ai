@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   markText: {
-    color: "#FFFFFF",
+    color: colors.white,
     fontWeight: "900",
     letterSpacing: -0.5,
   },
@@ -62,6 +62,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   claw: {
-    color: "#222222",
+    color: colors.text,
   },
 });

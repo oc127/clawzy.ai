@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLanguage } from "@/context/LanguageContext";
 import { colors, spacing, radius, typography } from "@/lib/theme";
 import { Card } from "@/components/ui/Card";
@@ -14,11 +15,12 @@ const MODELS = [
 ];
 
 export default function DiscoverScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useLanguage();
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Text style={styles.headerTitle}>{t.tabs.discover}</Text>
         <Text style={styles.headerSubtitle}>Explore AI models & skills</Text>
       </View>
@@ -54,7 +56,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.white,
     paddingHorizontal: spacing.xl,
-    paddingTop: 60,
     paddingBottom: spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,

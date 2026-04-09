@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   RefreshControl, StyleSheet, ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -42,6 +43,7 @@ function AgentRow({ agent }: { agent: Agent }) {
 }
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuth();
   const { t } = useLanguage();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -82,7 +84,7 @@ export default function DashboardScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Logo size="sm" />
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarText}>
@@ -109,7 +111,7 @@ export default function DashboardScreen() {
           label={t.dashboard.agents}
           value={`${runningAgents}/${agents.length}`}
           emoji="🤖"
-          bg="#EEF2FF"
+          bg={colors.indigoLight}
         />
       </View>
 
@@ -159,7 +161,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.xl,
-    paddingTop: 60,
     paddingBottom: spacing.lg,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.lg,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: colors.indigoLight,
     alignItems: "center",
     justifyContent: "center",
   },

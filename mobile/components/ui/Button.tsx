@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   danger: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.dangerLight,
   },
   disabled: { opacity: 0.5 },
   size_sm: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   text_primary: { color: colors.white },
   text_outline: { color: colors.text },
   text_ghost: { color: colors.text },
-  text_danger: { color: "#EF4444" },
+  text_danger: { color: colors.error },
   textSize_sm: { ...typography.sm },
   textSize_md: { ...typography.base },
   textSize_lg: { ...typography.md },

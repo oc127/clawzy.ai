@@ -81,8 +81,8 @@ async def create_agent(db: AsyncSession, user_id: str, name: str, model_name: st
         if docker_manager.wait_for_healthy(agent.id, timeout=30):
             agent.status = AgentStatus.running
         else:
-            logger.warning("Agent %s container started but not healthy yet", agent.id)
-            agent.status = AgentStatus.running  # still mark running, chat will use shared gateway as fallback
+            logger.warning("Agent %s container started but not healthy within timeout", agent.id)
+            agent.status = AgentStatus.error
     except Exception as e:
         logger.error("Failed to create container for agent %s: %s", agent.id, e)
         agent.status = AgentStatus.error

@@ -147,9 +147,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   errorBox: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: colors.errorBorder,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,

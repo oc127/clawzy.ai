@@ -98,33 +98,35 @@ async def subscribe_plan(
     if current_plan == body.plan:
         raise HTTPException(status_code=400, detail="You are already on this plan")
 
-    # Deactivate any existing active subscription
-    result = await db.execute(
-        select(Subscription).where(Subscription.user_id == user.id, Subscription.status == SubStatus.active)
-    )
-    for sub in result.scalars().all():
-        sub.status = SubStatus.canceled
+    # Use a savepoint so all billing changes are atomic
+    async with db.begin_nested():
+        # Deactivate any existing active subscription
+        result = await db.execute(
+            select(Subscription).where(Subscription.user_id == user.id, Subscription.status == SubStatus.active)
+        )
+        for sub in result.scalars().all():
+            sub.status = SubStatus.canceled
 
-    # Create new subscription
-    now = datetime.now(UTC)
-    new_sub = Subscription(
-        user_id=user.id,
-        plan=PlanType(body.plan),
-        status=SubStatus.active,
-        current_period_start=now,
-        credits_included=target_plan.credits_included,
-    )
-    db.add(new_sub)
+        # Create new subscription
+        now = datetime.now(UTC)
+        new_sub = Subscription(
+            user_id=user.id,
+            plan=PlanType(body.plan),
+            status=SubStatus.active,
+            current_period_start=now,
+            credits_included=target_plan.credits_included,
+        )
+        db.add(new_sub)
 
-    # Grant plan credits
-    user.credit_balance += target_plan.credits_included
-    tx = CreditTransaction(
-        user_id=user.id,
-        amount=target_plan.credits_included,
-        balance_after=user.credit_balance,
-        reason=CreditReason.subscription,
-    )
-    db.add(tx)
+        # Grant plan credits
+        user.credit_balance += target_plan.credits_included
+        tx = CreditTransaction(
+            user_id=user.id,
+            amount=target_plan.credits_included,
+            balance_after=user.credit_balance,
+            reason=CreditReason.subscription,
+        )
+        db.add(tx)
 
     await db.commit()
 

@@ -4,6 +4,7 @@ import {
   RefreshControl, StyleSheet, Alert, ActivityIndicator,
   KeyboardAvoidingView, Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
 import { getAgents, createAgent, deleteAgent, getModels, type Agent, type Model } from "@/lib/api";
@@ -61,6 +62,7 @@ function AgentCard({ agent, onDelete }: { agent: Agent; onDelete: () => void }) 
 }
 
 export default function AgentsScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [models, setModels] = useState<Model[]>([]);
@@ -137,7 +139,7 @@ export default function AgentsScreen() {
   return (
     <View style={styles.screen}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Text style={styles.headerTitle}>{t.agents.title}</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
           <Text style={styles.addBtnText}>+ {t.agents.newAgent}</Text>
@@ -172,7 +174,7 @@ export default function AgentsScreen() {
       {/* Create Agent Modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.sm }]}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>{t.common.cancel}</Text>
             </TouchableOpacity>
@@ -248,7 +250,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.xl,
-    paddingTop: 60,
     paddingBottom: spacing.lg,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: { ...typography.sm, ...typography.bold, color: colors.white },
   content: { padding: spacing.xl, gap: spacing.md },
-  empty: { alignItems: "center", gap: spacing.sm, paddingTop: 60 },
+  empty: { alignItems: "center", gap: spacing.sm, paddingTop: spacing.xxxl },
   emptyTitle: { ...typography.lg, ...typography.bold, color: colors.text },
   emptySubtitle: { ...typography.base, color: colors.textSecondary, textAlign: "center" },
   agentCard: { gap: 0, padding: 0, overflow: "hidden" },
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
   agentCardHeader: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: 8 },
   agentIconBig: {
     width: 48, height: 48, borderRadius: radius.lg,
-    backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center",
+    backgroundColor: colors.indigoLight, alignItems: "center", justifyContent: "center",
   },
   agentName: { ...typography.md, ...typography.bold, color: colors.text },
   agentModel: { ...typography.xs, color: colors.textMuted, marginTop: 2 },
@@ -298,7 +299,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.xl,
-    paddingTop: 60,
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,

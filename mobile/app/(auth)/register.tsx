@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, StyleSheet,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -13,6 +14,7 @@ import { Logo } from "@/components/Logo";
 import { colors, spacing, radius, typography } from "@/lib/theme";
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
   const { register } = useAuth();
   const { t } = useLanguage();
   const [name, setName] = useState("");
@@ -41,7 +43,7 @@ export default function RegisterScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + spacing.sm }]}
         keyboardShouldPersistTaps="handled"
       >
         <TouchableOpacity
@@ -137,7 +139,6 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: 56,
     paddingBottom: 40,
   },
   topBack: {
@@ -173,9 +174,9 @@ const styles = StyleSheet.create({
   title: { ...typography.xl, ...typography.extrabold, color: colors.text, marginBottom: 4 },
   subtitle: { ...typography.base, color: colors.textSecondary, marginBottom: 24 },
   errorBox: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: colors.errorBorder,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,

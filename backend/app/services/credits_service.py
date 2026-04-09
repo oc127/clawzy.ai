@@ -43,10 +43,17 @@ async def deduct_credits(
     tokens_output: int,
     agent_id: str | None = None,
 ) -> int:
-    """Deduct credits from user balance. Returns credits used."""
+    """Deduct credits from user balance. Returns credits used.
+
+    Uses SELECT ... FOR UPDATE to prevent concurrent deductions from
+    causing double-debit or overdraft via race conditions.
+    """
     credits_used = calculate_credits(model_name, tokens_input, tokens_output)
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    # Lock the user row to prevent concurrent deductions
+    result = await db.execute(
+        select(User).where(User.id == user_id).with_for_update()
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise ValueError("User not found")
