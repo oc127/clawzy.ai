@@ -99,7 +99,7 @@ export default function LoginScreen() {
 
         {/* Bottom decoration */}
         <View style={styles.statsRow}>
-          {[["500", "Free credits"], ["6+", "AI models"], ["24/7", "Uptime"]].map(([val, label]) => (
+          {[["500", t.auth.login.stat1], ["6+", t.auth.login.stat2], ["24/7", t.auth.login.stat3]].map(([val, label]) => (
             <View key={label} style={styles.statItem}>
               <Text style={styles.statVal}>{val}</Text>
               <Text style={styles.statLabel}>{label}</Text>

@@ -121,7 +121,7 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>{t.tabs.agents}</Text>
           <Link href="/agents" asChild>
             <TouchableOpacity>
-              <Text style={styles.seeAll}>See all →</Text>
+              <Text style={styles.seeAll}>{t.dashboard.seeAll}</Text>
             </TouchableOpacity>
           </Link>
         </View>

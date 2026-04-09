@@ -195,13 +195,13 @@ export default function AgentsScreen() {
           >
             <Input
               label={t.agents.name}
-              placeholder="My Coding Assistant"
+              placeholder={t.agents.namePlaceholder}
               value={form.name}
               onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
             />
             <Input
               label={t.agents.description}
-              placeholder="What does this agent do?"
+              placeholder={t.agents.descPlaceholder}
               value={form.description}
               onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
               multiline

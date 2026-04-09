@@ -84,6 +84,9 @@ const ko: Translations = {
   footer: {
     login: "로그인",
     signup: "회원가입",
+    terms: "이용약관",
+    privacy: "개인정보처리방침",
+    tokushoho: "특정상거래법",
     rights: "모든 권리 보유.",
   },
   auth: {
@@ -113,6 +116,10 @@ const ko: Translations = {
       perk2: "6개 이상의 AI 모델 이용",
       perk3: "신용카드 불필요",
       leftTitle: "NipponClaw에 참여하세요",
+      agreePrefix: "가입하면",
+      termsLink: "이용약관",
+      agreeAnd: "및",
+      privacyLink: "개인정보처리방침",
     },
   },
   dashboard: {

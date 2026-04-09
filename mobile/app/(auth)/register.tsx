@@ -25,7 +25,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name || !email || !password) return;
-    if (password.length < 6) { setError("Password must be at least 6 characters"); return; }
+    if (password.length < 8) { setError(t.auth.register.passwordHint); return; }
     setError("");
     setLoading(true);
     try {
@@ -77,7 +77,7 @@ export default function RegisterScreen() {
           <View style={styles.form}>
             <Input
               label={t.auth.register.name}
-              placeholder="Your name"
+              placeholder={t.auth.register.namePlaceholder}
               value={name}
               onChangeText={setName}
               textContentType="name"
@@ -92,7 +92,7 @@ export default function RegisterScreen() {
             />
             <Input
               label={t.auth.register.password}
-              placeholder="At least 6 characters"
+              placeholder={t.auth.register.passwordHint}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -102,7 +102,7 @@ export default function RegisterScreen() {
 
           {/* Perks */}
           <View style={styles.perks}>
-            {["500 free credits", "6+ AI models", "No credit card needed"].map((p) => (
+            {[t.auth.register.perk1, t.auth.register.perk2, t.auth.register.perk3].map((p) => (
               <View key={p} style={styles.perkRow}>
                 <View style={styles.perkDot} />
                 <Text style={styles.perkText}>{p}</Text>

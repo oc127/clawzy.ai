@@ -39,7 +39,7 @@ export default function SettingsScreen() {
   const [langModalVisible, setLangModalVisible] = useState(false);
 
   const handleLogout = () => {
-    Alert.alert(t.nav.logout, "Are you sure?", [
+    Alert.alert(t.nav.logout, t.common.areYouSure, [
       { text: t.common.cancel, style: "cancel" },
       { text: t.nav.logout, style: "destructive", onPress: logout },
     ]);

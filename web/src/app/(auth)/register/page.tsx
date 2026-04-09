@@ -180,7 +180,15 @@ export default function RegisterPage() {
             </Button>
 
             <p className="text-xs text-center text-[#b0b0b0]">
-              By signing up, you agree to our Terms of Service.
+              {t.auth.register.agreePrefix ?? "By signing up, you agree to our"}{" "}
+              <a href="/legal/terms" className="underline hover:text-[#717171]">
+                {t.auth.register.termsLink ?? "Terms of Service"}
+              </a>
+              {" "}{t.auth.register.agreeAnd ?? "and"}{" "}
+              <a href="/legal/privacy" className="underline hover:text-[#717171]">
+                {t.auth.register.privacyLink ?? "Privacy Policy"}
+              </a>
+              .
             </p>
           </form>
 

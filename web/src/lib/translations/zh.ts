@@ -84,6 +84,9 @@ const zh: Translations = {
   footer: {
     login: "登录",
     signup: "注册",
+    terms: "服务条款",
+    privacy: "隐私政策",
+    tokushoho: "特定商取引法",
     rights: "版权所有。",
   },
   auth: {
@@ -113,6 +116,10 @@ const zh: Translations = {
       perk2: "使用 6+ 个 AI 模型",
       perk3: "无需信用卡",
       leftTitle: "加入 NipponClaw",
+      agreePrefix: "注册即表示您同意我们的",
+      termsLink: "服务条款",
+      agreeAnd: "和",
+      privacyLink: "隐私政策",
     },
   },
   dashboard: {

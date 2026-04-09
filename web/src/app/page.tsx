@@ -23,9 +23,9 @@ const TRUST_GRADIENTS = [
 
 const PLANS = [
   { name: "Free", price: "0", credits: "500", agents: 1, highlight: false },
-  { name: "Starter", price: "9", credits: "5,000", agents: 3, highlight: false },
-  { name: "Pro", price: "29", credits: "20,000", agents: 10, highlight: true },
-  { name: "Team", price: "99", credits: "100,000", agents: 50, highlight: false },
+  { name: "Starter", price: "9", credits: "3,000", agents: 1, highlight: false },
+  { name: "Pro", price: "19", credits: "8,000", agents: 3, highlight: true },
+  { name: "Business", price: "39", credits: "20,000", agents: 10, highlight: false },
 ];
 
 export default function Home() {
@@ -308,6 +308,9 @@ export default function Home() {
           <div className="flex items-center gap-6 text-sm text-[#717171]">
             <Link href="/login" className="hover:text-[#222222] transition-colors">{t.footer.login}</Link>
             <Link href="/register" className="hover:text-[#222222] transition-colors">{t.footer.signup}</Link>
+            <Link href="/legal/terms" className="hover:text-[#222222] transition-colors">{t.footer.terms ?? "Terms"}</Link>
+            <Link href="/legal/privacy" className="hover:text-[#222222] transition-colors">{t.footer.privacy ?? "Privacy"}</Link>
+            <Link href="/legal/tokushoho" className="hover:text-[#222222] transition-colors">{t.footer.tokushoho ?? "特商法表示"}</Link>
             <span>&copy; {new Date().getFullYear()} NipponClaw. {t.footer.rights}</span>
           </div>
         </div>

@@ -22,11 +22,11 @@ export default function DiscoverScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Text style={styles.headerTitle}>{t.tabs.discover}</Text>
-        <Text style={styles.headerSubtitle}>Explore AI models & skills</Text>
+        <Text style={styles.headerSubtitle}>{t.discover.subtitle}</Text>
       </View>
 
       {/* Models section */}
-      <Text style={styles.sectionTitle}>Available Models</Text>
+      <Text style={styles.sectionTitle}>{t.discover.availableModels}</Text>
       <View style={styles.modelGrid}>
         {MODELS.map((m) => (
           <Card key={m.id} style={styles.modelCard}>
@@ -43,8 +43,8 @@ export default function DiscoverScreen() {
       {/* Coming soon */}
       <View style={styles.comingSoon}>
         <Text style={{ fontSize: 32 }}>🦞</Text>
-        <Text style={styles.comingSoonTitle}>ClawHub coming soon</Text>
-        <Text style={styles.comingSoonSubtitle}>Marketplace for AI agent skills</Text>
+        <Text style={styles.comingSoonTitle}>{t.discover.comingSoonTitle}</Text>
+        <Text style={styles.comingSoonSubtitle}>{t.discover.comingSoonSubtitle}</Text>
       </View>
     </ScrollView>
   );

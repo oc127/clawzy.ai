@@ -91,6 +91,9 @@ const en = {
   footer: {
     login: "Log in",
     signup: "Sign up",
+    terms: "Terms",
+    privacy: "Privacy",
+    tokushoho: "Commercial Disclosure",
     rights: "All rights reserved.",
   },
   // Auth
@@ -121,6 +124,10 @@ const en = {
       perk2: "Access to 6+ AI models",
       perk3: "No credit card required",
       leftTitle: "Join NipponClaw",
+      agreePrefix: "By signing up, you agree to our",
+      termsLink: "Terms of Service",
+      agreeAnd: "and",
+      privacyLink: "Privacy Policy",
     },
   },
   // Dashboard

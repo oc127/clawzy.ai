@@ -84,6 +84,9 @@ const ja: Translations = {
   footer: {
     login: "ログイン",
     signup: "登録",
+    terms: "利用規約",
+    privacy: "プライバシー",
+    tokushoho: "特商法表示",
     rights: "全著作権所有。",
   },
   auth: {
@@ -113,6 +116,10 @@ const ja: Translations = {
       perk2: "6 種類以上の AI モデルを利用可能",
       perk3: "クレジットカード不要",
       leftTitle: "NipponClaw に参加する",
+      agreePrefix: "登録することで、",
+      termsLink: "利用規約",
+      agreeAnd: "および",
+      privacyLink: "プライバシーポリシー",
     },
   },
   dashboard: {
