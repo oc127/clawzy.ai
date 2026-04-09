@@ -93,3 +93,13 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
     await db.commit()
     await db.refresh(user)
     return user
+
+
+async def change_password(db: AsyncSession, user: User, current_password: str, new_password: str) -> User:
+    """Change password for an authenticated user."""
+    if not verify_password(current_password, user.password_hash):
+        raise AuthError("Current password is incorrect")
+    user.password_hash = hash_password(new_password)
+    await db.commit()
+    await db.refresh(user)
+    return user

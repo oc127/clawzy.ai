@@ -22,7 +22,7 @@ const translations = {
     agents: { title: "My Agents", newAgent: "New Agent", noAgents: "No agents yet", createFirst: "Create your first agent", name: "Agent name", description: "Description (optional)", model: "Model", create: "Create Agent", delete: "Delete", running: "Running", stopped: "Stopped", error: "Error", namePlaceholder: "My Coding Assistant", descPlaceholder: "What does this agent do?" },
     discover: { subtitle: "Explore AI models & skills", availableModels: "Available Models", comingSoonTitle: "ClawHub coming soon", comingSoonSubtitle: "Marketplace for AI agent skills" },
     chat: { placeholder: "Message the agent...", send: "Send", typing: "Agent is thinking...", newConv: "New Chat", noMessages: "Start a conversation" },
-    settings: { title: "Settings", profile: "Profile", language: "Language", logout: "Log out", plan: "Plan", credits: "Credits", version: "Version" },
+    settings: { title: "Settings", profile: "Profile", language: "Language", logout: "Log out", plan: "Plan", credits: "Credits", version: "Version", editProfile: "Edit Profile", name: "Name", changePassword: "Change Password", currentPassword: "Current password", newPassword: "New password", confirmPassword: "Confirm password", passwordChanged: "Password changed", passwordMismatch: "Passwords do not match", billing: "Billing", transactions: "Transactions", noTransactions: "No transactions yet" },
     common: { cancel: "Cancel", confirm: "Confirm", delete: "Delete", save: "Save", back: "Back", loading: "Loading...", error: "Something went wrong", retry: "Retry", areYouSure: "Are you sure?" },
   },
   zh: {
@@ -38,7 +38,7 @@ const translations = {
     agents: { title: "我的 Agent", newAgent: "创建", noAgents: "还没有 Agent", createFirst: "创建你的第一个 Agent", name: "名称", description: "描述（可选）", model: "模型", create: "创建", delete: "删除", running: "运行中", stopped: "已停止", error: "错误", namePlaceholder: "我的编程助手", descPlaceholder: "这个 Agent 做什么？" },
     discover: { subtitle: "探索 AI 模型和技能", availableModels: "可用模型", comingSoonTitle: "ClawHub 即将上线", comingSoonSubtitle: "AI 技能市场" },
     chat: { placeholder: "发消息...", send: "发送", typing: "Agent 正在思考...", newConv: "新对话", noMessages: "开始对话" },
-    settings: { title: "设置", profile: "个人资料", language: "语言", logout: "退出登录", plan: "套餐", credits: "积分", version: "版本" },
+    settings: { title: "设置", profile: "个人资料", language: "语言", logout: "退出登录", plan: "套餐", credits: "积分", version: "版本", editProfile: "编辑资料", name: "姓名", changePassword: "修改密码", currentPassword: "当前密码", newPassword: "新密码", confirmPassword: "确认密码", passwordChanged: "密码已修改", passwordMismatch: "两次密码不一致", billing: "账单", transactions: "交易记录", noTransactions: "暂无交易" },
     common: { cancel: "取消", confirm: "确认", delete: "删除", save: "保存", back: "返回", loading: "加载中...", error: "出错了", retry: "重试", areYouSure: "确定吗？" },
   },
   ja: {
@@ -54,7 +54,7 @@ const translations = {
     agents: { title: "マイエージェント", newAgent: "新規作成", noAgents: "エージェントなし", createFirst: "最初のエージェントを作成", name: "エージェント名", description: "説明（任意）", model: "モデル", create: "作成", delete: "削除", running: "稼働中", stopped: "停止中", error: "エラー", namePlaceholder: "コーディングアシスタント", descPlaceholder: "このエージェントの役割は？" },
     discover: { subtitle: "AIモデルとスキルを探索", availableModels: "利用可能なモデル", comingSoonTitle: "ClawHub 近日公開", comingSoonSubtitle: "AIスキルマーケットプレイス" },
     chat: { placeholder: "メッセージを入力...", send: "送信", typing: "考え中...", newConv: "新しい会話", noMessages: "会話を始めましょう" },
-    settings: { title: "設定", profile: "プロフィール", language: "言語", logout: "ログアウト", plan: "プラン", credits: "クレジット", version: "バージョン" },
+    settings: { title: "設定", profile: "プロフィール", language: "言語", logout: "ログアウト", plan: "プラン", credits: "クレジット", version: "バージョン", editProfile: "プロフィール編集", name: "名前", changePassword: "パスワード変更", currentPassword: "現在のパスワード", newPassword: "新しいパスワード", confirmPassword: "パスワード確認", passwordChanged: "パスワードを変更しました", passwordMismatch: "パスワードが一致しません", billing: "請求", transactions: "取引履歴", noTransactions: "取引履歴はありません" },
     common: { cancel: "キャンセル", confirm: "確認", delete: "削除", save: "保存", back: "戻る", loading: "読み込み中...", error: "エラーが発生しました", retry: "再試行", areYouSure: "よろしいですか？" },
   },
   ko: {
@@ -70,7 +70,7 @@ const translations = {
     agents: { title: "내 에이전트", newAgent: "새로 만들기", noAgents: "에이전트 없음", createFirst: "첫 에이전트 만들기", name: "이름", description: "설명 (선택)", model: "모델", create: "만들기", delete: "삭제", running: "실행 중", stopped: "정지됨", error: "오류", namePlaceholder: "코딩 어시스턴트", descPlaceholder: "이 에이전트의 역할은?" },
     discover: { subtitle: "AI 모델과 스킬 탐색", availableModels: "사용 가능한 모델", comingSoonTitle: "ClawHub 출시 예정", comingSoonSubtitle: "AI 스킬 마켓플레이스" },
     chat: { placeholder: "메시지 입력...", send: "보내기", typing: "생각 중...", newConv: "새 대화", noMessages: "대화를 시작하세요" },
-    settings: { title: "설정", profile: "프로필", language: "언어", logout: "로그아웃", plan: "플랜", credits: "크레딧", version: "버전" },
+    settings: { title: "설정", profile: "프로필", language: "언어", logout: "로그아웃", plan: "플랜", credits: "크레딧", version: "버전", editProfile: "프로필 수정", name: "이름", changePassword: "비밀번호 변경", currentPassword: "현재 비밀번호", newPassword: "새 비밀번호", confirmPassword: "비밀번호 확인", passwordChanged: "비밀번호가 변경되었습니다", passwordMismatch: "비밀번호가 일치하지 않습니다", billing: "결제", transactions: "거래 내역", noTransactions: "거래 내역이 없습니다" },
     common: { cancel: "취소", confirm: "확인", delete: "삭제", save: "저장", back: "뒤로", loading: "로딩 중...", error: "오류가 발생했습니다", retry: "다시 시도", areYouSure: "정말 진행하시겠습니까?" },
   },
 } as const;

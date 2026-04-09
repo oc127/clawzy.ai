@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
+import { useTheme } from "@/context/theme-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { Logo } from "@/components/logo";
@@ -19,6 +20,8 @@ import {
   Menu,
   X,
   Package,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 const SIDEBAR_LINKS_CONFIG = [
@@ -37,6 +40,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading, logout } = useAuth();
   const { t } = useLanguage();
+  const { resolved, setTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -65,7 +69,7 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#111]">
         <div className="flex items-center gap-3">
           <svg className="h-5 w-5 animate-spin text-[#ff385c]" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -84,9 +88,9 @@ export default function DashboardLayout({
     : user.email[0].toUpperCase();
 
   return (
-    <div className="flex min-h-screen bg-[#f7f7f7]">
+    <div className="flex min-h-screen bg-[#f7f7f7] dark:bg-[#111]">
       {/* Mobile top bar */}
-      <div className="fixed inset-x-0 top-0 z-20 flex h-14 items-center border-b border-[#ebebeb] bg-white px-4 md:hidden">
+      <div className="fixed inset-x-0 top-0 z-20 flex h-14 items-center border-b border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] px-4 md:hidden">
         <button
           onClick={() => setSidebarOpen(true)}
           className="rounded-lg p-1.5 text-[#717171] hover:bg-[#f7f7f7] transition-colors"
@@ -94,7 +98,7 @@ export default function DashboardLayout({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <span className="ml-3 text-base font-extrabold text-[#222222]">
+        <span className="ml-3 text-base font-extrabold text-[#222222] dark:text-white">
           <span className="text-[#ff385c]">Nippon</span>Claw
         </span>
       </div>
@@ -110,13 +114,13 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[#ebebeb] bg-white transition-transform duration-200 ease-out",
+          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] transition-transform duration-200 ease-out",
           "md:relative md:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Brand */}
-        <div className="flex h-16 items-center justify-between border-b border-[#ebebeb] px-5">
+        <div className="flex h-16 items-center justify-between border-b border-[#ebebeb] dark:border-[#333] px-5">
           <Link href="/" className="flex items-center">
             <Logo size="sm" />
           </Link>
@@ -142,8 +146,8 @@ export default function DashboardLayout({
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-[#fff0f2] text-[#ff385c]"
-                    : "text-[#717171] hover:bg-[#f7f7f7] hover:text-[#222222]"
+                    ? "bg-[#fff0f2] dark:bg-[#ff385c]/10 text-[#ff385c]"
+                    : "text-[#717171] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] hover:text-[#222222] dark:hover:text-white"
                 )}
               >
                 <div
@@ -161,18 +165,25 @@ export default function DashboardLayout({
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-[#ebebeb] p-4">
+        <div className="border-t border-[#ebebeb] dark:border-[#333] p-4">
           <div className="mb-3 flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#ff385c] to-[#ff8c69] text-white text-sm font-bold shadow-sm">
               {initials}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#222222]">{user.name}</p>
-              <p className="truncate text-xs text-[#717171]">{user.email}</p>
+              <p className="truncate text-sm font-semibold text-[#222222] dark:text-white">{user.name}</p>
+              <p className="truncate text-xs text-[#717171] dark:text-[#a0a0a0]">{user.email}</p>
             </div>
           </div>
-          <div className="mb-2 flex justify-start">
+          <div className="mb-2 flex items-center gap-2">
             <LanguageSwitcher compact />
+            <button
+              onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#717171] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {resolved === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
           </div>
           <Button
             variant="ghost"

@@ -21,10 +21,12 @@ function AgentCard({
   agent,
   onDelete,
   onToggle,
+  onEdit,
 }: {
   agent: Agent;
   onDelete: () => void;
   onToggle: () => void;
+  onEdit: () => void;
 }) {
   const { t } = useLanguage();
   const statusColors: Record<string, string> = {
@@ -78,6 +80,11 @@ function AgentCard({
           </Text>
         </TouchableOpacity>
         <View style={styles.actionDivider} />
+        <TouchableOpacity style={styles.actionBtn} onPress={onEdit}>
+          <Text style={styles.actionBtnText}>✏️</Text>
+          <Text style={styles.actionLabel}>{t.common.save}</Text>
+        </TouchableOpacity>
+        <View style={styles.actionDivider} />
         <TouchableOpacity style={styles.actionBtn} onPress={confirmDelete}>
           <Text style={[styles.actionBtnText, { color: colors.error }]}>🗑</Text>
           <Text style={[styles.actionLabel, { color: colors.error }]}>{t.common.delete}</Text>
@@ -97,6 +104,10 @@ export default function AgentsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", model: "" });
+  const [editAgent, setEditAgent] = useState<Agent | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editModel, setEditModel] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   /** 与后端 model_service 一致：仅 DeepSeek + 千问（Qwen） */
   const DEFAULT_MODELS: Model[] = [
@@ -142,6 +153,29 @@ export default function AgentsScreen() {
       Alert.alert(t.common.error);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openEdit = (agent: Agent) => {
+    setEditAgent(agent);
+    setEditName(agent.name);
+    setEditModel(agent.model_name);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editAgent || !editName.trim()) return;
+    setSavingEdit(true);
+    try {
+      const updated = await updateAgent(editAgent.id, {
+        name: editName.trim(),
+        model_name: editModel || undefined,
+      });
+      setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      setEditAgent(null);
+    } catch {
+      Alert.alert(t.common.error);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -204,6 +238,7 @@ export default function AgentsScreen() {
               agent={agent}
               onDelete={() => handleDelete(agent.id)}
               onToggle={() => handleToggle(agent)}
+              onEdit={() => openEdit(agent)}
             />
           ))
         )}
@@ -271,6 +306,58 @@ export default function AgentsScreen() {
               style={{ marginTop: 8 }}
             >
               {t.agents.create}
+            </Button>
+          </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Edit Agent Modal */}
+      <Modal visible={!!editAgent} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modal}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.sm }]}>
+            <TouchableOpacity onPress={() => setEditAgent(null)}>
+              <Text style={styles.modalCancel}>{t.common.cancel}</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{editAgent?.name}</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <KeyboardAvoidingView
+            style={styles.modalKeyboard}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.modalContent}
+          >
+            <Input
+              label={t.agents.name}
+              placeholder={t.agents.namePlaceholder}
+              value={editName}
+              onChangeText={setEditName}
+            />
+            <Text style={styles.fieldLabel}>{t.agents.model}</Text>
+            <View style={styles.modelGrid}>
+              {models.slice(0, 6).map((m) => (
+                <TouchableOpacity
+                  key={m.id}
+                  style={[styles.modelPill, editModel === m.id && styles.modelPillActive]}
+                  onPress={() => setEditModel(m.id)}
+                >
+                  <Text style={[styles.modelPillText, editModel === m.id && styles.modelPillTextActive]}>
+                    {m.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Button
+              onPress={handleSaveEdit}
+              loading={savingEdit}
+              disabled={!editName.trim()}
+              size="lg"
+              style={{ marginTop: 8 }}
+            >
+              {t.common.save}
             </Button>
           </ScrollView>
           </KeyboardAvoidingView>

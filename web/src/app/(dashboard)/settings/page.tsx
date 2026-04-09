@@ -2,18 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
-import { apiPatch, apiGet } from "@/lib/api";
+import { useLanguage } from "@/context/language-context";
+import { apiPatch, apiGet, apiPost, ApiError } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Shield, AlertCircle, User, Info } from "lucide-react";
+import { Shield, AlertCircle, User, Info, Lock } from "lucide-react";
 
 interface TodayUsage { used_today: number; daily_limit: number | null; }
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const [name, setName] = useState(user?.name ?? "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? "");
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dailyLimit, setDailyLimit] = useState<string>(
     user?.daily_credit_limit ? String(user.daily_credit_limit) : ""
@@ -44,6 +50,21 @@ export default function SettingsPage() {
       toast.error("Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPw !== confirmPw) { toast.error(t.settings.passwordMismatch); return; }
+    setSavingPw(true);
+    try {
+      await apiPost("/auth/change-password", { current_password: currentPw, new_password: newPw });
+      toast.success(t.settings.passwordChanged);
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.detail : t.settings.passwordChangeFailed);
+    } finally {
+      setSavingPw(false);
     }
   };
 
@@ -114,6 +135,38 @@ export default function SettingsPage() {
               className="bg-[#ff385c] hover:bg-[#e31c5f] text-white rounded-xl font-semibold shadow-sm"
             >
               Save Changes
+            </Button>
+          </form>
+        </div>
+
+        {/* Change Password */}
+        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:bg-[#1a1a1a] dark:border-[#333]">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl icon-gradient-orange shadow-sm">
+              <Lock className="h-4 w-4 text-white" />
+            </div>
+            <h2 className="text-base font-bold text-[#222222] dark:text-white">{t.settings.changePassword}</h2>
+          </div>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-[#222222] dark:text-white">{t.settings.currentPassword}</label>
+              <Input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="••••••••" required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-[#222222] dark:text-white">{t.settings.newPassword}</label>
+              <Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="••••••••" minLength={8} required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-[#222222] dark:text-white">{t.settings.confirmPassword}</label>
+              <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="••••••••" minLength={8} required />
+            </div>
+            <Button
+              type="submit"
+              loading={savingPw}
+              disabled={!currentPw || !newPw || !confirmPw}
+              className="bg-[#ff385c] hover:bg-[#e31c5f] text-white rounded-xl font-semibold shadow-sm"
+            >
+              {t.settings.changePassword}
             </Button>
           </form>
         </div>

@@ -1,11 +1,15 @@
 import React, { useState } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, StyleSheet, Alert,
+  Modal, StyleSheet, Alert, TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage, type Locale } from "@/context/LanguageContext";
+import { apiPatch, apiPost, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { colors, spacing, radius, typography } from "@/lib/theme";
 
 function SettingRow({ icon, label, value, onPress, destructive }: {
@@ -24,7 +28,7 @@ function SettingRow({ icon, label, value, onPress, destructive }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
       <View style={styles.sectionCard}>
         {children}
       </View>
@@ -34,15 +38,62 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { t, locale, setLocale, locales, labels, flags } = useLanguage();
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [pwModalVisible, setPwModalVisible] = useState(false);
+
+  // Profile edit state
+  const [editName, setEditName] = useState(user?.name ?? "");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Password change state
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(t.nav.logout, t.common.areYouSure, [
       { text: t.common.cancel, style: "cancel" },
       { text: t.nav.logout, style: "destructive", onPress: logout },
     ]);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) return;
+    setSavingProfile(true);
+    try {
+      await apiPatch("/users/me", { name: editName.trim() });
+      await refreshUser();
+      setProfileModalVisible(false);
+    } catch {
+      Alert.alert(t.common.error);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPw !== confirmPw) {
+      Alert.alert(t.settings.passwordMismatch);
+      return;
+    }
+    setSavingPw(true);
+    try {
+      await apiPost("/auth/change-password", {
+        current_password: currentPw,
+        new_password: newPw,
+      });
+      Alert.alert(t.settings.passwordChanged);
+      setPwModalVisible(false);
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } catch (err) {
+      Alert.alert(err instanceof ApiError ? err.detail : t.common.error);
+    } finally {
+      setSavingPw(false);
+    }
   };
 
   const planColors: Record<string, string> = {
@@ -76,17 +127,15 @@ export default function SettingsScreen() {
       </View>
 
       <Section title="Account">
-        <SettingRow
-          icon="💳"
-          label={t.settings.credits}
-          value={user?.credit_balance?.toLocaleString() ?? "0"}
-        />
+        <SettingRow icon="👤" label={t.settings.editProfile} onPress={() => { setEditName(user?.name ?? ""); setProfileModalVisible(true); }} />
         <View style={styles.divider} />
-        <SettingRow
-          icon="⭐"
-          label={t.settings.plan}
-          value={user?.plan?.toUpperCase() ?? "FREE"}
-        />
+        <SettingRow icon="🔒" label={t.settings.changePassword} onPress={() => setPwModalVisible(true)} />
+        <View style={styles.divider} />
+        <SettingRow icon="💳" label={t.settings.credits} value={user?.credit_balance?.toLocaleString() ?? "0"} />
+        <View style={styles.divider} />
+        <SettingRow icon="⭐" label={t.settings.plan} value={user?.plan?.toUpperCase() ?? "FREE"} />
+        <View style={styles.divider} />
+        <SettingRow icon="📊" label={t.settings.billing} onPress={() => router.push("/billing")} />
       </Section>
 
       <Section title="Preferences">
@@ -99,20 +148,11 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title="App">
-        <SettingRow
-          icon="ℹ️"
-          label={t.settings.version}
-          value="1.0.0"
-        />
+        <SettingRow icon="ℹ️" label={t.settings.version} value="1.0.0" />
       </Section>
 
       <Section title="">
-        <SettingRow
-          icon="🚪"
-          label={t.settings.logout}
-          onPress={handleLogout}
-          destructive
-        />
+        <SettingRow icon="🚪" label={t.settings.logout} onPress={handleLogout} destructive />
       </Section>
 
       {/* Language Modal */}
@@ -139,6 +179,79 @@ export default function SettingsScreen() {
                 {l === locale && <Text style={styles.checkmark}>✓</Text>}
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Profile Edit Modal */}
+      <Modal visible={profileModalVisible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modal}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.sm }]}>
+            <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+              <Text style={styles.modalCancel}>{t.common.cancel}</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{t.settings.editProfile}</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <View style={styles.modalContent}>
+            <Input
+              label={t.settings.name}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder={user?.name ?? ""}
+            />
+            <Button
+              onPress={handleSaveProfile}
+              loading={savingProfile}
+              disabled={!editName.trim()}
+              size="lg"
+            >
+              {t.common.save}
+            </Button>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Password Change Modal */}
+      <Modal visible={pwModalVisible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modal}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.sm }]}>
+            <TouchableOpacity onPress={() => { setPwModalVisible(false); setCurrentPw(""); setNewPw(""); setConfirmPw(""); }}>
+              <Text style={styles.modalCancel}>{t.common.cancel}</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{t.settings.changePassword}</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <View style={styles.modalContent}>
+            <Input
+              label={t.settings.currentPassword}
+              value={currentPw}
+              onChangeText={setCurrentPw}
+              secureTextEntry
+              placeholder="••••••••"
+            />
+            <Input
+              label={t.settings.newPassword}
+              value={newPw}
+              onChangeText={setNewPw}
+              secureTextEntry
+              placeholder="••••••••"
+            />
+            <Input
+              label={t.settings.confirmPassword}
+              value={confirmPw}
+              onChangeText={setConfirmPw}
+              secureTextEntry
+              placeholder="••••••••"
+            />
+            <Button
+              onPress={handleChangePassword}
+              loading={savingPw}
+              disabled={!currentPw || !newPw || !confirmPw}
+              size="lg"
+            >
+              {t.settings.changePassword}
+            </Button>
           </View>
         </View>
       </Modal>
@@ -208,7 +321,7 @@ const styles = StyleSheet.create({
   },
   modalCancel: { ...typography.base, color: colors.primary },
   modalTitle: { ...typography.md, ...typography.bold, color: colors.text },
-  modalContent: { padding: spacing.xl, gap: spacing.sm },
+  modalContent: { padding: spacing.xl, gap: spacing.lg },
   langRow: {
     flexDirection: "row", alignItems: "center", gap: spacing.md,
     padding: spacing.lg, borderRadius: radius.lg,
