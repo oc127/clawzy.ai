@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 60
     rate_limit_auth_per_minute: int = 10
 
+    # --- SMTP (password reset) ---
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@nipponclaw.com"
+    password_reset_expire_minutes: int = 60
+    frontend_url: str = "https://www.nipponclaw.com"
+
     # --- Credits ---
     signup_bonus_credits: int = 500
 

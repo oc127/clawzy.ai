@@ -12,8 +12,10 @@ const translations = {
   en: {
     nav: { login: "Log in", signup: "Sign up", logout: "Log out", settings: "Settings" },
     auth: {
-      login: { title: "Welcome back", subtitle: "Sign in to NipponClaw", email: "Email", password: "Password", submit: "Sign in", noAccount: "No account?", signup: "Sign up", emailPlaceholder: "you@example.com", stat1: "Free credits", stat2: "AI models", stat3: "Uptime" },
+      login: { title: "Welcome back", subtitle: "Sign in to NipponClaw", email: "Email", password: "Password", submit: "Sign in", noAccount: "No account?", signup: "Sign up", emailPlaceholder: "you@example.com", stat1: "Free credits", stat2: "AI models", stat3: "Uptime", forgotPassword: "Forgot password?" },
       register: { title: "Create account", subtitle: "Free to start", name: "Full name", email: "Email", password: "Password", submit: "Create account", haveAccount: "Have account?", login: "Sign in", namePlaceholder: "Your name", passwordHint: "At least 8 characters", perk1: "500 free credits", perk2: "6+ AI models", perk3: "No credit card needed" },
+      forgotPassword: { title: "Forgot password?", subtitle: "Enter your email to receive a reset link", email: "Email", submit: "Send reset link", backToLogin: "Back to sign in", sent: "If that email is registered, a reset link has been sent." },
+      resetPassword: { title: "Reset password", subtitle: "Enter your new password", password: "New password", confirm: "Confirm password", submit: "Reset password", success: "Password reset! You can now sign in.", backToLogin: "Back to sign in", mismatch: "Passwords do not match" },
     },
     tabs: { home: "Home", agents: "Agents", discover: "Discover", settings: "Settings" },
     dashboard: { title: "Dashboard", credits: "Credits", agents: "Agents", usage: "Usage Today", newAgent: "New Agent", welcome: "Welcome back", recentActivity: "Recent Activity", noActivity: "No recent activity", seeAll: "See all →" },
@@ -26,8 +28,10 @@ const translations = {
   zh: {
     nav: { login: "登录", signup: "注册", logout: "退出", settings: "设置" },
     auth: {
-      login: { title: "欢迎回来", subtitle: "登录 NipponClaw", email: "邮箱", password: "密码", submit: "登录", noAccount: "没有账户？", signup: "注册", emailPlaceholder: "you@example.com", stat1: "免费积分", stat2: "AI 模型", stat3: "在线率" },
+      login: { title: "欢迎回来", subtitle: "登录 NipponClaw", email: "邮箱", password: "密码", submit: "登录", noAccount: "没有账户？", signup: "注册", emailPlaceholder: "you@example.com", stat1: "免费积分", stat2: "AI 模型", stat3: "在线率", forgotPassword: "忘记密码？" },
       register: { title: "创建账户", subtitle: "免费开始", name: "姓名", email: "邮箱", password: "密码", submit: "创建账户", haveAccount: "已有账户？", login: "登录", namePlaceholder: "你的名字", passwordHint: "至少8个字符", perk1: "500 免费积分", perk2: "6+ AI 模型", perk3: "无需信用卡" },
+      forgotPassword: { title: "忘记密码？", subtitle: "输入邮箱，我们将发送重置链接", email: "邮箱", submit: "发送重置链接", backToLogin: "返回登录", sent: "如果该邮箱已注册，重置链接已发送。" },
+      resetPassword: { title: "重置密码", subtitle: "输入新密码", password: "新密码", confirm: "确认密码", submit: "重置密码", success: "密码重置成功！请登录。", backToLogin: "返回登录", mismatch: "两次密码输入不一致" },
     },
     tabs: { home: "主页", agents: "Agent", discover: "探索", settings: "设置" },
     dashboard: { title: "控制台", credits: "积分", agents: "Agent", usage: "今日用量", newAgent: "创建", welcome: "欢迎回来", recentActivity: "最近活动", noActivity: "暂无活动", seeAll: "查看全部 →" },
@@ -40,8 +44,10 @@ const translations = {
   ja: {
     nav: { login: "ログイン", signup: "登録", logout: "ログアウト", settings: "設定" },
     auth: {
-      login: { title: "おかえりなさい", subtitle: "NipponClaw にログイン", email: "メール", password: "パスワード", submit: "ログイン", noAccount: "アカウントがない？", signup: "登録", emailPlaceholder: "you@example.com", stat1: "無料クレジット", stat2: "AIモデル", stat3: "稼働率" },
+      login: { title: "おかえりなさい", subtitle: "NipponClaw にログイン", email: "メール", password: "パスワード", submit: "ログイン", noAccount: "アカウントがない？", signup: "登録", emailPlaceholder: "you@example.com", stat1: "無料クレジット", stat2: "AIモデル", stat3: "稼働率", forgotPassword: "パスワードをお忘れですか？" },
       register: { title: "アカウント作成", subtitle: "無料で始める", name: "氏名", email: "メール", password: "パスワード", submit: "アカウント作成", haveAccount: "アカウントをお持ち？", login: "ログイン", namePlaceholder: "お名前", passwordHint: "8文字以上", perk1: "500無料クレジット", perk2: "6以上のAIモデル", perk3: "クレジットカード不要" },
+      forgotPassword: { title: "パスワードをお忘れですか？", subtitle: "メールアドレスを入力してください", email: "メール", submit: "リセットリンクを送信", backToLogin: "ログインに戻る", sent: "登録済みのメールアドレスであれば、リセットリンクが送信されました。" },
+      resetPassword: { title: "パスワードリセット", subtitle: "新しいパスワードを入力してください", password: "新しいパスワード", confirm: "パスワード確認", submit: "パスワードをリセット", success: "パスワードがリセットされました！ログインしてください。", backToLogin: "ログインに戻る", mismatch: "パスワードが一致しません" },
     },
     tabs: { home: "ホーム", agents: "エージェント", discover: "発見", settings: "設定" },
     dashboard: { title: "ダッシュボード", credits: "クレジット", agents: "エージェント", usage: "本日の使用量", newAgent: "新規作成", welcome: "おかえりなさい", recentActivity: "最近のアクティビティ", noActivity: "アクティビティなし", seeAll: "すべて見る →" },
@@ -54,8 +60,10 @@ const translations = {
   ko: {
     nav: { login: "로그인", signup: "회원가입", logout: "로그아웃", settings: "설정" },
     auth: {
-      login: { title: "다시 오셨군요", subtitle: "NipponClaw 로그인", email: "이메일", password: "비밀번호", submit: "로그인", noAccount: "계정 없으신가요?", signup: "회원가입", emailPlaceholder: "you@example.com", stat1: "무료 크레딧", stat2: "AI 모델", stat3: "가동 시간" },
+      login: { title: "다시 오셨군요", subtitle: "NipponClaw 로그인", email: "이메일", password: "비밀번호", submit: "로그인", noAccount: "계정 없으신가요?", signup: "회원가입", emailPlaceholder: "you@example.com", stat1: "무료 크레딧", stat2: "AI 모델", stat3: "가동 시간", forgotPassword: "비밀번호를 잊으셨나요?" },
       register: { title: "계정 만들기", subtitle: "무료로 시작", name: "이름", email: "이메일", password: "비밀번호", submit: "계정 만들기", haveAccount: "계정 있으신가요?", login: "로그인", namePlaceholder: "이름 입력", passwordHint: "8자 이상", perk1: "500 무료 크레딧", perk2: "6+ AI 모델", perk3: "신용카드 불필요" },
+      forgotPassword: { title: "비밀번호를 잊으셨나요?", subtitle: "이메일을 입력하시면 재설정 링크를 보내드립니다", email: "이메일", submit: "재설정 링크 보내기", backToLogin: "로그인으로 돌아가기", sent: "등록된 이메일이라면 재설정 링크가 발송되었습니다." },
+      resetPassword: { title: "비밀번호 재설정", subtitle: "새 비밀번호를 입력해주세요", password: "새 비밀번호", confirm: "비밀번호 확인", submit: "비밀번호 재설정", success: "비밀번호가 재설정되었습니다! 로그인해주세요.", backToLogin: "로그인으로 돌아가기", mismatch: "비밀번호가 일치하지 않습니다" },
     },
     tabs: { home: "홈", agents: "에이전트", discover: "탐색", settings: "설정" },
     dashboard: { title: "대시보드", credits: "크레딧", agents: "에이전트", usage: "오늘 사용량", newAgent: "새 에이전트", welcome: "다시 오셨군요", recentActivity: "최근 활동", noActivity: "최근 활동 없음", seeAll: "모두 보기 →" },

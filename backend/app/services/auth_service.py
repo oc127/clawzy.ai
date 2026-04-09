@@ -1,3 +1,6 @@
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,6 +8,7 @@ from app.config import settings
 from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
 from app.models.credits import CreditReason, CreditTransaction
 from app.models.user import User
+from app.services.email_service import send_password_reset_email
 
 
 class AuthError(Exception):
@@ -53,3 +57,39 @@ async def login_user(db: AsyncSession, email: str, password: str) -> tuple[User,
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
     return user, access_token, refresh_token
+
+
+async def request_password_reset(db: AsyncSession, email: str) -> None:
+    """Generate a reset token and send an email. Always succeeds (no email leak)."""
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        return  # Don't reveal whether the email exists
+
+    token = secrets.token_urlsafe(48)
+    user.password_reset_token = token
+    user.password_reset_expires = datetime.now(UTC) + timedelta(
+        minutes=settings.password_reset_expire_minutes
+    )
+    await db.commit()
+
+    await send_password_reset_email(email, token)
+
+
+async def reset_password(db: AsyncSession, token: str, new_password: str) -> User:
+    """Validate the reset token and update the user's password."""
+    result = await db.execute(
+        select(User).where(User.password_reset_token == token)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise AuthError("Invalid or expired reset token")
+    if user.password_reset_expires is None or user.password_reset_expires < datetime.now(UTC):
+        raise AuthError("Invalid or expired reset token")
+
+    user.password_hash = hash_password(new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    await db.commit()
+    await db.refresh(user)
+    return user

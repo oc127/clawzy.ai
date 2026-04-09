@@ -7,13 +7,25 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
-import { getAgents, createAgent, deleteAgent, getModels, type Agent, type Model } from "@/lib/api";
+import {
+  getAgents, createAgent, deleteAgent, updateAgent,
+  startAgent, stopAgent, getModels,
+  type Agent, type Model,
+} from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { colors, spacing, radius, typography } from "@/lib/theme";
 
-function AgentCard({ agent, onDelete }: { agent: Agent; onDelete: () => void }) {
+function AgentCard({
+  agent,
+  onDelete,
+  onToggle,
+}: {
+  agent: Agent;
+  onDelete: () => void;
+  onToggle: () => void;
+}) {
   const { t } = useLanguage();
   const statusColors: Record<string, string> = {
     running: colors.success,
@@ -27,11 +39,13 @@ function AgentCard({ agent, onDelete }: { agent: Agent; onDelete: () => void }) 
   };
 
   const confirmDelete = () => {
-    Alert.alert(t.agents.delete, `Delete "${agent.name}"?`, [
+    Alert.alert(t.common.areYouSure, `Delete "${agent.name}"?`, [
       { text: t.common.cancel, style: "cancel" },
       { text: t.common.delete, style: "destructive", onPress: onDelete },
     ]);
   };
+
+  const isRunning = agent.status === "running";
 
   return (
     <Card style={styles.agentCard}>
@@ -54,9 +68,21 @@ function AgentCard({ agent, onDelete }: { agent: Agent; onDelete: () => void }) 
           </View>
         </TouchableOpacity>
       </Link>
-      <TouchableOpacity style={styles.deleteBtn} onPress={confirmDelete}>
-        <Text style={styles.deleteBtnText}>🗑</Text>
-      </TouchableOpacity>
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.actionBtn} onPress={onToggle}>
+          <Text style={[styles.actionBtnText, { color: isRunning ? colors.warning : colors.success }]}>
+            {isRunning ? "⏹" : "▶"}
+          </Text>
+          <Text style={styles.actionLabel}>
+            {isRunning ? t.agents.stopped : t.agents.running}
+          </Text>
+        </TouchableOpacity>
+        <View style={styles.actionDivider} />
+        <TouchableOpacity style={styles.actionBtn} onPress={confirmDelete}>
+          <Text style={[styles.actionBtnText, { color: colors.error }]}>🗑</Text>
+          <Text style={[styles.actionLabel, { color: colors.error }]}>{t.common.delete}</Text>
+        </TouchableOpacity>
+      </View>
     </Card>
   );
 }
@@ -119,6 +145,17 @@ export default function AgentsScreen() {
     }
   };
 
+  const handleToggle = async (agent: Agent) => {
+    try {
+      const updated = agent.status === "running"
+        ? await stopAgent(agent.id)
+        : await startAgent(agent.id);
+      setAgents((prev) => prev.map((a) => (a.id === agent.id ? updated : a)));
+    } catch {
+      Alert.alert(t.common.error);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await deleteAgent(id);
@@ -166,6 +203,7 @@ export default function AgentsScreen() {
               key={agent.id}
               agent={agent}
               onDelete={() => handleDelete(agent.id)}
+              onToggle={() => handleToggle(agent)}
             />
           ))
         )}
@@ -287,11 +325,17 @@ const styles = StyleSheet.create({
   }),
   statusDot: (color: string) => ({ width: 5, height: 5, borderRadius: 3, backgroundColor: color }),
   statusText: (color: string) => ({ fontSize: 11, fontWeight: "600" as const, color }),
-  deleteBtn: {
+  actionRow: {
+    flexDirection: "row",
     borderTopWidth: 1, borderTopColor: colors.border,
-    paddingVertical: spacing.md, alignItems: "center",
   },
-  deleteBtnText: { fontSize: 18 },
+  actionBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: spacing.md,
+  },
+  actionBtnText: { fontSize: 16 },
+  actionLabel: { ...typography.xs, color: colors.textSecondary, fontWeight: "600" },
+  actionDivider: { width: 1, backgroundColor: colors.border },
   modal: { flex: 1, backgroundColor: colors.white },
   modalKeyboard: { flex: 1 },
   modalHeader: {

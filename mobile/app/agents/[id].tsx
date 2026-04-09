@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator,
+  Modal, FlatList, Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
@@ -39,18 +40,21 @@ export default function AgentChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const [agent, setAgent] = useState<Agent | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [streamingText, setStreamingText] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
     try {
       const [a, convs] = await Promise.all([getAgent(id), getConversations(id)]);
       setAgent(a);
+      setConversations(convs);
       if (convs.length > 0) {
         setConversation(convs[0]);
         const msgs = await getMessages(id, convs[0].id);
@@ -64,6 +68,27 @@ export default function AgentChatScreen() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  const switchConversation = useCallback(async (conv: Conversation) => {
+    if (!id) return;
+    setShowHistory(false);
+    setConversation(conv);
+    setMessages([]);
+    setStreamingText("");
+    try {
+      const msgs = await getMessages(id, conv.id);
+      setMessages(msgs);
+    } catch {
+      // ignore
+    }
+  }, [id]);
+
+  const startNewChat = useCallback(() => {
+    setShowHistory(false);
+    setConversation(null);
+    setMessages([]);
+    setStreamingText("");
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -84,6 +109,7 @@ export default function AgentChatScreen() {
       try {
         const conv = await createConversation(id);
         setConversation(conv);
+        setConversations((prev) => [conv, ...prev]);
         convId = conv.id;
       } catch {
         setSending(false);
@@ -201,7 +227,20 @@ export default function AgentChatScreen() {
           <Text style={styles.agentName} numberOfLines={1}>{agent?.name}</Text>
           <Text style={styles.agentModel} numberOfLines={1}>{agent?.model_name}</Text>
         </View>
-        <View style={[styles.statusDot, { backgroundColor: agent?.status === "running" ? colors.success : colors.textMuted }]} />
+        <TouchableOpacity
+          onPress={() => setShowHistory(true)}
+          style={styles.historyBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.historyIcon}>☰</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={startNewChat}
+          style={styles.newChatBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.newChatIcon}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Messages */}
@@ -263,6 +302,46 @@ export default function AgentChatScreen() {
           <Text style={styles.sendIcon}>↑</Text>
         </TouchableOpacity>
       </View>
+      {/* Conversation History Modal */}
+      <Modal visible={showHistory} animationType="slide" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowHistory(false)}>
+          <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + spacing.lg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t.chat.newConv}</Text>
+              <TouchableOpacity onPress={() => setShowHistory(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.newChatRow} onPress={startNewChat}>
+              <Text style={styles.newChatRowIcon}>+</Text>
+              <Text style={styles.newChatRowText}>{t.chat.newConv}</Text>
+            </TouchableOpacity>
+            <FlatList
+              data={conversations}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.convRow,
+                    item.id === conversation?.id && styles.convRowActive,
+                  ]}
+                  onPress={() => switchConversation(item)}
+                >
+                  <Text style={styles.convTitle} numberOfLines={1}>
+                    {item.title || `Chat ${item.id.slice(0, 8)}`}
+                  </Text>
+                  <Text style={styles.convDate}>
+                    {new Date(item.updated_at).toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.convEmpty}>{t.chat.noMessages}</Text>
+              }
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -292,7 +371,14 @@ const styles = StyleSheet.create({
   backLabel: { ...typography.sm, color: colors.primary, fontWeight: "600" },
   agentName: { ...typography.md, ...typography.bold, color: colors.text },
   agentModel: { ...typography.xs, color: colors.textMuted },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  historyBtn: { padding: 4 },
+  historyIcon: { fontSize: 20, color: colors.textSecondary },
+  newChatBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: "center", justifyContent: "center",
+  },
+  newChatIcon: { color: colors.white, fontSize: 18, fontWeight: "700", marginTop: -1 },
   messages: { flex: 1 },
   messagesContent: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
   emptyChat: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.sm, paddingTop: 80 },
@@ -371,4 +457,41 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: colors.border },
   sendIcon: { color: colors.white, fontSize: 20, fontWeight: "700", marginTop: -2 },
+  // Modal styles
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl + 4,
+    borderTopRightRadius: radius.xl + 4,
+    maxHeight: "70%",
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+  },
+  modalHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  modalTitle: { ...typography.lg, ...typography.bold, color: colors.text },
+  modalClose: { fontSize: 20, color: colors.textMuted, padding: 4 },
+  newChatRow: {
+    flexDirection: "row", alignItems: "center", gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  newChatRowIcon: { fontSize: 20, color: colors.primary, fontWeight: "700" },
+  newChatRowText: { ...typography.base, ...typography.bold, color: colors.primary },
+  convRow: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    marginBottom: 2,
+  },
+  convRowActive: { backgroundColor: colors.indigoLight },
+  convTitle: { ...typography.base, color: colors.text, marginBottom: 2 },
+  convDate: { ...typography.xs, color: colors.textMuted },
+  convEmpty: { ...typography.sm, color: colors.textSecondary, textAlign: "center", paddingVertical: spacing.xl },
 });

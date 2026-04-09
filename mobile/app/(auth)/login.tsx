@@ -77,6 +77,12 @@ export default function LoginScreen() {
             />
           </View>
 
+          <Link href="/(auth)/forgot-password" asChild>
+            <TouchableOpacity style={styles.forgotLink}>
+              <Text style={styles.forgotText}>{t.auth.login.forgotPassword}</Text>
+            </TouchableOpacity>
+          </Link>
+
           <Button
             onPress={handleLogin}
             loading={loading}
@@ -155,7 +161,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   errorText: { ...typography.sm, color: colors.error },
-  form: { gap: 16, marginBottom: 20 },
+  form: { gap: 16, marginBottom: 8 },
+  forgotLink: { alignSelf: "flex-end", marginBottom: 12 },
+  forgotText: { ...typography.sm, color: colors.primary, fontWeight: "600" },
   submitBtn: { marginBottom: 16 },
   footer: {
     flexDirection: "row",

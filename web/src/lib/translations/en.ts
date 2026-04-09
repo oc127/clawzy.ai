@@ -129,6 +129,24 @@ const en = {
       agreeAnd: "and",
       privacyLink: "Privacy Policy",
     },
+    forgotPassword: {
+      title: "Forgot password?",
+      subtitle: "Enter your email and we'll send you a reset link",
+      email: "Email address",
+      submit: "Send reset link",
+      backToLogin: "Back to sign in",
+      sent: "If that email is registered, a reset link has been sent.",
+    },
+    resetPassword: {
+      title: "Reset password",
+      subtitle: "Enter your new password",
+      password: "New password",
+      confirm: "Confirm password",
+      submit: "Reset password",
+      success: "Password reset successfully! You can now sign in.",
+      backToLogin: "Back to sign in",
+      mismatch: "Passwords do not match",
+    },
   },
   // Dashboard
   dashboard: {

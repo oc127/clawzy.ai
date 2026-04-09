@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import { getAccessToken, clearTokens } from "./storage";
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from "./storage";
 import { router } from "expo-router";
 
 /** Dev: set `extra.apiBaseUrl` in app.json to your backend LAN IP (same Wi‑Fi as the phone/simulator Mac). */
@@ -28,7 +28,28 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+/** Prevent concurrent refresh requests */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    await saveTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}, _isRetry = false): Promise<T> {
   const token = await getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -56,9 +77,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (res.status === 401) {
-    const msg = await parseErrorBody();
-    // 登录/注册失败也返回 401，不能把「会话过期」逻辑套上去，否则会吞掉真实错误信息
     const isAuthForm = path === "/auth/login" || path === "/auth/register";
+    if (!isAuthForm && !_isRetry) {
+      // Try refreshing the token before giving up
+      if (!refreshPromise) {
+        refreshPromise = tryRefreshToken().finally(() => { refreshPromise = null; });
+      }
+      const refreshed = await refreshPromise;
+      if (refreshed) {
+        return request<T>(path, options, true);
+      }
+    }
+    const msg = await parseErrorBody();
     if (!isAuthForm) {
       await clearTokens();
       router.replace("/(auth)/login");
@@ -123,7 +153,12 @@ export interface AgentCreate {
 export const getAgents = () => apiGet<Agent[]>("/agents");
 export const getAgent = (id: string) => apiGet<Agent>(`/agents/${id}`);
 export const createAgent = (data: AgentCreate) => apiPost<Agent>("/agents", data);
+export const updateAgent = (id: string, data: { name?: string; model_name?: string }) =>
+  apiPatch<Agent>(`/agents/${id}`, data);
 export const deleteAgent = (id: string) => apiDelete(`/agents/${id}`);
+export const startAgent = (id: string) => apiPost<Agent>(`/agents/${id}/start`);
+export const stopAgent = (id: string) => apiPost<Agent>(`/agents/${id}/stop`);
+export const restartAgent = (id: string) => apiPost<Agent>(`/agents/${id}/restart`);
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export interface Message {

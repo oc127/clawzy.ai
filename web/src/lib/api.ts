@@ -1,4 +1,4 @@
-import { getAccessToken, clearTokens } from "./auth";
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from "./auth";
 
 const API_BASE = "/api/v1";
 
@@ -11,9 +11,32 @@ export class ApiError extends Error {
   }
 }
 
+/** Prevent concurrent refresh requests */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  _isRetry = false,
 ): Promise<T> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
@@ -30,7 +53,19 @@ async function request<T>(
     headers,
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !_isRetry) {
+    // Don't refresh for login/register endpoints
+    const isAuthEndpoint = path.startsWith("/auth/");
+    if (!isAuthEndpoint) {
+      // Deduplicate concurrent refresh calls
+      if (!refreshPromise) {
+        refreshPromise = tryRefreshToken().finally(() => { refreshPromise = null; });
+      }
+      const refreshed = await refreshPromise;
+      if (refreshed) {
+        return request<T>(path, options, true);
+      }
+    }
     clearTokens();
     if (typeof window !== "undefined") {
       window.location.href = "/login";

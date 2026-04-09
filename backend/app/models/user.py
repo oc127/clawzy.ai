@@ -18,6 +18,8 @@ class User(Base):
     credit_balance: Mapped[int] = mapped_column(Integer, default=500)
     daily_credit_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = unlimited
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_reset_token: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    password_reset_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
