@@ -51,9 +51,6 @@ struct ChatView: View {
     @State private var showOpenClaw = false
     @State private var showModelPicker = false
     @State private var showConversationList = false
-    @State private var showSkillsPanel = false
-    @State private var showCameraComingSoon = false
-    @State private var pluginsStore = PluginsStore()
     @State private var conversations: [Conversation] = []
     @State private var availableModels: [AIModel] = []
     @State private var currentModelName: String = ""
@@ -80,7 +77,7 @@ struct ChatView: View {
             messageList
             inputBar
         }
-        .background(BrandConfig.backgroundColor)
+        .background(Color(UIColor.systemBackground))
         .navigationTitle(agent.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
@@ -91,7 +88,6 @@ struct ChatView: View {
                 await chatService.loadHistory(agentId: agent.id)
                 await loadModels()
                 await loadConversations()
-                await pluginsStore.fetch(agentId: agent.id)
             }
             withAnimation(.easeInOut(duration: 0.2)) { tabBarVisible.wrappedValue = false }
         }
@@ -143,22 +139,6 @@ struct ChatView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showSkillsPanel) {
-            SkillsPanelView(
-                plugins: pluginsStore.plugins(for: agent.id),
-                onSendSkill: { message in
-                    showSkillsPanel = false
-                    sendPresetMessage(message)
-                }
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
-        }
-        .alert(lang.t("カメラ機能", en: "Camera", zh: "拍照", ko: "카메라"), isPresented: $showCameraComingSoon) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(lang.t("カメラ機能は近日公開予定です", en: "Camera feature coming soon", zh: "拍照功能即将推出", ko: "카메라 기능 준비 중"))
-        }
     }
 
     // MARK: - Message list
@@ -166,28 +146,22 @@ struct ChatView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 8) {
                     ForEach(chatService.messages) { bubble in
                         MessageBubbleView(bubble: bubble).id(bubble.id)
                     }
                     if chatService.isStreaming && chatService.messages.last?.role != .assistant {
                         TypingIndicator().id("typing")
                     }
-                    Color.clear.frame(height: 1).id("bottom")
                 }
-                .padding(.horizontal, 16).padding(.top, 12)
+                .padding(.horizontal, 16).padding(.vertical, 12)
             }
-            .scrollDismissesKeyboard(.interactively)
-            .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             .onChange(of: chatService.messages.count) {
-                withAnimation(.easeOut(duration: 0.15)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
-            }
-            .onChange(of: chatService.isStreaming) { _, streaming in
-                if !streaming {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        proxy.scrollTo("bottom", anchor: .bottom)
+                withAnimation(.easeOut(duration: 0.2)) {
+                    if chatService.isStreaming {
+                        proxy.scrollTo("typing", anchor: .bottom)
+                    } else if let lastId = chatService.messages.last?.id {
+                        proxy.scrollTo(lastId, anchor: .bottom)
                     }
                 }
             }
@@ -297,7 +271,7 @@ struct ChatView: View {
             )
             await MainActor.run { currentModelName = modelId }
         } catch {
-            // Silent fail — UI stays with previous model name
+            // Silent fail
         }
     }
 
@@ -317,77 +291,55 @@ struct ChatView: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 6) {
-                // ⊕ Attach button
-                Menu {
-                    Button {
-                        showCameraComingSoon = true
-                    } label: {
-                        Label(lang.t("写真を撮る", en: "Take Photo", zh: "拍照", ko: "사진 찍기"), systemImage: "camera")
-                    }
-                    Button {
-                        showPhotoPicker = true
-                    } label: {
-                        Label(lang.t("アルバムから選ぶ", en: "Photo Library", zh: "从相册选择", ko: "앨범에서 선택"), systemImage: "photo")
-                    }
-                    Button {
-                        showFilePicker = true
-                    } label: {
-                        Label(lang.t("ファイルを選ぶ", en: "Choose File", zh: "选择文件", ko: "파일 선택"), systemImage: "doc")
-                    }
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 30))
-                        .foregroundStyle(attachments.isEmpty ? BrandConfig.brand.opacity(0.8) : BrandConfig.brand)
-                        .frame(width: 32, height: 32)
+            HStack(alignment: .bottom, spacing: 10) {
+                // Photo button
+                Button { showPhotoPicker = true } label: {
+                    Image(systemName: "photo")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color(UIColor.systemGray))
+                        .frame(width: 36, height: 36)
                 }
-                .accessibilityLabel(lang.t("添付", en: "Attach", zh: "附件", ko: "첨부"))
+                .accessibilityLabel(lang.t("写真", en: "Photo", zh: "图片", ko: "사진"))
 
-                // N Skills button (32pt)
-                Button {
-                    showSkillsPanel = true
-                } label: {
-                    Circle()
-                        .fill(BrandConfig.brand)
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Text("N")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                        )
+                // File button
+                Button { showFilePicker = true } label: {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color(UIColor.systemGray))
+                        .frame(width: 36, height: 36)
                 }
-                .accessibilityLabel(lang.t("スキル", en: "Skills", zh: "技能", ko: "스킬"))
+                .accessibilityLabel(lang.t("ファイル", en: "File", zh: "文件", ko: "파일"))
 
+                // Text field
                 TextField(
                     lang.t("メッセージを入力...", en: "Type a message...", zh: "输入消息...", ko: "메시지 입력..."),
                     text: $inputText, axis: .vertical
                 )
                 .textFieldStyle(.plain).lineLimit(1...5).focused($isInputFocused)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(BrandConfig.fieldBackground)
+                .background(Color(UIColor.systemGray6))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(BrandConfig.separator, lineWidth: 1))
 
+                // Send button
                 Button { sendMessage() } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(canSend ? BrandConfig.brand : BrandConfig.disabledGray)
+                        .background(canSend ? BrandConfig.brand : Color(UIColor.systemGray4))
                         .clipShape(Circle())
                 }
                 .disabled(!canSend)
                 .animation(.easeInOut(duration: 0.15), value: canSend)
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
-
-            // AI generated content disclaimer
-            Text(lang.t("内容はAIが生成しています", en: "AI-generated content", zh: "内容由AI生成", ko: "AI 생성 콘텐츠"))
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-                .padding(.bottom, 8)
         }
-        .background(BrandConfig.backgroundColor)
-        .overlay(Rectangle().fill(BrandConfig.separator).frame(height: 0.5), alignment: .top)
+        .background(Color(UIColor.systemBackground))
+        .overlay(
+            Rectangle()
+                .fill(Color(UIColor.separator))
+                .frame(height: 0.5),
+            alignment: .top
+        )
     }
 
     @ViewBuilder
@@ -447,11 +399,6 @@ struct ChatView: View {
         inputText = ""
         attachments = []
         chatService.sendMessage(text, images: imgs)
-    }
-
-    private func sendPresetMessage(_ text: String) {
-        guard !chatService.isStreaming else { return }
-        chatService.sendMessage(text, images: [])
     }
 
     // MARK: - Loading helpers
@@ -560,57 +507,67 @@ struct MessageBubbleView: View {
     var isUser: Bool { bubble.role == .user }
 
     var body: some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            if isUser { Spacer(minLength: 60) }
+
+            // AI avatar — brand red circle with white N
+            if !isUser {
+                ZStack {
+                    Circle()
+                        .fill(BrandConfig.brand)
+                        .frame(width: 32, height: 32)
+                    Text("N")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .alignmentGuide(.bottom) { d in d[.bottom] }
+            }
+
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+                // Image grid
+                if !bubble.images.isEmpty {
+                    ImageGridView(images: bubble.images, isUser: isUser)
+                }
+
+                // Text bubble
+                if !bubble.content.isEmpty {
+                    TextBubbleView(text: bubble.content, isUser: isUser)
+                }
+
+                Text(bubble.timestamp, style: .time)
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+
+            if !isUser { Spacer(minLength: 60) }
+        }
+    }
+}
+
+// MARK: - Text bubble
+
+private struct TextBubbleView: View {
+    let text: String
+    let isUser: Bool
+
+    var body: some View {
         if isUser {
-            // User message: right-aligned with subtle background, wide but not full-bleed
-            HStack(alignment: .bottom, spacing: 8) {
-                Spacer(minLength: 48)
-                VStack(alignment: .trailing, spacing: 4) {
-                    if !bubble.images.isEmpty {
-                        ImageGridView(images: bubble.images, isUser: true)
-                    }
-                    if !bubble.content.isEmpty {
-                        Text(bubble.content)
-                            .textSelection(.enabled)
-                            .padding(.horizontal, 14).padding(.vertical, 10)
-                            .background(BrandConfig.brand)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    Text(bubble.timestamp, style: .time)
-                        .font(.caption2).foregroundStyle(.tertiary)
-                }
-            }
-            .padding(.bottom, 12)
+            Text(text)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(
+                    LinearGradient(
+                        colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
         } else {
-            // AI message: full-width, no bubble, avatar on left
-            VStack(alignment: .leading, spacing: 0) {
-                Divider()
-                    .padding(.bottom, 10)
-                HStack(alignment: .top, spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(BrandConfig.brand)
-                            .frame(width: 32, height: 32)
-                        Text("N")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        if !bubble.images.isEmpty {
-                            ImageGridView(images: bubble.images, isUser: false)
-                        }
-                        if !bubble.content.isEmpty {
-                            Text(LocalizedStringKey(bubble.content))
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .foregroundStyle(.primary)
-                        }
-                        Text(bubble.timestamp, style: .time)
-                            .font(.caption2).foregroundStyle(.tertiary)
-                    }
-                }
-                .padding(.bottom, 12)
-            }
+            Text(text)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(Color(UIColor.secondarySystemBackground))
+                .foregroundStyle(.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
         }
     }
 }
@@ -641,7 +598,11 @@ private struct ImageGridView: View {
             }
         }
         .padding(4)
-        .background(BrandConfig.cardBackground)
+        .background(
+            isUser
+                ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
+                : LinearGradient(colors: [Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
@@ -652,140 +613,28 @@ private struct TypingIndicator: View {
     @State private var phase = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Divider()
-                .padding(.bottom, 10)
-            HStack(alignment: .top, spacing: 10) {
-                ZStack {
-                    Circle().fill(BrandConfig.brand).frame(width: 32, height: 32)
-                    Text("N").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                }
-                HStack(spacing: 4) {
-                    ForEach(0..<3) { i in
-                        Circle().fill(Color.secondary).frame(width: 7, height: 7)
-                            .scaleEffect(phase == i ? 1.3 : 0.8)
-                            .animation(.easeInOut(duration: 0.4).repeatForever().delay(Double(i) * 0.13), value: phase)
-                    }
-                }
-                .padding(.top, 6)
+        HStack(alignment: .bottom, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(BrandConfig.brand)
+                    .frame(width: 32, height: 32)
+                Text("N")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
             }
-            .padding(.bottom, 12)
+            HStack(spacing: 4) {
+                ForEach(0..<3) { i in
+                    Circle().fill(Color.secondary).frame(width: 7, height: 7)
+                        .scaleEffect(phase == i ? 1.3 : 0.8)
+                        .animation(.easeInOut(duration: 0.4).repeatForever().delay(Double(i) * 0.13), value: phase)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(Color(UIColor.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            Spacer(minLength: 60)
         }
         .onAppear { phase = 1 }
-    }
-}
-
-// MARK: - Skills Panel
-
-private struct BuiltinSkill: Identifiable {
-    let id = UUID()
-    let icon: String
-    let name: String
-    let description: String
-    let prompt: String
-}
-
-struct SkillsPanelView: View {
-    let plugins: [InstalledPlugin]
-    let onSendSkill: (String) -> Void
-    @Environment(\.lang) var lang
-
-    private var builtinSkills: [BuiltinSkill] {
-        [
-            BuiltinSkill(
-                icon: "newspaper.fill",
-                name: lang.t("AI日報速覧", en: "AI Daily Brief", zh: "AI日报速览", ko: "AI 일일 브리핑"),
-                description: lang.t("今日のAIニュースを要約", en: "Summarize today's AI news", zh: "总结今日AI新闻", ko: "오늘의 AI 뉴스 요약"),
-                prompt: lang.t("今日のAIニュースを要約してください", en: "Summarize today's AI news", zh: "请总结今天的AI新闻", ko: "오늘의 AI 뉴스를 요약해 주세요")
-            ),
-            BuiltinSkill(
-                icon: "tablecells.fill",
-                name: "XLSX",
-                description: lang.t("Excelファイルを作成・処理", en: "Create or process Excel files", zh: "创建或处理Excel文件", ko: "Excel 파일 생성/처리"),
-                prompt: lang.t("Excelファイルを作成してください", en: "Create or process an Excel file", zh: "请创建或处理Excel文件", ko: "Excel 파일을 생성하거나 처리해 주세요")
-            ),
-            BuiltinSkill(
-                icon: "doc.richtext.fill",
-                name: "PDF",
-                description: lang.t("PDFを処理・生成", en: "Process or generate PDFs", zh: "处理或生成PDF", ko: "PDF 처리/생성"),
-                prompt: lang.t("PDFを処理してください", en: "Process or generate a PDF", zh: "请处理或生成PDF", ko: "PDF를 처리하거나 생성해 주세요")
-            ),
-        ]
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section(lang.t("ビルトインスキル", en: "Built-in Skills", zh: "内置技能", ko: "기본 기술")) {
-                    ForEach(builtinSkills) { skill in
-                        Button {
-                            onSendSkill(skill.prompt)
-                        } label: {
-                            HStack(spacing: 12) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(BrandConfig.brand.opacity(0.12))
-                                        .frame(width: 36, height: 36)
-                                    Image(systemName: skill.icon)
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(BrandConfig.brand)
-                                }
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(skill.name)
-                                        .font(.subheadline).fontWeight(.medium)
-                                        .foregroundStyle(.primary)
-                                    Text(skill.description)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(.vertical, 2)
-                        }
-                    }
-                }
-
-                if !plugins.isEmpty {
-                    Section(lang.t("インストール済みスキル", en: "Installed Skills", zh: "已安装技能", ko: "설치된 기술")) {
-                        ForEach(plugins) { plugin in
-                            Button {
-                                let displayName = plugin.name ?? plugin.slug
-                                onSendSkill("「\(displayName)」スキルを使ってください")
-                            } label: {
-                                HStack(spacing: 12) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.purple.opacity(0.10))
-                                            .frame(width: 36, height: 36)
-                                        Image(systemName: "puzzlepiece.extension.fill")
-                                            .font(.system(size: 16))
-                                            .foregroundStyle(Color.purple)
-                                    }
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(plugin.name ?? plugin.slug)
-                                            .font(.subheadline).fontWeight(.medium)
-                                            .foregroundStyle(.primary)
-                                        Text(plugin.slug)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .padding(.vertical, 2)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(lang.t("スキル", en: "Skills", zh: "技能", ko: "기술"))
-            .navigationBarTitleDisplayMode(.inline)
-        }
     }
 }
 
@@ -931,19 +780,19 @@ struct ModelPickerView: View {
                             }
                             .padding(14)
                             .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(isSelected ? BrandConfig.brand.opacity(0.06) : BrandConfig.cardBackground)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(isSelected ? BrandConfig.brand.opacity(0.06) : Color(UIColor.secondarySystemBackground))
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(isSelected ? BrandConfig.brand.opacity(0.3) : BrandConfig.separator, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(isSelected ? BrandConfig.brand.opacity(0.3) : Color(UIColor.separator), lineWidth: 1)
                             )
                         }
                     }
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
             }
-            .background(BrandConfig.backgroundColor)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(lang.t("モデルを選択", en: "Select Model", zh: "选择模型", ko: "모델 선택"))
             .navigationBarTitleDisplayMode(.inline)
         }

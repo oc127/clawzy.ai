@@ -1,5 +1,26 @@
 import SwiftUI
 
+// MARK: - Agent card color palette
+
+private struct AgentCardStyle {
+    let bg: Color
+    let accent: Color
+}
+
+private let agentCardStyles: [AgentCardStyle] = [
+    AgentCardStyle(bg: Color(red: 1.0,  green: 0.953, blue: 0.878), accent: Color(red: 1.0,  green: 0.596, blue: 0.0)),   // 暖黄
+    AgentCardStyle(bg: Color(red: 0.890, green: 0.949, blue: 0.996), accent: Color(red: 0.129, green: 0.588, blue: 0.953)), // 浅蓝
+    AgentCardStyle(bg: Color(red: 0.910, green: 0.961, blue: 0.914), accent: Color(red: 0.298, green: 0.686, blue: 0.314)), // 浅绿
+    AgentCardStyle(bg: Color(red: 0.953, green: 0.898, blue: 0.961), accent: Color(red: 0.612, green: 0.153, blue: 0.690)), // 浅紫
+    AgentCardStyle(bg: Color(red: 0.988, green: 0.894, blue: 0.925), accent: Color(red: 0.914, green: 0.118, blue: 0.388)), // 浅粉
+]
+
+private func cardStyle(for index: Int) -> AgentCardStyle {
+    agentCardStyles[index % agentCardStyles.count]
+}
+
+// MARK: - DashboardView
+
 struct DashboardView: View {
     @Environment(AuthManager.self) var authManager
     @Environment(AgentService.self) var agentService
@@ -14,67 +35,12 @@ struct DashboardView: View {
                 if agentService.isLoading && agentService.agents.isEmpty {
                     ProgressView(lang.t("読み込み中...", en: "Loading...", zh: "加载中...", ko: "로딩 중..."))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if agentService.agents.isEmpty {
-                    EmptyAgentView { showCreateAgent = true }
+                        .background(Color(UIColor.systemBackground))
                 } else {
-                    agentList
+                    mainContent
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // Leading: N Logo + App Name (taps to open health detail)
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { showHealthDetail = true } label: {
-                        HStack(spacing: 8) {
-                            NipponLogo(size: 28)
-                            Text("NipponClaw")
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                // Trailing: + create button, health dot, credits badge
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 8) {
-                        // Create agent button
-                        Button {
-                            showCreateAgent = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 17, weight: .semibold))
-                        }
-                        .accessibilityLabel(lang.t("エージェントを作成", en: "Create Agent", zh: "创建助手", ko: "에이전트 만들기"))
-
-                        // Health status dot
-                        Circle()
-                            .fill(healthDotColor)
-                            .frame(width: 8, height: 8)
-                            .shadow(color: healthDotColor.opacity(0.5), radius: 3)
-
-                        // Credits badge
-                        if let user = authManager.currentUser {
-                            NavigationLink {
-                                CreditsShopView()
-                            } label: {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "bolt.fill")
-                                        .font(.caption2)
-                                    Text("\(user.creditBalance)")
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                }
-                                .foregroundStyle(BrandConfig.brand)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(BrandConfig.brand.opacity(0.10))
-                                .clipShape(Capsule())
-                            }
-                        }
-                    }
-                }
-            }
+            .navigationBarHidden(true)
             .sheet(isPresented: $showCreateAgent) {
                 CreateAgentView(agentService: agentService)
             }
@@ -86,66 +52,408 @@ struct DashboardView: View {
         }
     }
 
-    private var healthDotColor: Color {
-        switch healthMonitor.overallStatus {
-        case .online:   return Color(UIColor.systemGreen)
-        case .degraded: return Color(UIColor.systemOrange)
-        case .offline:  return Color(UIColor.systemRed)
-        }
-    }
+    // MARK: - Main content
 
-    private var agentList: some View {
+    private var mainContent: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                // Section header
+            VStack(alignment: .leading, spacing: 0) {
+                // Top bar
                 HStack {
-                    Text(lang.t("マイエージェント", en: "MY AGENTS", zh: "我的助手", ko: "내 에이전트"))
-                        .font(.footnote)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
+                    StatusBadge(status: healthMonitor.overallStatus) {
+                        showHealthDetail = true
+                    }
                     Spacer()
-                    Text(lang.current == "en"
-                         ? "\(agentService.agents.count)"
-                         : "\(agentService.agents.count)\(lang.t("体", zh: "个", ko: "개"))")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Text(BrandConfig.appName)
+                        .font(.callout).fontWeight(.bold)
+                        .foregroundStyle(BrandConfig.brand)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .padding(.bottom, 10)
+                .padding(.bottom, 8)
 
-                // Agent cards
-                VStack(spacing: 1) {
-                    ForEach(agentService.agents) { agent in
-                        HStack(spacing: 0) {
-                            NavigationLink {
-                                ChatView(agent: agent)
-                            } label: {
-                                AgentRowView(agent: agent)
-                            }
-                            .buttonStyle(.plain)
-
-                            NavigationLink {
-                                AgentDetailView(agent: agent)
-                            } label: {
-                                Image(systemName: "gearshape")
-                                    .font(.system(size: 15))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 44, height: 44)
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.trailing, 4)
-                            .background(BrandConfig.cardBackground)
-                        }
+                // Greeting
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(lang.t("こんにちは 👋", en: "Hello 👋", zh: "你好 👋", ko: "안녕하세요 👋"))
+                        .font(.largeTitle).fontWeight(.bold)
+                        .foregroundStyle(.primary)
+                    if let user = authManager.currentUser {
+                        Text(user.name)
+                            .font(.title2).fontWeight(.medium)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .background(BrandConfig.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 20)
+
+                // Hero credits card
+                if let user = authManager.currentUser {
+                    HeroCreditsCard(balance: user.creditBalance)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 28)
+                }
+
+                // Agent section header
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(lang.t("あなたのエージェント", en: "Your Agents", zh: "你的助手", ko: "나의 에이전트"))
+                            .font(.title3).fontWeight(.bold)
+                            .foregroundStyle(.primary)
+                        if !agentService.agents.isEmpty {
+                            Text(lang.current == "en"
+                                 ? "\(agentService.agents.count) agents"
+                                 : "\(agentService.agents.count)" + lang.t("体", zh: "个", ko: "개"))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button {
+                        showCreateAgent = true
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.primary)
+                                .frame(width: 36, height: 36)
+                            Image(systemName: "plus")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(Color(UIColor.systemBackground))
+                        }
+                    }
+                    .accessibilityLabel(lang.t("エージェントを作成", en: "Create Agent", zh: "创建助手", ko: "에이전트 만들기"))
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 14)
+
+                // Agent cards or empty state
+                if agentService.agents.isEmpty {
+                    EmptyAgentSection { showCreateAgent = true }
+                        .padding(.horizontal, 16)
+                } else {
+                    VStack(spacing: 12) {
+                        ForEach(Array(agentService.agents.enumerated()), id: \.element.id) { index, agent in
+                            ColoredAgentCard(agent: agent, style: cardStyle(for: index))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+
+                // Quick actions
+                quickActionsSection
+                    .padding(.top, 28)
+                    .padding(.bottom, 32)
             }
-            .padding(.bottom, 16)
         }
-        .background(BrandConfig.backgroundColor)
+        .background(Color(UIColor.systemBackground))
+    }
+
+    // MARK: - Quick actions
+
+    private var quickActionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(lang.t("クイックアクション", en: "Quick Actions", zh: "快速操作", ko: "빠른 실행"))
+                .font(.title3).fontWeight(.bold)
+                .padding(.horizontal, 20)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    QuickActionTile(
+                        icon: "plus.bubble.fill",
+                        label: lang.t("新規作成", en: "New Agent", zh: "新建助手", ko: "새 에이전트"),
+                        color: BrandConfig.brand
+                    ) { showCreateAgent = true }
+
+                    QuickActionTile(
+                        icon: "storefront.fill",
+                        label: lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"),
+                        color: Color(red: 0.129, green: 0.588, blue: 0.953)
+                    ) { /* navigated via tab */ }
+
+                    QuickActionTile(
+                        icon: "bolt.fill",
+                        label: lang.t("クレジット", en: "Credits", zh: "点数", ko: "크레딧"),
+                        color: Color(red: 1.0, green: 0.596, blue: 0.0)
+                    ) { /* credits */ }
+
+                    QuickActionTile(
+                        icon: "gearshape.fill",
+                        label: lang.t("設定", en: "Settings", zh: "设置", ko: "설정"),
+                        color: Color(red: 0.612, green: 0.153, blue: 0.690)
+                    ) { /* settings tab */ }
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+}
+
+// MARK: - Hero Credits Card
+
+private struct HeroCreditsCard: View {
+    let balance: Int
+    @Environment(\.lang) var lang
+    @State private var showShop = false
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(lang.t("クレジット残高", en: "Credit Balance", zh: "点数余额", ko: "크레딧 잔액"))
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.85))
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(balance)")
+                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("pts")
+                        .font(.title3).fontWeight(.medium)
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+                Text(balance > 100
+                     ? lang.t("残高十分 ✓", en: "Good to go ✓", zh: "余额充足 ✓", ko: "잔액 충분 ✓")
+                     : lang.t("残高少ない", en: "Low balance", zh: "余额不足", ko: "잔액 부족"))
+                    .font(.caption).fontWeight(.medium)
+                    .foregroundStyle(.white.opacity(0.80))
+            }
+            Spacer()
+            Button { showShop = true } label: {
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .fill(.white.opacity(0.20))
+                            .frame(width: 56, height: 56)
+                        Image(systemName: "bolt.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                    }
+                    Text(lang.t("チャージ", en: "Top Up", zh: "充值", ko: "충전"))
+                        .font(.caption2).fontWeight(.semibold)
+                        .foregroundStyle(.white.opacity(0.90))
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 22)
+        .background(
+            LinearGradient(
+                colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: BrandConfig.brand.opacity(0.40), radius: 16, x: 0, y: 8)
+        .sheet(isPresented: $showShop) { CreditsShopView() }
+    }
+}
+
+// MARK: - Colored Agent Card
+
+private struct ColoredAgentCard: View {
+    let agent: Agent
+    let style: AgentCardStyle
+    @Environment(\.lang) var lang
+
+    var statusColor: Color {
+        switch agent.status {
+        case .running:  return .green
+        case .creating: return .yellow
+        case .stopped:  return Color(UIColor.systemGray3)
+        case .error:    return BrandConfig.brand
+        }
+    }
+
+    var statusLabel: String {
+        switch agent.status {
+        case .running:  return lang.t("稼働中", en: "Active",   zh: "运行中", ko: "실행 중")
+        case .creating: return lang.t("作成中", en: "Creating", zh: "创建中", ko: "생성 중")
+        case .stopped:  return lang.t("停止中", en: "Stopped",  zh: "已停止", ko: "중지됨")
+        case .error:    return lang.t("エラー", en: "Error",    zh: "错误",   ko: "오류")
+        }
+    }
+
+    var agentEmoji: String {
+        let name = agent.name.lowercased()
+        if name.contains("ビジネス") || name.contains("business") || name.contains("商") { return "💼" }
+        if name.contains("コード") || name.contains("code") || name.contains("dev") { return "💻" }
+        if name.contains("翻訳") || name.contains("translat") || name.contains("lang") { return "🌐" }
+        if name.contains("デザイン") || name.contains("design") || name.contains("art") { return "🎨" }
+        if name.contains("データ") || name.contains("data") || name.contains("anal") { return "📊" }
+        if name.contains("リサーチ") || name.contains("research") { return "🔍" }
+        if name.contains("教") || name.contains("tutor") || name.contains("learn") { return "📚" }
+        if name.contains("ライター") || name.contains("writ") || name.contains("copy") { return "✍️" }
+        return "🤖"
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            NavigationLink {
+                ChatView(agent: agent)
+            } label: {
+                HStack(spacing: 14) {
+                    // Large emoji with colored background
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(style.bg)
+                            .frame(width: 56, height: 56)
+                        Text(agentEmoji)
+                            .font(.system(size: 30))
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(agent.name)
+                            .font(.headline).fontWeight(.semibold)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Text(agent.modelName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        // Status pill
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(statusColor)
+                                .frame(width: 6, height: 6)
+                            Text(statusLabel)
+                                .font(.caption2).fontWeight(.medium)
+                                .foregroundStyle(statusColor)
+                        }
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(statusColor.opacity(0.12))
+                        .clipShape(Capsule())
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundStyle(style.accent)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+            }
+            .buttonStyle(.plain)
+
+            // Settings button
+            NavigationLink {
+                AgentDetailView(agent: agent)
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(style.accent.opacity(0.70))
+                    .frame(width: 44, height: 44)
+                    .background(style.accent.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.trailing, 12)
+            }
+            .buttonStyle(.plain)
+        }
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(style.accent.opacity(0.15), lineWidth: 1)
+        )
+        .shadow(color: style.accent.opacity(0.12), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Quick Action Tile
+
+private struct QuickActionTile: View {
+    let icon: String
+    let label: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(color.opacity(0.12))
+                        .frame(width: 52, height: 52)
+                    Image(systemName: icon)
+                        .font(.system(size: 22))
+                        .foregroundStyle(color)
+                }
+                Text(label)
+                    .font(.caption2).fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(width: 68)
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 8)
+            .background(Color(UIColor.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Empty agent section
+
+private struct EmptyAgentSection: View {
+    let onCreate: () -> Void
+    @Environment(\.lang) var lang
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(BrandConfig.brand.opacity(0.08))
+                    .frame(width: 72, height: 72)
+                Text("🤖").font(.system(size: 36))
+            }
+            VStack(spacing: 6) {
+                Text(lang.t("エージェントがまだいません",
+                            en: "No agents yet",
+                            zh: "还没有助手",
+                            ko: "에이전트가 없습니다"))
+                    .font(.headline).fontWeight(.semibold)
+                Text(lang.t("最初のAIエージェントを作成しましょう",
+                            en: "Create your first AI agent",
+                            zh: "来创建你的第一个AI助手吧",
+                            ko: "첫 번째 AI 에이전트를 만들어보세요"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            BrandButton(
+                title: lang.t("エージェントを作成", en: "Create Agent", zh: "创建助手", ko: "에이전트 만들기"),
+                isLoading: false,
+                action: onCreate
+            )
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Status badge
+
+private struct StatusBadge: View {
+    let status: ServiceStatus
+    let onTap: () -> Void
+
+    private var color: Color {
+        switch status {
+        case .online:   return .green
+        case .degraded: return .yellow
+        case .offline:  return .red
+        }
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            Circle()
+                .fill(color)
+                .frame(width: 10, height: 10)
+                .shadow(color: color.opacity(0.6), radius: 3)
+        }
     }
 }
 
@@ -235,44 +543,7 @@ private struct HealthDetailSheet: View {
     }
 }
 
-// MARK: - Empty state
-
-private struct EmptyAgentView: View {
-    let onCreate: () -> Void
-    @Environment(\.lang) var lang
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            ZStack {
-                Circle()
-                    .fill(BrandConfig.brand.opacity(0.08))
-                    .frame(width: 88, height: 88)
-                NipponLogo(size: 48)
-            }
-            VStack(spacing: 6) {
-                Text(lang.t("エージェントがまだいません",
-                            en: "No agents yet",
-                            zh: "还没有助手",
-                            ko: "에이전트가 없습니다"))
-                    .font(.title3).fontWeight(.semibold)
-                Text(lang.t("最初のAIエージェントを作成しましょう",
-                            en: "Create your first AI agent",
-                            zh: "来创建你的第一个AI助手吧",
-                            ko: "첫 번째 AI 에이전트를 만들어보세요"))
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            BrandButton(title: lang.t("エージェントを作成", en: "Create Agent", zh: "创建助手", ko: "에이전트 만들기"),
-                        isLoading: false, action: onCreate)
-                .padding(.horizontal, 48).padding(.top, 8)
-            Spacer()
-        }
-        .background(BrandConfig.backgroundColor)
-    }
-}
-
-// MARK: - Agent row
+// MARK: - AgentRowView (kept for backward compatibility)
 
 struct AgentRowView: View {
     let agent: Agent
@@ -280,8 +551,8 @@ struct AgentRowView: View {
 
     var statusColor: Color {
         switch agent.status {
-        case .running:  return Color(UIColor.systemGreen)
-        case .creating: return Color(UIColor.systemOrange)
+        case .running:  return .green
+        case .creating: return .yellow
         case .stopped:  return Color(UIColor.systemGray3)
         case .error:    return BrandConfig.brand
         }
@@ -311,20 +582,17 @@ struct AgentRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // N avatar 36pt
             ZStack {
-                Circle()
-                    .fill(BrandConfig.brand)
-                    .frame(width: 36, height: 36)
-                Text("N")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(BrandConfig.brand.opacity(0.10))
+                    .frame(width: 42, height: 42)
+                Text("🤖")
+                    .font(.title3)
             }
-
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(agent.name)
-                        .font(.headline)
+                        .fontWeight(.medium)
                         .foregroundStyle(.primary)
                     if isNew {
                         Text(lang.t("新着", en: "NEW", zh: "新", ko: "NEW"))
@@ -339,9 +607,7 @@ struct AgentRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
             Spacer()
-
             HStack(spacing: 5) {
                 Circle()
                     .fill(statusColor)
@@ -350,17 +616,14 @@ struct AgentRowView: View {
                     .font(.caption)
                     .foregroundStyle(statusColor)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 9).padding(.vertical, 5)
             .background(statusColor.opacity(0.10))
             .clipShape(Capsule())
-
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(Color(UIColor.systemGray3))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(.horizontal, 16).padding(.vertical, 14)
         .background(BrandConfig.cardBackground)
     }
 }

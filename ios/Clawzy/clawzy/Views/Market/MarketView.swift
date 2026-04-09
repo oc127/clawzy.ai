@@ -37,27 +37,26 @@ struct MarketView: View {
     }
 
     private var filteredTemplates: [AppTemplate] {
-        let byCategory = (selectedCategory == allLabel || selectedCategory.isEmpty)
+        selectedCategory == allLabel || selectedCategory.isEmpty
             ? templates
             : templates.filter { $0.category == selectedCategory }
-        if searchText.trimmingCharacters(in: .whitespaces).isEmpty { return byCategory }
-        let q = searchText.lowercased()
-        return byCategory.filter {
-            $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
-        }
     }
 
     var body: some View {
-        ZStack {
-            // Main content
+        ZStack(alignment: .top) {
             NavigationStack {
                 VStack(spacing: 0) {
-                    // Tab picker
-                    Picker("", selection: $selectedTab) {
-                        Text(lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿")).tag(0)
-                        Text(lang.t("プラグイン",   en: "Plugins",   zh: "插件", ko: "플러그인")).tag(1)
+                    // Tab switcher
+                    HStack(spacing: 0) {
+                        TabSwitchButton(
+                            title: lang.t("テンプレート", en: "Templates", zh: "模板", ko: "템플릿"),
+                            isSelected: selectedTab == 0
+                        ) { withAnimation { selectedTab = 0 } }
+                        TabSwitchButton(
+                            title: lang.t("プラグイン", en: "Plugins", zh: "插件", ko: "플러그인"),
+                            isSelected: selectedTab == 1
+                        ) { withAnimation { selectedTab = 1 } }
                     }
-                    .pickerStyle(.segmented)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                     .padding(.bottom, 4)
@@ -68,7 +67,7 @@ struct MarketView: View {
                         pluginsTab
                     }
                 }
-                .background(BrandConfig.backgroundColor)
+                .background(Color(UIColor.systemBackground))
                 .navigationTitle(lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"))
                 .overlay(alignment: .bottom) {
                     if let msg = toastMessage {
@@ -80,40 +79,26 @@ struct MarketView: View {
                 .animation(.easeInOut(duration: 0.25), value: toastMessage)
             }
 
-            // Plugin install popup — centered on screen
+            // Plugin popup
             if let plugin = selectedPlugin {
-                Color.black.opacity(0.45)
+                Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .onTapGesture {
                         if !isConfirmInstalling { selectedPlugin = nil }
                     }
-                    .transition(.opacity)
-
-                VStack {
-                    Spacer()
-                    pluginPopupCard(plugin: plugin)
-                        .padding(.horizontal, 32)
-                    Spacer()
-                }
-                .ignoresSafeArea()
+                popupCard(plugin: plugin)
+                    .padding(.top, 80)
             }
 
-            // Template popup — centered on screen
+            // Template popup
             if let template = selectedTemplate {
-                Color.black.opacity(0.45)
+                Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .onTapGesture {
                         if !isConfirmAdding { selectedTemplate = nil }
                     }
-                    .transition(.opacity)
-
-                VStack {
-                    Spacer()
-                    templatePopupCard(template: template)
-                        .padding(.horizontal, 32)
-                    Spacer()
-                }
-                .ignoresSafeArea()
+                templatePopupCard(template: template)
+                    .padding(.top, 80)
             }
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedPlugin != nil)
@@ -125,10 +110,12 @@ struct MarketView: View {
         }
     }
 
-    // MARK: - Plugin popup card
+    // MARK: - Tab switch button
+
+    // MARK: - Popup card (plugin)
 
     @ViewBuilder
-    private func pluginPopupCard(plugin: ClawHubPlugin) -> some View {
+    private func popupCard(plugin: ClawHubPlugin) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Spacer()
@@ -179,7 +166,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmInstalling {
-                        ProgressView().tint(Color.white).scaleEffect(0.85)
+                        ProgressView().tint(.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
                     }
@@ -188,21 +175,22 @@ struct MarketView: View {
                          : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(Color.white)
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(isConfirmInstalling)
         }
         .padding(24)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+        .frame(width: 320)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .black.opacity(0.20), radius: 28, y: 10)
     }
 
-    // MARK: - Template popup card
+    // MARK: - Popup card (template)
 
     @ViewBuilder
     private func templatePopupCard(template: AppTemplate) -> some View {
@@ -268,27 +256,28 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmAdding {
-                        ProgressView().tint(Color.white).scaleEffect(0.85)
+                        ProgressView().tint(.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "plus.circle.fill")
                     }
                     Text(isConfirmAdding
                          ? lang.t("作成中...", en: "Creating...", zh: "创建中...", ko: "생성 중...")
-                         : lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
+                         : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추가"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(Color.white)
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(isConfirmAdding)
         }
         .padding(24)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
+        .frame(width: 320)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .black.opacity(0.20), radius: 28, y: 10)
     }
 
     // MARK: - Templates tab
@@ -306,45 +295,17 @@ struct MarketView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 0) {
-                        // Search bar
-                        HStack(spacing: 8) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.secondary)
-                            TextField(
-                                lang.t("スキルを検索...", en: "Search skills...", zh: "搜索技能...", ko: "스킬 검색..."),
-                                text: $searchText
-                            )
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                            if !searchText.isEmpty {
-                                Button {
-                                    searchText = ""
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(BrandConfig.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 4)
-
-                        // Category tags
+                        // Category chips
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 ForEach(categories, id: \.self) { cat in
-                                    Button {
-                                        withAnimation { selectedCategory = cat }
-                                    } label: {
+                                    Button { withAnimation { selectedCategory = cat } } label: {
+                                        let isSelected = selectedCategory == cat || (selectedCategory.isEmpty && cat == allLabel)
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
-                                            .font(.footnote).fontWeight(.medium)
-                                            .foregroundStyle(selectedCategory == cat ? Color.white : Color.primary)
-                                            .padding(.horizontal, 14).padding(.vertical, 8)
-                                            .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
+                                            .font(.footnote).fontWeight(.semibold)
+                                            .foregroundStyle(isSelected ? .white : .primary)
+                                            .padding(.horizontal, 16).padding(.vertical, 8)
+                                            .background(isSelected ? BrandConfig.brand : Color(UIColor.systemGray5))
                                             .clipShape(Capsule())
                                     }
                                 }
@@ -352,30 +313,14 @@ struct MarketView: View {
                             .padding(.horizontal, 16).padding(.vertical, 12)
                         }
 
-                        // 2-column skill grid
-                        if filteredTemplates.isEmpty {
-                            VStack(spacing: 10) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 32))
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 40)
-                                Text(lang.t("結果がありません", en: "No results", zh: "没有结果", ko: "결과 없음"))
-                                    .font(.headline)
-                                Text(lang.t("別のキーワードで検索してみてください", en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요"))
-                                    .font(.footnote).foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.bottom, 40)
-                        } else {
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                                ForEach(filteredTemplates) { t in
-                                    TemplateCard(template: t, agentService: agentService) {
-                                        selectedTemplate = t
-                                    }
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                            ForEach(filteredTemplates) { t in
+                                TemplateCard(template: t, agentService: agentService) {
+                                    selectedTemplate = t
                                 }
                             }
-                            .padding(.horizontal, 16).padding(.bottom, 100)
                         }
+                        .padding(.horizontal, 16).padding(.bottom, 100)
                     }
                 }
             }
@@ -389,10 +334,10 @@ struct MarketView: View {
 
     private var skeletonGrid: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(0..<6, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(BrandConfig.disabledGray)
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(UIColor.systemGray5))
                         .frame(height: 180)
                 }
             }
@@ -442,30 +387,31 @@ struct MarketView: View {
 
     private var pluginsTab: some View {
         VStack(spacing: 0) {
+            // Search bar
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
                 TextField(lang.t("プラグインを検索...", en: "Search plugins...", zh: "搜索插件...", ko: "플러그인 검색..."), text: $searchText)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
-                    .onSubmit { triggerPluginSearch() }
+                    .onSubmit { triggerSearch() }
                 if !searchText.isEmpty {
                     Button {
                         searchText = ""
-                        triggerPluginSearch()
+                        triggerSearch()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(BrandConfig.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(UIColor.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .onChange(of: searchText) { _, _ in triggerPluginSearch() }
+            .padding(.vertical, 12)
+            .onChange(of: searchText) { _, _ in triggerSearch() }
 
             if clawHubService.isLoading && clawHubService.plugins.isEmpty {
                 Spacer()
@@ -481,7 +427,7 @@ struct MarketView: View {
                 emptyState(
                     icon: "tray",
                     title: lang.t("プラグインが見つかりません", en: "No plugins found",         zh: "未找到插件",       ko: "플러그인 없음"),
-                    subtitle: lang.t("別のキーワードで検索してみてください",          en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
+                    subtitle: lang.t("別のキーワードで検索してみてください", en: "Try a different keyword", zh: "请尝试其他关键词", ko: "다른 키워드로 검색해보세요")
                 )
             } else {
                 ScrollView {
@@ -497,14 +443,11 @@ struct MarketView: View {
                 }
             }
         }
-        .onChange(of: selectedTab) { _, val in
-            if val == 1 { searchText = "" }
-        }
     }
 
     // MARK: - Helpers
 
-    private func triggerPluginSearch() {
+    private func triggerSearch() {
         searchTask?.cancel()
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
@@ -549,7 +492,9 @@ struct MarketView: View {
     }
 
     private func iconForPlugin(_ p: ClawHubPlugin) -> String {
-        let combined = (p.name + " " + p.slug).lowercased()
+        let name = p.name.lowercased()
+        let slug = p.slug.lowercased()
+        let combined = name + " " + slug
         if combined.contains("writ") || combined.contains("copy") { return "✍️" }
         if combined.contains("code") || combined.contains("dev") || combined.contains("git") { return "💻" }
         if combined.contains("data") || combined.contains("analy") { return "📊" }
@@ -582,6 +527,37 @@ struct MarketView: View {
     }
 }
 
+// MARK: - Tab switch button
+
+private struct TabSwitchButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline).fontWeight(.semibold)
+                .foregroundStyle(isSelected ? BrandConfig.brand : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    VStack {
+                        Spacer()
+                        if isSelected {
+                            BrandConfig.brand
+                                .frame(height: 2)
+                                .clipShape(Capsule())
+                        } else {
+                            Color.clear.frame(height: 2)
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Template Card
 
 private struct TemplateCard: View {
@@ -607,51 +583,53 @@ private struct TemplateCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Emoji icon
-            Text(template.icon)
-                .font(.largeTitle)
+            HStack {
+                Text(template.icon).font(.largeTitle)
+                Spacer()
+                Text(lang.categoryLabel(template.category))
+                    .font(.caption2).fontWeight(.semibold)
+                    .foregroundStyle(BrandConfig.brand)
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .background(BrandConfig.brand.opacity(0.10))
+                    .clipShape(Capsule())
+            }
 
-            // Name + description
             VStack(alignment: .leading, spacing: 4) {
                 Text(localizedName)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .foregroundStyle(.primary)
+                    .font(.footnote).fontWeight(.semibold).lineLimit(1)
                 Text(localizedDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
 
             Spacer()
 
-            // Install button
             Button { onTap() } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: alreadyAdded ? "checkmark" : "arrow.down.circle.fill")
-                        .font(.caption.bold())
+                    Image(systemName: alreadyAdded ? "checkmark" : "plus").font(.caption.bold())
                     Text(alreadyAdded
-                         ? lang.t("追加済み", en: "Added",        zh: "已添加", ko: "추가됨")
-                         : lang.t("インストール", en: "Install", zh: "安装",   ko: "설치"))
-                        .font(.caption).fontWeight(.semibold)
+                         ? lang.t("追加済み", en: "Added",     zh: "已添加", ko: "추가됨")
+                         : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추가"))
+                        .font(.caption).fontWeight(.medium)
                 }
-                .foregroundStyle(alreadyAdded ? Color.secondary : Color.white)
+                .foregroundStyle(alreadyAdded ? .secondary : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(alreadyAdded ? BrandConfig.disabledGray : BrandConfig.brand)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .background(alreadyAdded ? Color(UIColor.systemGray5) : BrandConfig.brand)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .disabled(alreadyAdded)
         }
         .padding(14)
-        .frame(height: 186)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(height: 180)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color(UIColor.separator), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
     }
 }
-
-// MARK: - Plugin Card
 
 private struct PluginCard: View {
     let plugin: ClawHubPlugin
@@ -672,14 +650,15 @@ private struct PluginCard: View {
                 Spacer()
                 Button { onTap() } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle.fill").font(.caption.bold())
+                        Image(systemName: "arrow.down.circle").font(.caption.bold())
                         Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
                             .font(.caption).fontWeight(.semibold)
                     }
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(.white)
+                    .frame(minWidth: 80)
                     .padding(.vertical, 6).padding(.horizontal, 10)
                     .background(BrandConfig.brand)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
 
@@ -708,9 +687,14 @@ private struct PluginCard: View {
                 Spacer()
             }
         }
-        .padding(14)
-        .background(BrandConfig.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(16)
+        .background(Color(UIColor.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color(UIColor.separator), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -723,7 +707,7 @@ private struct ToastView: View {
     var body: some View {
         Text(message)
             .font(.footnote).fontWeight(.medium)
-            .foregroundStyle(Color.white)
+            .foregroundStyle(.white)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(isError ? Color.red.opacity(0.9) : Color.green.opacity(0.85))
             .clipShape(Capsule())
