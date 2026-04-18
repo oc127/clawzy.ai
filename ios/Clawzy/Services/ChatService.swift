@@ -13,8 +13,6 @@ final class ChatService: NSObject {
 
     private var webSocketTask: URLSessionWebSocketTask?
     var currentStreamText = ""
-    private var streamBuffer = ""
-    private var liveAssistantBubbleIndex: Int? = nil
     private var currentAgentId: String?
     private var pendingMessages: [String] = []
     private lazy var session: URLSession = {
@@ -68,8 +66,6 @@ final class ChatService: NSObject {
 
         isStreaming = true
         currentStreamText = ""
-        streamBuffer = ""
-        liveAssistantBubbleIndex = nil
 
         if isConnected {
             sendRaw(string)
@@ -126,16 +122,19 @@ final class ChatService: NSObject {
         switch raw.type {
         case "stream":
             if let content = raw.content {
-                streamBuffer += content
-                processStreamBuffer()
+                if let idx = messages.indices.last, messages[idx].role == .assistant {
+                    messages[idx].content += content
+                } else {
+                    messages.append(ChatBubble(role: .assistant, content: content))
+                }
+                currentStreamText += content
             }
         case "done":
-            flushStreamBuffer()
             isStreaming = false
+            currentStreamText = ""
             if let usage = raw.usage { creditBalance = usage.balance }
             if let convId = raw.conversationId { currentConversationId = convId }
         case "error":
-            flushStreamBuffer()
             isStreaming = false
             if let lastIndex = messages.indices.last {
                 messages[lastIndex].content = "⚠️ \(raw.message ?? "发生未知错误")"
@@ -143,65 +142,6 @@ final class ChatService: NSObject {
         default:
             break
         }
-    }
-
-    /// Split buffer on sentence terminators; each completed sentence becomes its own bubble.
-    private func processStreamBuffer() {
-        let terminators = CharacterSet(charactersIn: "。.！!？?\n")
-
-        while let range = streamBuffer.rangeOfCharacter(from: terminators) {
-            let endIdx = streamBuffer.index(after: range.lowerBound)
-            let sentence = String(streamBuffer[streamBuffer.startIndex..<endIdx])
-            streamBuffer = String(streamBuffer[endIdx...])
-
-            let trimmed = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                if let idx = liveAssistantBubbleIndex {
-                    messages[idx].content = trimmed
-                } else {
-                    messages.append(ChatBubble(role: .assistant, content: trimmed))
-                }
-            }
-            liveAssistantBubbleIndex = nil  // seal completed sentence bubble
-        }
-
-        // Show remaining partial sentence in a live bubble
-        if !streamBuffer.isEmpty {
-            let trimmed = streamBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty {
-                if let idx = liveAssistantBubbleIndex {
-                    messages[idx].content = trimmed
-                } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                        messages.append(ChatBubble(role: .assistant, content: trimmed))
-                    }
-                    liveAssistantBubbleIndex = messages.count - 1
-                }
-            }
-        }
-
-        currentStreamText = streamBuffer  // keeps scroll trigger working
-    }
-
-    /// Flush any remaining buffer on stream end.
-    private func flushStreamBuffer() {
-        guard !streamBuffer.isEmpty else {
-            liveAssistantBubbleIndex = nil
-            return
-        }
-        let trimmed = streamBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            if let idx = liveAssistantBubbleIndex {
-                messages[idx].content = trimmed
-            } else {
-                messages.append(ChatBubble(role: .assistant, content: trimmed))
-            }
-        }
-        streamBuffer = ""
-        liveAssistantBubbleIndex = nil
-        currentStreamText = ""
     }
 
     // MARK: - 加载历史对话
@@ -239,8 +179,6 @@ final class ChatService: NSObject {
             currentConversationTitle = conversation.title
             isStreaming = false
             currentStreamText = ""
-            streamBuffer = ""
-            liveAssistantBubbleIndex = nil
         }
     }
 
@@ -251,8 +189,6 @@ final class ChatService: NSObject {
         currentConversationTitle = nil
         isStreaming = false
         currentStreamText = ""
-        streamBuffer = ""
-        liveAssistantBubbleIndex = nil
     }
 
     func loadConversations(agentId: String) async -> [Conversation] {

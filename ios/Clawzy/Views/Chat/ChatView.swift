@@ -150,10 +150,6 @@ struct ChatView: View {
                     ForEach(chatService.messages) { bubble in
                         MessageBubbleView(bubble: bubble)
                             .id(bubble.id)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .offset(y: 20)),
-                                removal: .opacity
-                            ))
                     }
                     if chatService.isStreaming && chatService.messages.last?.role != .assistant {
                         TypingIndicator().id("typing")
@@ -349,7 +345,13 @@ struct ChatView: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
         }
-        .background(BrandConfig.backgroundColor)
+        .background(
+            Color(UIColor { tc in
+                tc.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.165, green: 0.153, blue: 0.141, alpha: 1)
+                    : UIColor(red: 0.941, green: 0.929, blue: 0.910, alpha: 1)
+            })
+        )
         .overlay(Rectangle().fill(BrandConfig.separator).frame(height: 0.5), alignment: .top)
     }
 
@@ -519,69 +521,49 @@ struct MessageBubbleView: View {
     var isUser: Bool { bubble.role == .user }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if isUser { Spacer(minLength: 64) }
-
-            if !isUser {
+        if isUser {
+            HStack(alignment: .bottom, spacing: 8) {
+                Spacer(minLength: 64)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if !bubble.images.isEmpty {
+                        ImageGridView(images: bubble.images, isUser: true)
+                    }
+                    if !bubble.content.isEmpty {
+                        Text(bubble.content)
+                            .textSelection(.enabled)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(BrandConfig.brand)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    Text(bubble.timestamp, style: .time)
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            HStack(alignment: .top, spacing: 10) {
                 ZStack {
-                    Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 30, height: 30)
+                    Circle().fill(BrandConfig.brand).frame(width: 32, height: 32)
                     Text("N")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(BrandConfig.brand)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
                 }
-                .alignmentGuide(.bottom) { d in d[.bottom] }
-            }
-
-            VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-                // Image grid
-                if !bubble.images.isEmpty {
-                    ImageGridView(images: bubble.images, isUser: isUser)
+                VStack(alignment: .leading, spacing: 4) {
+                    if !bubble.images.isEmpty {
+                        ImageGridView(images: bubble.images, isUser: false)
+                    }
+                    if !bubble.content.isEmpty {
+                        Text(LocalizedStringKey(bubble.content))
+                            .textSelection(.enabled)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Text(bubble.timestamp, style: .time)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
-
-                // Text bubble
-                if !bubble.content.isEmpty {
-                    TextBubbleView(text: bubble.content, isUser: isUser)
-                }
-
-                Text(bubble.timestamp, style: .time)
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
-
-            if !isUser { Spacer(minLength: 64) }
-        }
-    }
-}
-
-// MARK: - Text bubble
-
-private struct TextBubbleView: View {
-    let text: String
-    let isUser: Bool
-
-    private var bg: LinearGradient {
-        isUser
-            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                             startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
-    }
-
-    var body: some View {
-        Group {
-            if isUser {
-                Text(text)
-            } else {
-                // Render Markdown for AI responses (supports **bold**, *italic*, `code`, lists, etc.)
-                Text(LocalizedStringKey(text))
+                .frame(maxWidth: .infinity)
             }
         }
-        .textSelection(.enabled)
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(bg)
-        .foregroundStyle(isUser ? .white : .primary)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(
-            isUser ? nil : RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1)
-        )
     }
 }
 
