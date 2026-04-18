@@ -15,6 +15,7 @@ final class ChatService {
     private var webSocketTask: URLSessionWebSocketTask?
     var currentStreamText = ""
     private var currentAgentId: String?
+    private var streamFlushTimer: Timer?
 
     // MARK: - 连接
 
@@ -66,6 +67,8 @@ final class ChatService {
         }
         isStreaming = true
         currentStreamText = ""
+        streamFlushTimer?.invalidate()
+        streamFlushTimer = nil
     }
 
     // MARK: - 接收消息
@@ -103,15 +106,12 @@ final class ChatService {
         case "stream":
             if let content = raw.content {
                 currentStreamText += content
-                withAnimation(.none) {
-                    if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
-                        messages[lastIndex].content = currentStreamText
-                    } else {
-                        messages.append(ChatBubble(role: .assistant, content: currentStreamText))
-                    }
-                }
+                scheduleStreamFlush()
             }
         case "done":
+            streamFlushTimer?.invalidate()
+            streamFlushTimer = nil
+            flushStreamToMessages()
             isStreaming = false
             if let usage = raw.usage { creditBalance = usage.balance }
             if let convId = raw.conversationId { currentConversationId = convId }
@@ -122,6 +122,29 @@ final class ChatService {
             }
         default:
             break
+        }
+    }
+
+    // MARK: - Stream throttle
+
+    private func scheduleStreamFlush() {
+        guard streamFlushTimer == nil else { return }
+        streamFlushTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.flushStreamToMessages()
+                self.streamFlushTimer = nil
+            }
+        }
+    }
+
+    private func flushStreamToMessages() {
+        let text = currentStreamText
+        guard !text.isEmpty else { return }
+        if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
+            messages[lastIndex].content = text
+        } else {
+            messages.append(ChatBubble(role: .assistant, content: text))
         }
     }
 

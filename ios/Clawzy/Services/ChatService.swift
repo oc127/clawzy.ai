@@ -3,7 +3,7 @@ import Observation
 
 /// WebSocket 聊天服務
 @Observable
-final class ChatService {
+final class ChatService: NSObject {
     var messages: [ChatBubble] = []
     var isConnected = false
     var isStreaming = false
@@ -13,7 +13,13 @@ final class ChatService {
 
     private var webSocketTask: URLSessionWebSocketTask?
     var currentStreamText = ""
+    private var streamBuffer = ""
+    private var liveAssistantBubbleIndex: Int? = nil
     private var currentAgentId: String?
+    private var pendingMessages: [String] = []
+    private lazy var session: URLSession = {
+        URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+    }()
 
     // MARK: - 连接
 
@@ -30,9 +36,9 @@ final class ChatService {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         let urlString = Constants.wsBaseURL + Constants.API.wsChat(agentId) + "?token=\(token)"
         guard let url = URL(string: urlString) else { return }
-        webSocketTask = URLSession.shared.webSocketTask(with: url)
+        webSocketTask = session.webSocketTask(with: url)
         webSocketTask?.resume()
-        isConnected = true
+        // isConnected is set to true only after delegate confirms handshake complete
         receiveMessage()
     }
 
@@ -41,13 +47,12 @@ final class ChatService {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         isConnected = false
+        pendingMessages.removeAll()
     }
 
     // MARK: - 发送消息
 
     func sendMessage(_ content: String, images: [Data] = []) {
-        if !isConnected { reconnect() }
-
         // Build base64 strings for images
         let b64Images = images.map { "data:image/jpeg;base64," + $0.base64EncodedString() }
 
@@ -60,11 +65,31 @@ final class ChatService {
                                 conversationId: currentConversationId)
         guard let data = try? JSONEncoder().encode(msg),
               let string = String(data: data, encoding: .utf8) else { return }
+
+        isStreaming = true
+        currentStreamText = ""
+        streamBuffer = ""
+        liveAssistantBubbleIndex = nil
+
+        if isConnected {
+            sendRaw(string)
+        } else {
+            // Queue message and reconnect; will flush when handshake completes
+            pendingMessages.append(string)
+            if currentAgentId != nil { reconnect() }
+        }
+    }
+
+    private func sendRaw(_ string: String) {
         webSocketTask?.send(.string(string)) { error in
             if let error = error { print("WebSocket 发送失败: \(error)") }
         }
-        isStreaming = true
-        currentStreamText = ""
+    }
+
+    private func flushPendingMessages() {
+        let toSend = pendingMessages
+        pendingMessages.removeAll()
+        for msg in toSend { sendRaw(msg) }
     }
 
     // MARK: - 接收消息
@@ -101,18 +126,16 @@ final class ChatService {
         switch raw.type {
         case "stream":
             if let content = raw.content {
-                currentStreamText += content
-                if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
-                    messages[lastIndex].content = currentStreamText
-                } else {
-                    messages.append(ChatBubble(role: .assistant, content: currentStreamText))
-                }
+                streamBuffer += content
+                processStreamBuffer()
             }
         case "done":
+            flushStreamBuffer()
             isStreaming = false
             if let usage = raw.usage { creditBalance = usage.balance }
             if let convId = raw.conversationId { currentConversationId = convId }
         case "error":
+            flushStreamBuffer()
             isStreaming = false
             if let lastIndex = messages.indices.last {
                 messages[lastIndex].content = "⚠️ \(raw.message ?? "发生未知错误")"
@@ -120,6 +143,65 @@ final class ChatService {
         default:
             break
         }
+    }
+
+    /// Split buffer on sentence terminators; each completed sentence becomes its own bubble.
+    private func processStreamBuffer() {
+        let terminators = CharacterSet(charactersIn: "。.！!？?\n")
+
+        while let range = streamBuffer.rangeOfCharacter(from: terminators) {
+            let endIdx = streamBuffer.index(after: range.lowerBound)
+            let sentence = String(streamBuffer[streamBuffer.startIndex..<endIdx])
+            streamBuffer = String(streamBuffer[endIdx...])
+
+            let trimmed = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                if let idx = liveAssistantBubbleIndex {
+                    messages[idx].content = trimmed
+                } else {
+                    messages.append(ChatBubble(role: .assistant, content: trimmed))
+                }
+            }
+            liveAssistantBubbleIndex = nil  // seal completed sentence bubble
+        }
+
+        // Show remaining partial sentence in a live bubble
+        if !streamBuffer.isEmpty {
+            let trimmed = streamBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                if let idx = liveAssistantBubbleIndex {
+                    messages[idx].content = trimmed
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                        messages.append(ChatBubble(role: .assistant, content: trimmed))
+                    }
+                    liveAssistantBubbleIndex = messages.count - 1
+                }
+            }
+        }
+
+        currentStreamText = streamBuffer  // keeps scroll trigger working
+    }
+
+    /// Flush any remaining buffer on stream end.
+    private func flushStreamBuffer() {
+        guard !streamBuffer.isEmpty else {
+            liveAssistantBubbleIndex = nil
+            return
+        }
+        let trimmed = streamBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            if let idx = liveAssistantBubbleIndex {
+                messages[idx].content = trimmed
+            } else {
+                messages.append(ChatBubble(role: .assistant, content: trimmed))
+            }
+        }
+        streamBuffer = ""
+        liveAssistantBubbleIndex = nil
+        currentStreamText = ""
     }
 
     // MARK: - 加载历史对话
@@ -157,6 +239,8 @@ final class ChatService {
             currentConversationTitle = conversation.title
             isStreaming = false
             currentStreamText = ""
+            streamBuffer = ""
+            liveAssistantBubbleIndex = nil
         }
     }
 
@@ -167,6 +251,8 @@ final class ChatService {
         currentConversationTitle = nil
         isStreaming = false
         currentStreamText = ""
+        streamBuffer = ""
+        liveAssistantBubbleIndex = nil
     }
 
     func loadConversations(agentId: String) async -> [Conversation] {
@@ -175,6 +261,28 @@ final class ChatService {
 
     func loadMessages(conversationId: String) async -> [Message] {
         (try? await APIClient.shared.request(Constants.API.messages(conversationId))) ?? []
+    }
+}
+
+// MARK: - URLSessionWebSocketDelegate
+
+extension ChatService: URLSessionWebSocketDelegate {
+    func urlSession(_ session: URLSession,
+                    webSocketTask: URLSessionWebSocketTask,
+                    didOpenWithProtocol protocol: String?) {
+        Task { @MainActor in
+            self.isConnected = true
+            self.flushPendingMessages()
+        }
+    }
+
+    func urlSession(_ session: URLSession,
+                    webSocketTask: URLSessionWebSocketTask,
+                    didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
+                    reason: Data?) {
+        Task { @MainActor in
+            self.isConnected = false
+        }
     }
 }
 

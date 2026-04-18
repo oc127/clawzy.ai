@@ -166,7 +166,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmInstalling {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
                     }
@@ -175,7 +175,7 @@ struct MarketView: View {
                          : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -256,7 +256,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmAdding {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "plus.circle.fill")
                     }
@@ -265,7 +265,7 @@ struct MarketView: View {
                          : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추가"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -303,7 +303,7 @@ struct MarketView: View {
                                         let isSelected = selectedCategory == cat || (selectedCategory.isEmpty && cat == allLabel)
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
                                             .font(.footnote).fontWeight(.semibold)
-                                            .foregroundStyle(isSelected ? .white : .primary)
+                                            .foregroundStyle(isSelected ? Color.white : .primary)
                                             .padding(.horizontal, 16).padding(.vertical, 8)
                                             .background(isSelected ? BrandConfig.brand : Color(UIColor.systemGray5))
                                             .clipShape(Capsule())
@@ -611,7 +611,7 @@ private struct TemplateCard: View {
                          : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추가"))
                         .font(.caption).fontWeight(.medium)
                 }
-                .foregroundStyle(alreadyAdded ? .secondary : .white)
+                .foregroundStyle(alreadyAdded ? .secondary : Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(alreadyAdded ? Color(UIColor.systemGray5) : BrandConfig.brand)
@@ -654,7 +654,7 @@ private struct PluginCard: View {
                         Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
                             .font(.caption).fontWeight(.semibold)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.white)
                     .frame(minWidth: 80)
                     .padding(.vertical, 6).padding(.horizontal, 10)
                     .background(BrandConfig.brand)
@@ -707,7 +707,7 @@ private struct ToastView: View {
     var body: some View {
         Text(message)
             .font(.footnote).fontWeight(.medium)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.white)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(isError ? Color.red.opacity(0.9) : Color.green.opacity(0.85))
             .clipShape(Capsule())

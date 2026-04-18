@@ -44,7 +44,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     // Profile card
                     if let user = authManager.currentUser {
                         profileCard(user: user)
@@ -73,10 +73,11 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
-                .padding(.bottom, 40)
+                .padding(.bottom, 24)
             }
-            .background(Color(UIColor.systemGroupedBackground))
+            .background(BrandConfig.darkBg)
             .navigationTitle(lang.t("設定", en: "Settings", zh: "设置", ko: "설정"))
+            .navigationBarTitleDisplayMode(.inline)
             .alert(lang.t("エラー", en: "Error", zh: "错误", ko: "오류"),
                    isPresented: Binding(get: { exportError != nil },
                                         set: { if !$0 { exportError = nil } })) {
@@ -118,7 +119,7 @@ struct SettingsView: View {
                 SettingsSectionHeader(
                     title: lang.t("クレジット", en: "Credits", zh: "点数", ko: "크레딧"),
                     icon: "bolt.fill",
-                    color: Color(red: 1.0, green: 0.596, blue: 0.0)
+                    color: BrandConfig.brand
                 )
                 Divider().padding(.horizontal, 16)
                 HStack {
@@ -143,7 +144,7 @@ struct SettingsView: View {
                 SettingsSectionHeader(
                     title: lang.t("エージェント管理", en: "Agent Management", zh: "助手管理", ko: "에이전트 관리"),
                     icon: "person.crop.circle.fill",
-                    color: Color(red: 0.129, green: 0.588, blue: 0.953)
+                    color: Color(UIColor.secondaryLabel)
                 )
                 ForEach(Array(agentService.agents.enumerated()), id: \.element.id) { index, agent in
                     if index > 0 { Divider().padding(.horizontal, 16) }
@@ -178,7 +179,7 @@ struct SettingsView: View {
                 SettingsSectionHeader(
                     title: lang.t("外観", en: "Appearance", zh: "外观", ko: "외관"),
                     icon: "paintbrush.fill",
-                    color: Color(red: 0.612, green: 0.153, blue: 0.690)
+                    color: Color(UIColor.secondaryLabel)
                 )
                 Divider().padding(.horizontal, 16)
                 HStack {
@@ -204,7 +205,7 @@ struct SettingsView: View {
                 SettingsSectionHeader(
                     title: lang.t("言語", en: "Language", zh: "语言", ko: "언어"),
                     icon: "globe",
-                    color: Color(red: 0.298, green: 0.686, blue: 0.314)
+                    color: Color(UIColor.secondaryLabel)
                 )
                 Divider().padding(.horizontal, 16)
                 NavigationLink {
@@ -258,7 +259,7 @@ struct SettingsView: View {
                 SettingsSectionHeader(
                     title: lang.t("データ", en: "Data", zh: "数据", ko: "데이터"),
                     icon: "externaldrive.fill",
-                    color: Color(red: 0.914, green: 0.118, blue: 0.388)
+                    color: Color(UIColor.secondaryLabel)
                 )
                 Divider().padding(.horizontal, 16)
                 Button {
@@ -296,7 +297,7 @@ struct SettingsView: View {
                 SettingsSectionHeader(
                     title: lang.t("このアプリについて", en: "About", zh: "关于", ko: "앱 정보"),
                     icon: "info.circle.fill",
-                    color: Color(red: 0.129, green: 0.588, blue: 0.953)
+                    color: Color(UIColor.secondaryLabel)
                 )
                 Divider().padding(.horizontal, 16)
                 HStack {
@@ -386,9 +387,8 @@ private struct SettingsCard<Content: View>: View {
         VStack(spacing: 0) {
             content()
         }
-        .background(Color(UIColor.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .background(BrandConfig.darkSurface)
+        .clipShape(RoundedRectangle(cornerRadius: BrandConfig.Radius.card))
     }
 }
 
@@ -402,7 +402,7 @@ private struct SettingsSectionHeader: View {
     var body: some View {
         HStack(spacing: 10) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: BrandConfig.Spacing.sm)
                     .fill(color.opacity(0.12))
                     .frame(width: 32, height: 32)
                 Image(systemName: icon)

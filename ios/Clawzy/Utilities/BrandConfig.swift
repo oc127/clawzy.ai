@@ -39,20 +39,11 @@ struct NipponLogo: View {
     var size: CGFloat = 44
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.22)
-                .fill(
-                    LinearGradient(
-                        colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: size, height: size)
-            Text("N")
-                .font(.system(size: size * 0.48, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-        }
+        Image("ClawzyLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
     }
 }
 

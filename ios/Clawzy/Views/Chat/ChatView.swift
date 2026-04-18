@@ -148,7 +148,12 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(chatService.messages) { bubble in
-                        MessageBubbleView(bubble: bubble).id(bubble.id)
+                        MessageBubbleView(bubble: bubble)
+                            .id(bubble.id)
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .offset(y: 20)),
+                                removal: .opacity
+                            ))
                     }
                     if chatService.isStreaming && chatService.messages.last?.role != .assistant {
                         TypingIndicator().id("typing")

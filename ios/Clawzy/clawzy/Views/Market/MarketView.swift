@@ -67,8 +67,9 @@ struct MarketView: View {
                         pluginsTab
                     }
                 }
-                .background(Color(UIColor.systemBackground))
+                .background(BrandConfig.darkBg)
                 .navigationTitle(lang.t("マーケット", en: "Market", zh: "市场", ko: "마켓"))
+                .navigationBarTitleDisplayMode(.inline)
                 .overlay(alignment: .bottom) {
                     if let msg = toastMessage {
                         ToastView(message: msg, isError: toastIsError)
@@ -166,7 +167,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmInstalling {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
                     }
@@ -175,7 +176,7 @@ struct MarketView: View {
                          : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -185,9 +186,9 @@ struct MarketView: View {
         }
         .padding(24)
         .frame(width: 320)
-        .background(Color(UIColor.systemBackground))
+        .background(BrandConfig.darkSurface)
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .black.opacity(0.20), radius: 28, y: 10)
+        .shadow(color: .black.opacity(0.40), radius: 28, y: 10)
     }
 
     // MARK: - Popup card (template)
@@ -256,7 +257,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmAdding {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "plus.circle.fill")
                     }
@@ -265,7 +266,7 @@ struct MarketView: View {
                          : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추가"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -275,9 +276,9 @@ struct MarketView: View {
         }
         .padding(24)
         .frame(width: 320)
-        .background(Color(UIColor.systemBackground))
+        .background(BrandConfig.darkSurface)
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .black.opacity(0.20), radius: 28, y: 10)
+        .shadow(color: .black.opacity(0.40), radius: 28, y: 10)
     }
 
     // MARK: - Templates tab
@@ -303,17 +304,17 @@ struct MarketView: View {
                                         let isSelected = selectedCategory == cat || (selectedCategory.isEmpty && cat == allLabel)
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
                                             .font(.footnote).fontWeight(.semibold)
-                                            .foregroundStyle(isSelected ? .white : .primary)
+                                            .foregroundStyle(isSelected ? Color.white : Color(UIColor.secondaryLabel))
                                             .padding(.horizontal, 16).padding(.vertical, 8)
-                                            .background(isSelected ? BrandConfig.brand : Color(UIColor.systemGray5))
+                                            .background(isSelected ? BrandConfig.brand : BrandConfig.darkCard)
                                             .clipShape(Capsule())
                                     }
                                 }
                             }
-                            .padding(.horizontal, 16).padding(.vertical, 12)
+                            .padding(.horizontal, 16).padding(.vertical, 6)
                         }
 
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 16) {
                             ForEach(filteredTemplates) { t in
                                 TemplateCard(template: t, agentService: agentService) {
                                     selectedTemplate = t
@@ -334,10 +335,10 @@ struct MarketView: View {
 
     private var skeletonGrid: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 16) {
                 ForEach(0..<6, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(UIColor.systemGray5))
+                    RoundedRectangle(cornerRadius: BrandConfig.Radius.card)
+                        .fill(BrandConfig.darkCard)
                         .frame(height: 180)
                 }
             }
@@ -407,7 +408,7 @@ struct MarketView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color(UIColor.systemGray6))
+            .background(BrandConfig.darkSurface)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -605,29 +606,35 @@ private struct TemplateCard: View {
 
             Button { onTap() } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: alreadyAdded ? "checkmark" : "plus").font(.caption.bold())
+                    Image(systemName: alreadyAdded ? "checkmark.circle.fill" : "plus")
+                        .font(.caption.bold())
                     Text(alreadyAdded
                          ? lang.t("追加済み", en: "Added",     zh: "已添加", ko: "추가됨")
-                         : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추가"))
+                         : lang.t("追加する",  en: "Add Agent", zh: "添加",   ko: "추加"))
                         .font(.caption).fontWeight(.medium)
                 }
-                .foregroundStyle(alreadyAdded ? .secondary : .white)
+                .foregroundStyle(alreadyAdded ? Color(UIColor.systemGreen) : BrandConfig.brand)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(alreadyAdded ? Color(UIColor.systemGray5) : BrandConfig.brand)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .background(Color.clear)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            alreadyAdded ? Color(UIColor.systemGreen).opacity(0.4) : BrandConfig.brand,
+                            lineWidth: 1.5
+                        )
+                )
             }
             .disabled(alreadyAdded)
         }
         .padding(14)
         .frame(height: 180)
-        .background(Color(UIColor.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .background(BrandConfig.darkCard)
+        .clipShape(RoundedRectangle(cornerRadius: BrandConfig.Radius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color(UIColor.separator), lineWidth: 1)
+            RoundedRectangle(cornerRadius: BrandConfig.Radius.card)
+                .stroke(BrandConfig.darkSeparator, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -654,7 +661,7 @@ private struct PluginCard: View {
                         Text(lang.t("インストール", en: "Install", zh: "安装", ko: "설치"))
                             .font(.caption).fontWeight(.semibold)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.white)
                     .frame(minWidth: 80)
                     .padding(.vertical, 6).padding(.horizontal, 10)
                     .background(BrandConfig.brand)
@@ -688,13 +695,12 @@ private struct PluginCard: View {
             }
         }
         .padding(16)
-        .background(Color(UIColor.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .background(BrandConfig.darkCard)
+        .clipShape(RoundedRectangle(cornerRadius: BrandConfig.Radius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color(UIColor.separator), lineWidth: 1)
+            RoundedRectangle(cornerRadius: BrandConfig.Radius.card)
+                .stroke(BrandConfig.darkSeparator, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -707,7 +713,7 @@ private struct ToastView: View {
     var body: some View {
         Text(message)
             .font(.footnote).fontWeight(.medium)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.white)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(isError ? Color.red.opacity(0.9) : Color.green.opacity(0.85))
             .clipShape(Capsule())

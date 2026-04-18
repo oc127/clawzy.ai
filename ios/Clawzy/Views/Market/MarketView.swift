@@ -161,7 +161,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmInstalling {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
                     }
@@ -170,7 +170,7 @@ struct MarketView: View {
                          : lang.t("インストール",     en: "Install",       zh: "安装",     ko: "설치"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmInstalling ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -251,7 +251,7 @@ struct MarketView: View {
             } label: {
                 HStack(spacing: 8) {
                     if isConfirmAdding {
-                        ProgressView().tint(.white).scaleEffect(0.85)
+                        ProgressView().tint(Color.white).scaleEffect(0.85)
                     } else {
                         Image(systemName: "plus.circle.fill")
                     }
@@ -260,7 +260,7 @@ struct MarketView: View {
                          : lang.t("追加する", en: "Add Agent",   zh: "添加助手", ko: "에이전트 추가"))
                         .fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(isConfirmAdding ? BrandConfig.brand.opacity(0.6) : BrandConfig.brand)
@@ -296,7 +296,7 @@ struct MarketView: View {
                                     Button { withAnimation { selectedCategory = cat } } label: {
                                         Text(cat == allLabel ? allLabel : lang.categoryLabel(cat))
                                             .font(.footnote).fontWeight(.medium)
-                                            .foregroundStyle(selectedCategory == cat ? .white : .primary)
+                                            .foregroundStyle(selectedCategory == cat ? Color.white : .primary)
                                             .padding(.horizontal, 14).padding(.vertical, 8)
                                             .background(selectedCategory == cat ? BrandConfig.brand : BrandConfig.disabledGray)
                                             .clipShape(Capsule())
@@ -660,7 +660,7 @@ private struct ToastView: View {
     var body: some View {
         Text(message)
             .font(.footnote).fontWeight(.medium)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.white)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(isError ? Color.red.opacity(0.9) : Color.green.opacity(0.85))
             .clipShape(Capsule())

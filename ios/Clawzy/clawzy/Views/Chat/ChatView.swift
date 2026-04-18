@@ -165,6 +165,10 @@ struct ChatView: View {
                     }
                 }
             }
+            .onChange(of: chatService.messages.last?.content) {
+                guard chatService.isStreaming, let lastId = chatService.messages.last?.id else { return }
+                proxy.scrollTo(lastId, anchor: .bottom)
+            }
         }
     }
 

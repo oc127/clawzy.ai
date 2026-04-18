@@ -189,6 +189,13 @@ async def stream_chat_completion(
         except Exception as exc:
             logger.warning("Failed to load memory context for agent %s: %s", agent.id, exc)
 
+    # ── 3b. Inject relevant skills into system prompt ──────────────────────
+    try:
+        from app.services.skill_service import inject_skills_to_prompt
+        system_prompt = await inject_skills_to_prompt(db, agent.id, user_content, system_prompt)
+    except Exception as exc:
+        logger.warning("Failed to inject skills for agent %s: %s", agent.id, exc)
+
     if system_prompt:
         history = [{"role": "system", "content": system_prompt}] + history
 
@@ -526,6 +533,29 @@ async def stream_chat_completion(
             asyncio.create_task(_extract_bg())
         except Exception as exc:
             logger.warning("Failed to schedule memory extraction: %s", exc)
+
+    # ── 7c. Fire-and-forget skill auto-extraction ──────────────────────────
+    if full_content:
+        try:
+            from app.services.skill_service import auto_extract_skill
+            from app.core.database import async_session
+
+            _skill_messages = [
+                {"role": "user", "content": user_content},
+                {"role": "assistant", "content": full_content},
+            ]
+            _skill_agent_id = agent.id
+
+            async def _skill_extract_bg():
+                try:
+                    async with async_session() as bg_db:
+                        await auto_extract_skill(bg_db, _skill_agent_id, _skill_messages)
+                except Exception as exc:
+                    logger.warning("Background skill extraction failed: %s", exc)
+
+            asyncio.create_task(_skill_extract_bg())
+        except Exception as exc:
+            logger.warning("Failed to schedule skill extraction: %s", exc)
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one()
