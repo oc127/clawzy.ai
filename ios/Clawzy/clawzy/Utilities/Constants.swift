@@ -48,5 +48,11 @@ enum Constants {
         static func conversations(_ agentId: String) -> String { "/api/v1/agents/\(agentId)/conversations" }
         static func messages(_ conversationId: String) -> String { "/api/v1/conversations/\(conversationId)/messages" }
         static func clawHubSkill(_ slug: String) -> String { "/api/v1/clawhub/skills/\(slug)" }
+
+        static let pipelines = "/api/v1/harness/pipelines"
+        static func pipeline(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)" }
+        static func pipelineRun(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)/run" }
+        static func pipelineCancel(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)/cancel" }
+        static func pipelineSteps(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)/steps" }
     }
 }
