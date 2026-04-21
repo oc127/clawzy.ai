@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		4E5235112F72B0EA0089F71E /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E5235102F72B0E90089F71E /* StoreKit.framework */; };
+		AA0002012F8F000000000001 /* Character.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0002022F8F000000000002 /* Character.swift */; };
 		4EBD3CC62F71354F00F4A127 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB72F71354F00F4A127 /* Constants.swift */; };
 		4EBD3CC72F71354F00F4A127 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CB82F71354F00F4A127 /* KeychainHelper.swift */; };
 		4EBD3CC82F71354F00F4A127 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD3CC12F71354F00F4A127 /* DashboardView.swift */; };
@@ -55,6 +56,7 @@
 		4EBD3CA32F71354F00F4A127 /* ClawzyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClawzyApp.swift; sourceTree = "<group>"; };
 		4EBD3CA42F71354F00F4A127 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4EBD3CA52F71354F00F4A127 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		AA0002022F8F000000000002 /* Character.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Character.swift; sourceTree = "<group>"; };
 		4EBD3CAC2F71354F00F4A127 /* Agent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Agent.swift; sourceTree = "<group>"; };
 		4EBD3CAD2F71354F00F4A127 /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
 		4EBD3CAE2F71354F00F4A127 /* Credits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Credits.swift; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 				4EBD3CAD2F71354F00F4A127 /* Chat.swift */,
 				4EBD3CAE2F71354F00F4A127 /* Credits.swift */,
 				4EBD3CAF2F71354F00F4A127 /* User.swift */,
+				AA0002022F8F000000000002 /* Character.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -401,6 +404,7 @@
 				BB0001052F7F000000000005 /* ChannelsView.swift in Sources */,
 				BB0001062F7F000000000006 /* AgentDetail.swift in Sources */,
 				BB0001072F7F000000000007 /* AgentDetailService.swift in Sources */,
+				AA0002012F8F000000000001 /* Character.swift in Sources */,
 				4EBD3CC62F71354F00F4A127 /* Constants.swift in Sources */,
 				4EBD3CC72F71354F00F4A127 /* KeychainHelper.swift in Sources */,
 				4EBD3CE32F71900000F4A127 /* LanguageManager.swift in Sources */,

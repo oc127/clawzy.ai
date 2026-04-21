@@ -77,7 +77,7 @@ struct ChatView: View {
             messageList
             inputBar
         }
-        .background(Color(UIColor.systemBackground))
+        .background(BrandConfig.backgroundColor)
         .navigationTitle(agent.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
@@ -148,27 +148,34 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(chatService.messages) { bubble in
-                        MessageBubbleView(bubble: bubble).id(bubble.id)
+                        MessageBubbleView(bubble: bubble)
+                            .id(bubble.id)
                     }
                     if chatService.isStreaming && chatService.messages.last?.role != .assistant {
                         TypingIndicator().id("typing")
                     }
+                    // Invisible anchor at bottom for scrolling
+                    Color.clear.frame(height: 1).id("bottom")
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             .onChange(of: chatService.messages.count) {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    if chatService.isStreaming {
-                        proxy.scrollTo("typing", anchor: .bottom)
-                    } else if let lastId = chatService.messages.last?.id {
-                        proxy.scrollTo(lastId, anchor: .bottom)
-                    }
+                scrollToBottom(proxy: proxy)
+            }
+            .onChange(of: chatService.currentStreamText) {
+                // Auto-scroll while AI is streaming
+                if chatService.isStreaming {
+                    scrollToBottom(proxy: proxy)
                 }
             }
-            .onChange(of: chatService.messages.last?.content) {
-                guard chatService.isStreaming, let lastId = chatService.messages.last?.id else { return }
-                proxy.scrollTo(lastId, anchor: .bottom)
-            }
+        }
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.15)) {
+            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 
@@ -242,7 +249,9 @@ struct ChatView: View {
         }
     }
 
+    /// Shorten model name for the pill display (e.g. "gpt-4o-mini" -> "GPT-4o Mini")
     private func shortModelName(_ name: String) -> String {
+        // Just show the raw model id, truncated if needed
         if name.count > 16 {
             return String(name.prefix(14)) + "..."
         }
@@ -275,7 +284,7 @@ struct ChatView: View {
             )
             await MainActor.run { currentModelName = modelId }
         } catch {
-            // Silent fail
+            // Silent fail — UI stays with previous model name
         }
     }
 
@@ -295,41 +304,40 @@ struct ChatView: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 10) {
-                // Photo button
-                Button { showPhotoPicker = true } label: {
-                    Image(systemName: "photo")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Color(UIColor.systemGray))
-                        .frame(width: 36, height: 36)
+            HStack(alignment: .bottom, spacing: 8) {
+                // Attach menu
+                Menu {
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Label(lang.t("写真・画像", en: "Photos & Images", zh: "图片", ko: "사진"), systemImage: "photo")
+                    }
+                    Button {
+                        showFilePicker = true
+                    } label: {
+                        Label(lang.t("ファイル", en: "File", zh: "文件", ko: "파일"), systemImage: "doc")
+                    }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(attachments.isEmpty ? BrandConfig.brand.opacity(0.8) : BrandConfig.brand)
                 }
-                .accessibilityLabel(lang.t("写真", en: "Photo", zh: "图片", ko: "사진"))
 
-                // File button
-                Button { showFilePicker = true } label: {
-                    Image(systemName: "paperclip")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Color(UIColor.systemGray))
-                        .frame(width: 36, height: 36)
-                }
-                .accessibilityLabel(lang.t("ファイル", en: "File", zh: "文件", ko: "파일"))
-
-                // Text field
                 TextField(
                     lang.t("メッセージを入力...", en: "Type a message...", zh: "输入消息...", ko: "메시지 입력..."),
                     text: $inputText, axis: .vertical
                 )
                 .textFieldStyle(.plain).lineLimit(1...5).focused($isInputFocused)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(Color(UIColor.systemGray6))
+                .background(BrandConfig.fieldBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(BrandConfig.separator, lineWidth: 1))
 
-                // Send button
                 Button { sendMessage() } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(canSend ? BrandConfig.brand : Color(UIColor.systemGray4))
+                        .background(canSend ? BrandConfig.brand : BrandConfig.disabledGray)
                         .clipShape(Circle())
                 }
                 .disabled(!canSend)
@@ -337,13 +345,14 @@ struct ChatView: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
         }
-        .background(Color(UIColor.systemBackground))
-        .overlay(
-            Rectangle()
-                .fill(Color(UIColor.separator))
-                .frame(height: 0.5),
-            alignment: .top
+        .background(
+            Color(UIColor { tc in
+                tc.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.165, green: 0.153, blue: 0.141, alpha: 1)
+                    : UIColor(red: 0.941, green: 0.929, blue: 0.910, alpha: 1)
+            })
         )
+        .overlay(Rectangle().fill(BrandConfig.separator).frame(height: 0.5), alignment: .top)
     }
 
     @ViewBuilder
@@ -394,6 +403,7 @@ struct ChatView: View {
 
         guard !text.isEmpty || !imgs.isEmpty || !files.isEmpty else { return }
 
+        // Append file content to text
         for file in files {
             if let content = file.fileText {
                 text += "\n\n📄 **\(file.displayName)**\n```\n\(content.prefix(8000))\n```"
@@ -511,67 +521,48 @@ struct MessageBubbleView: View {
     var isUser: Bool { bubble.role == .user }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            if isUser { Spacer(minLength: 60) }
-
-            // AI avatar — brand red circle with white N
-            if !isUser {
+        if isUser {
+            HStack(alignment: .bottom, spacing: 8) {
+                Spacer(minLength: 64)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if !bubble.images.isEmpty {
+                        ImageGridView(images: bubble.images, isUser: true)
+                    }
+                    if !bubble.content.isEmpty {
+                        Text(bubble.content)
+                            .textSelection(.enabled)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(BrandConfig.brand)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    Text(bubble.timestamp, style: .time)
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            HStack(alignment: .top, spacing: 10) {
                 ZStack {
-                    Circle()
-                        .fill(BrandConfig.brand)
-                        .frame(width: 32, height: 32)
+                    Circle().fill(BrandConfig.brand).frame(width: 32, height: 32)
                     Text("N")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                 }
-                .alignmentGuide(.bottom) { d in d[.bottom] }
-            }
-
-            VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-                // Image grid
-                if !bubble.images.isEmpty {
-                    ImageGridView(images: bubble.images, isUser: isUser)
+                VStack(alignment: .leading, spacing: 4) {
+                    if !bubble.images.isEmpty {
+                        ImageGridView(images: bubble.images, isUser: false)
+                    }
+                    if !bubble.content.isEmpty {
+                        Text(LocalizedStringKey(bubble.content))
+                            .textSelection(.enabled)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Text(bubble.timestamp, style: .time)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
-
-                // Text bubble
-                if !bubble.content.isEmpty {
-                    TextBubbleView(text: bubble.content, isUser: isUser)
-                }
-
-                Text(bubble.timestamp, style: .time)
-                    .font(.caption2).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
             }
-
-            if !isUser { Spacer(minLength: 60) }
-        }
-    }
-}
-
-// MARK: - Text bubble
-
-private struct TextBubbleView: View {
-    let text: String
-    let isUser: Bool
-
-    var body: some View {
-        if isUser {
-            Text(text)
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(
-                    LinearGradient(
-                        colors: [BrandConfig.brand, BrandConfig.brandDeep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-        } else {
-            Text(text)
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(Color(UIColor.secondarySystemBackground))
-                .foregroundStyle(.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
         }
     }
 }
@@ -585,6 +576,12 @@ private struct ImageGridView: View {
     private var cols: Int { min(images.count, 2) }
     private var imgSize: CGSize {
         images.count == 1 ? CGSize(width: 200, height: 160) : CGSize(width: 95, height: 95)
+    }
+    private var bg: LinearGradient {
+        isUser
+            ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep],
+                             startPoint: .topLeading, endPoint: .bottomTrailing)
+            : LinearGradient(colors: [BrandConfig.cardBackground], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -602,11 +599,7 @@ private struct ImageGridView: View {
             }
         }
         .padding(4)
-        .background(
-            isUser
-                ? LinearGradient(colors: [BrandConfig.brand, BrandConfig.brandDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                : LinearGradient(colors: [Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
-        )
+        .background(bg)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
@@ -617,14 +610,10 @@ private struct TypingIndicator: View {
     @State private var phase = 0
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
+        HStack(alignment: .bottom, spacing: 8) {
             ZStack {
-                Circle()
-                    .fill(BrandConfig.brand)
-                    .frame(width: 32, height: 32)
-                Text("N")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 30, height: 30)
+                Text("N").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(BrandConfig.brand)
             }
             HStack(spacing: 4) {
                 ForEach(0..<3) { i in
@@ -634,9 +623,10 @@ private struct TypingIndicator: View {
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Color(UIColor.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            Spacer(minLength: 60)
+            .background(BrandConfig.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(BrandConfig.separator, lineWidth: 1))
+            Spacer(minLength: 64)
         }
         .onAppear { phase = 1 }
     }
@@ -784,19 +774,19 @@ struct ModelPickerView: View {
                             }
                             .padding(14)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(isSelected ? BrandConfig.brand.opacity(0.06) : Color(UIColor.secondarySystemBackground))
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(isSelected ? BrandConfig.brand.opacity(0.06) : BrandConfig.cardBackground)
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(isSelected ? BrandConfig.brand.opacity(0.3) : Color(UIColor.separator), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(isSelected ? BrandConfig.brand.opacity(0.3) : BrandConfig.separator, lineWidth: 1)
                             )
                         }
                     }
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
             }
-            .background(Color(UIColor.systemBackground))
+            .background(BrandConfig.backgroundColor)
             .navigationTitle(lang.t("モデルを選択", en: "Select Model", zh: "选择模型", ko: "모델 선택"))
             .navigationBarTitleDisplayMode(.inline)
         }

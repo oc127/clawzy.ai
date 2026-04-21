@@ -1,10 +1,9 @@
 import Foundation
 import Observation
-import SwiftUI
 
 /// WebSocket 聊天服務
 @Observable
-final class ChatService {
+final class ChatService: NSObject {
     var messages: [ChatBubble] = []
     var isConnected = false
     var isStreaming = false
@@ -15,7 +14,10 @@ final class ChatService {
     private var webSocketTask: URLSessionWebSocketTask?
     var currentStreamText = ""
     private var currentAgentId: String?
-    private var streamFlushTimer: Timer?
+    private var pendingMessages: [String] = []
+    private lazy var session: URLSession = {
+        URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+    }()
 
     // MARK: - 连接
 
@@ -32,9 +34,9 @@ final class ChatService {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         let urlString = Constants.wsBaseURL + Constants.API.wsChat(agentId) + "?token=\(token)"
         guard let url = URL(string: urlString) else { return }
-        webSocketTask = URLSession.shared.webSocketTask(with: url)
+        webSocketTask = session.webSocketTask(with: url)
         webSocketTask?.resume()
-        isConnected = true
+        // isConnected is set to true only after delegate confirms handshake complete
         receiveMessage()
     }
 
@@ -43,13 +45,12 @@ final class ChatService {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         isConnected = false
+        pendingMessages.removeAll()
     }
 
     // MARK: - 发送消息
 
     func sendMessage(_ content: String, images: [Data] = []) {
-        if !isConnected { reconnect() }
-
         // Build base64 strings for images
         let b64Images = images.map { "data:image/jpeg;base64," + $0.base64EncodedString() }
 
@@ -62,13 +63,29 @@ final class ChatService {
                                 conversationId: currentConversationId)
         guard let data = try? JSONEncoder().encode(msg),
               let string = String(data: data, encoding: .utf8) else { return }
+
+        isStreaming = true
+        currentStreamText = ""
+
+        if isConnected {
+            sendRaw(string)
+        } else {
+            // Queue message and reconnect; will flush when handshake completes
+            pendingMessages.append(string)
+            if currentAgentId != nil { reconnect() }
+        }
+    }
+
+    private func sendRaw(_ string: String) {
         webSocketTask?.send(.string(string)) { error in
             if let error = error { print("WebSocket 发送失败: \(error)") }
         }
-        isStreaming = true
-        currentStreamText = ""
-        streamFlushTimer?.invalidate()
-        streamFlushTimer = nil
+    }
+
+    private func flushPendingMessages() {
+        let toSend = pendingMessages
+        pendingMessages.removeAll()
+        for msg in toSend { sendRaw(msg) }
     }
 
     // MARK: - 接收消息
@@ -105,14 +122,16 @@ final class ChatService {
         switch raw.type {
         case "stream":
             if let content = raw.content {
+                if let idx = messages.indices.last, messages[idx].role == .assistant {
+                    messages[idx].content += content
+                } else {
+                    messages.append(ChatBubble(role: .assistant, content: content))
+                }
                 currentStreamText += content
-                scheduleStreamFlush()
             }
         case "done":
-            streamFlushTimer?.invalidate()
-            streamFlushTimer = nil
-            flushStreamToMessages()
             isStreaming = false
+            currentStreamText = ""
             if let usage = raw.usage { creditBalance = usage.balance }
             if let convId = raw.conversationId { currentConversationId = convId }
         case "error":
@@ -122,29 +141,6 @@ final class ChatService {
             }
         default:
             break
-        }
-    }
-
-    // MARK: - Stream throttle
-
-    private func scheduleStreamFlush() {
-        guard streamFlushTimer == nil else { return }
-        streamFlushTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.flushStreamToMessages()
-                self.streamFlushTimer = nil
-            }
-        }
-    }
-
-    private func flushStreamToMessages() {
-        let text = currentStreamText
-        guard !text.isEmpty else { return }
-        if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
-            messages[lastIndex].content = text
-        } else {
-            messages.append(ChatBubble(role: .assistant, content: text))
         }
     }
 
@@ -201,6 +197,28 @@ final class ChatService {
 
     func loadMessages(conversationId: String) async -> [Message] {
         (try? await APIClient.shared.request(Constants.API.messages(conversationId))) ?? []
+    }
+}
+
+// MARK: - URLSessionWebSocketDelegate
+
+extension ChatService: URLSessionWebSocketDelegate {
+    func urlSession(_ session: URLSession,
+                    webSocketTask: URLSessionWebSocketTask,
+                    didOpenWithProtocol protocol: String?) {
+        Task { @MainActor in
+            self.isConnected = true
+            self.flushPendingMessages()
+        }
+    }
+
+    func urlSession(_ session: URLSession,
+                    webSocketTask: URLSessionWebSocketTask,
+                    didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
+                    reason: Data?) {
+        Task { @MainActor in
+            self.isConnected = false
+        }
     }
 }
 

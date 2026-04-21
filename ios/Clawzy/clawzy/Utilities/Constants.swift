@@ -28,6 +28,8 @@ enum Constants {
 
         static let clawHubSearch = "/api/v1/clawhub/search"
         static let clawHubInstall = "/api/v1/clawhub/install"
+        static let characters = "/api/v1/characters"
+        static func characterUse(_ id: String) -> String { "/api/v1/characters/\(id)/use" }
 
         static func agent(_ id: String) -> String { "/api/v1/agents/\(id)" }
         static func agentStart(_ id: String) -> String { "/api/v1/agents/\(id)/start" }
