@@ -11,6 +11,9 @@ from app.models.mcp import AgentMCPServer
 from app.models.task import ScheduledTask, TaskRun
 from app.models.approval import ApprovalRequest
 from app.models.channel import AgentChannel
+from app.models.agent_task import AgentTask
+from app.models.agent_file import AgentFile
+from app.models.harness import TaskPipeline, PipelineStep
 
 __all__ = [
     "User",
@@ -28,4 +31,8 @@ __all__ = [
     "TaskRun",
     "ApprovalRequest",
     "AgentChannel",
+    "AgentTask",
+    "AgentFile",
+    "TaskPipeline",
+    "PipelineStep",
 ]
