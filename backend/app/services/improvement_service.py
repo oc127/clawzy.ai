@@ -5,13 +5,11 @@ import logging
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.chat import Conversation, Message
 from app.models.evaluation import ConversationEvaluation
-from app.models.skill import AgentSkill
-from app.services.skill_service import SkillService
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +29,6 @@ Conversation:
 
 
 async def _call_llm(prompt: str) -> str:
-    """Call LLM via httpx to avoid circular imports."""
     import httpx
     from app.config import settings
 
@@ -99,7 +96,7 @@ async def evaluate_response(conversation_id: str, user_id: str, agent_id: str | 
 
 
 async def extract_patterns(user_id: str, db: AsyncSession, limit: int = 20) -> list[dict]:
-    """Extract patterns from recent unevaluated conversations."""
+    """Extract patterns from recent evaluations."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     result = await db.execute(
         select(ConversationEvaluation)
@@ -117,7 +114,6 @@ async def extract_patterns(user_id: str, db: AsyncSession, limit: int = 20) -> l
         if ev.patterns_found:
             all_patterns.extend(ev.patterns_found)
 
-    # Deduplicate while preserving order
     seen: set[str] = set()
     unique_patterns = [p for p in all_patterns if not (p in seen or seen.add(p))]
     return [{"pattern": p} for p in unique_patterns[:20]]
@@ -125,18 +121,18 @@ async def extract_patterns(user_id: str, db: AsyncSession, limit: int = 20) -> l
 
 async def improve_skills(user_id: str, agent_id: str | None, db: AsyncSession, max_conversations: int = 20) -> dict:
     """Run skill improvement cycle based on recent evaluations."""
-    # Get low-scoring evaluations that haven't been acted on
+    from app.services.skill_service import auto_extract_skill
+
+    filters = [
+        ConversationEvaluation.user_id == user_id,
+        ConversationEvaluation.skill_extracted == False,
+    ]
+    if agent_id:
+        filters.append(ConversationEvaluation.agent_id == agent_id)
+
     result = await db.execute(
         select(ConversationEvaluation)
-        .where(
-            ConversationEvaluation.user_id == user_id,
-            ConversationEvaluation.skill_extracted == False,
-            *(
-                [ConversationEvaluation.agent_id == agent_id]
-                if agent_id
-                else []
-            ),
-        )
+        .where(*filters)
         .order_by(ConversationEvaluation.created_at.desc())
         .limit(max_conversations)
     )
@@ -145,32 +141,30 @@ async def improve_skills(user_id: str, agent_id: str | None, db: AsyncSession, m
     skills_created = 0
     for ev in evals:
         if not ev.conversation_id or not ev.patterns_found:
+            ev.skill_extracted = True
             continue
 
-        # Use SkillService to potentially extract a skill
-        msgs_result = await db.execute(
-            select(Message)
-            .where(Message.conversation_id == ev.conversation_id)
-            .order_by(Message.created_at)
-            .limit(30)
-        )
-        messages = msgs_result.scalars().all()
-        if not messages:
-            continue
-
-        agent_id_for_skill = agent_id or ev.agent_id
-        if agent_id_for_skill:
-            try:
-                svc = SkillService()
-                skill = await svc.extract_and_save_skill(
-                    agent_id=agent_id_for_skill,
-                    messages=messages,
-                    db=db,
-                )
-                if skill:
-                    skills_created += 1
-            except Exception as e:
-                logger.warning("Skill extraction failed: %s", e)
+        target_agent_id = agent_id or ev.agent_id
+        if target_agent_id:
+            msgs_result = await db.execute(
+                select(Message)
+                .where(Message.conversation_id == ev.conversation_id)
+                .order_by(Message.created_at)
+                .limit(30)
+            )
+            messages = msgs_result.scalars().all()
+            if messages:
+                convo_dicts = [{"role": m.role, "content": m.content} for m in messages]
+                try:
+                    skill = await auto_extract_skill(
+                        db=db,
+                        agent_id=target_agent_id,
+                        conversation_messages=convo_dicts,
+                    )
+                    if skill:
+                        skills_created += 1
+                except Exception as e:
+                    logger.warning("Skill extraction failed: %s", e)
 
         ev.skill_extracted = True
 
@@ -220,7 +214,7 @@ async def generate_improvement_report(user_id: str, db: AsyncSession, period_day
     if avg_score is not None and avg_score < 0.6:
         recommendations.append("Response quality is below average. Consider refining agent system prompts.")
     if skills_extracted == 0:
-        recommendations.append("No skills were extracted yet. Use /improvement/improve to trigger skill extraction.")
+        recommendations.append("No skills extracted yet. Use POST /improvement/improve to trigger extraction.")
     if len(evals) < 5:
         recommendations.append("Evaluate more conversations to get meaningful insights.")
     if not recommendations:
