@@ -47,6 +47,14 @@
 		F5A6B7C8D9E0005278F5A6B7 /* PluginsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */; };
 		F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */; };
 		DD0001042F8F000000000004 /* CronTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0001022F8F000000000001 /* CronTasksView.swift */; };
+		EE0001022FA0000000000002 /* Pipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0001012FA0000000000001 /* Pipeline.swift */; };
+		EE0001042FA0000000000004 /* PipelineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0001032FA0000000000003 /* PipelineService.swift */; };
+		EE0001062FA0000000000006 /* Schedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0001052FA0000000000005 /* Schedule.swift */; };
+		EE0001082FA0000000000008 /* AgentFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0001072FA0000000000007 /* AgentFile.swift */; };
+		EE00010A2FA000000000000A /* HarnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0001092FA0000000000009 /* HarnessView.swift */; };
+		EE00010C2FA000000000000C /* PipelineDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE00010B2FA000000000000B /* PipelineDetailView.swift */; };
+		EE00010E2FA000000000000E /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE00010D2FA000000000000D /* ScheduleView.swift */; };
+		EE0001102FA0000000000010 /* FilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE00010F2FA000000000000F /* FilesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -92,6 +100,14 @@
 		E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginsStore.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E6F70812345678 /* clawzy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = clawzy.entitlements; sourceTree = "<group>"; };
 		F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledPluginsView.swift; sourceTree = "<group>"; };
+		EE0001012FA0000000000001 /* Pipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pipeline.swift; sourceTree = "<group>"; };
+		EE0001032FA0000000000003 /* PipelineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipelineService.swift; sourceTree = "<group>"; };
+		EE0001052FA0000000000005 /* Schedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schedule.swift; sourceTree = "<group>"; };
+		EE0001072FA0000000000007 /* AgentFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFile.swift; sourceTree = "<group>"; };
+		EE0001092FA0000000000009 /* HarnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarnessView.swift; sourceTree = "<group>"; };
+		EE00010B2FA000000000000B /* PipelineDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipelineDetailView.swift; sourceTree = "<group>"; };
+		EE00010D2FA000000000000D /* ScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleView.swift; sourceTree = "<group>"; };
+		EE00010F2FA000000000000F /* FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -189,6 +205,9 @@
 				4EBD3CAE2F71354F00F4A127 /* Credits.swift */,
 				4EBD3CAF2F71354F00F4A127 /* User.swift */,
 				AA0002022F8F000000000002 /* Character.swift */,
+				EE0001012FA0000000000001 /* Pipeline.swift */,
+				EE0001052FA0000000000005 /* Schedule.swift */,
+				EE0001072FA0000000000007 /* AgentFile.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -205,6 +224,7 @@
 				E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */,
 				D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */,
 				D2E3F4A5B6C7089034D2E3F4 /* HealthMonitor.swift */,
+				EE0001032FA0000000000003 /* PipelineService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -289,8 +309,10 @@
 				A2B14337D2B341FDB2B3622D /* Credits */,
 				DD0001032F8F000000000003 /* CronTasks */,
 				4EBD3CC22F71354F00F4A127 /* Dashboard */,
+				FF0001012FA0000000000001 /* Harness */,
 				F2A3B4C5D6E7F80923456789 /* Market */,
 				4EBD3CC42F71354F00F4A127 /* Settings */,
+				FF0001022FA0000000000002 /* Workspace */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -321,6 +343,24 @@
 				4EBD3CDF2F717B5500F4A127 /* MarketView.swift */,
 			);
 			path = Market;
+			sourceTree = "<group>";
+		};
+		FF0001012FA0000000000001 /* Harness */ = {
+			isa = PBXGroup;
+			children = (
+				EE0001092FA0000000000009 /* HarnessView.swift */,
+				EE00010B2FA000000000000B /* PipelineDetailView.swift */,
+			);
+			path = Harness;
+			sourceTree = "<group>";
+		};
+		FF0001022FA0000000000002 /* Workspace */ = {
+			isa = PBXGroup;
+			children = (
+				EE00010D2FA000000000000D /* ScheduleView.swift */,
+				EE00010F2FA000000000000F /* FilesView.swift */,
+			);
+			path = Workspace;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -436,6 +476,14 @@
 				E3F4A5B6C7D8090145E3F4A5 /* InstalledPluginsView.swift in Sources */,
 				CC0001012F8F000000000001 /* ConnectorsView.swift in Sources */,
 				DD0001042F8F000000000004 /* CronTasksView.swift in Sources */,
+				EE0001022FA0000000000002 /* Pipeline.swift in Sources */,
+				EE0001042FA0000000000004 /* PipelineService.swift in Sources */,
+				EE0001062FA0000000000006 /* Schedule.swift in Sources */,
+				EE0001082FA0000000000008 /* AgentFile.swift in Sources */,
+				EE00010A2FA000000000000A /* HarnessView.swift in Sources */,
+				EE00010C2FA000000000000C /* PipelineDetailView.swift in Sources */,
+				EE00010E2FA000000000000E /* ScheduleView.swift in Sources */,
+				EE0001102FA0000000000010 /* FilesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

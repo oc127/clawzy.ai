@@ -54,5 +54,11 @@ enum Constants {
         static func pipelineRun(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)/run" }
         static func pipelineCancel(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)/cancel" }
         static func pipelineSteps(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)/steps" }
+
+        static let schedule = "/api/v1/schedule"
+        static func scheduleItem(_ id: String) -> String { "/api/v1/schedule/\(id)" }
+
+        static let files = "/api/v1/files"
+        static func file(_ id: String) -> String { "/api/v1/files/\(id)" }
     }
 }

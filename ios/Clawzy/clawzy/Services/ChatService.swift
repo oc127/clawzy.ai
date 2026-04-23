@@ -11,11 +11,11 @@ final class ChatService: NSObject {
     var currentConversationId: String?
     var currentConversationTitle: String?
 
-    private var webSocketTask: URLSessionWebSocketTask?
+    @ObservationIgnored private var webSocketTask: URLSessionWebSocketTask?
     var currentStreamText = ""
-    private var currentAgentId: String?
-    private var pendingMessages: [String] = []
-    private lazy var session: URLSession = {
+    @ObservationIgnored private var currentAgentId: String?
+    @ObservationIgnored private var pendingMessages: [String] = []
+    @ObservationIgnored private lazy var session: URLSession = {
         URLSession(configuration: .default, delegate: self, delegateQueue: nil)
     }()
 
