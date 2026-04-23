@@ -14,6 +14,7 @@ from app.models.channel import AgentChannel
 from app.models.agent_task import AgentTask
 from app.models.agent_file import AgentFile
 from app.models.harness import TaskPipeline, PipelineStep
+from app.models.evaluation import ConversationEvaluation
 
 __all__ = [
     "User",
@@ -35,4 +36,5 @@ __all__ = [
     "AgentFile",
     "TaskPipeline",
     "PipelineStep",
+    "ConversationEvaluation",
 ]
