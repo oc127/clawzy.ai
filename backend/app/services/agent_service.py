@@ -99,11 +99,19 @@ async def get_agent(db: AsyncSession, agent_id: str, user_id: str) -> Agent | No
     return result.scalar_one_or_none()
 
 
-async def update_agent(db: AsyncSession, agent: Agent, name: str | None, model_name: str | None) -> Agent:
+async def update_agent(
+    db: AsyncSession,
+    agent: Agent,
+    name: str | None,
+    model_name: str | None,
+    adaptive_depth: bool | None = None,
+) -> Agent:
     if name is not None:
         agent.name = name
     if model_name is not None:
         agent.model_name = model_name
+    if adaptive_depth is not None:
+        agent.adaptive_depth = adaptive_depth
     await db.commit()
     await db.refresh(agent)
     return agent

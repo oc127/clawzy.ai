@@ -210,6 +210,10 @@ async def stream_chat_completion(
             history[-1]["content"] = content_parts
         else:
             history.append({"role": "user", "content": content_parts})
+    elif getattr(agent, "adaptive_depth", False):
+        from app.services.reasoning_depth_service import select_adaptive_model
+        model_to_use, depth_level = select_adaptive_model(agent.model_name, user_content or "")
+        logger.info("Adaptive depth: %s → %s", depth_level, model_to_use)
     else:
         model_to_use = agent.model_name
 
@@ -568,6 +572,6 @@ async def stream_chat_completion(
             "balance": user.credit_balance,
             "tokens_input": tokens_input,
             "tokens_output": tokens_output,
-            "model": agent.model_name,
+            "model": model_to_use,
         },
     })

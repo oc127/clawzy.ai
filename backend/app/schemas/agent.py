@@ -12,6 +12,7 @@ class AgentCreate(BaseModel):
 class AgentUpdate(BaseModel):
     name: str | None = None
     model_name: str | None = None
+    adaptive_depth: bool | None = None
 
 
 class AgentResponse(BaseModel):
@@ -20,6 +21,7 @@ class AgentResponse(BaseModel):
     model_name: str
     status: str
     ws_port: int | None = None
+    adaptive_depth: bool = False
     created_at: datetime
     last_active_at: datetime | None = None
 

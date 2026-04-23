@@ -1,7 +1,7 @@
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -75,7 +75,7 @@ async def update_my_agent(
     agent = await get_agent(db, agent_id, user.id)
     if agent is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    return await update_agent(db, agent, body.name, body.model_name)
+    return await update_agent(db, agent, body.name, body.model_name, body.adaptive_depth)
 
 
 @router.post("/{agent_id}/start", response_model=AgentResponse)
@@ -185,3 +185,32 @@ async def uninstall_agent_plugin(
             status_code=500,
             detail=f"Plugin uninstall failed (exit {exit_code}): {output}",
         )
+
+
+# ---------------------------------------------------------------------------
+# Adaptive reasoning depth
+# ---------------------------------------------------------------------------
+
+@router.post("/{agent_id}/reasoning-depth/classify")
+async def classify_reasoning_depth(
+    agent_id: str,
+    query: str = Body(..., embed=True),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Classify the reasoning depth for a query without sending it to the LLM.
+
+    Returns the depth level and the model that would be selected if adaptive
+    depth is enabled on this agent.
+    """
+    agent = await get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    from app.services.reasoning_depth_service import select_adaptive_model
+    model_to_use, depth_level = select_adaptive_model(agent.model_name, query)
+    return {
+        "depth": depth_level,
+        "model": model_to_use,
+        "adaptive_depth_enabled": agent.adaptive_depth,
+    }

@@ -27,6 +27,7 @@ class Agent(Base):
     system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     memory_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    adaptive_depth: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     ws_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
