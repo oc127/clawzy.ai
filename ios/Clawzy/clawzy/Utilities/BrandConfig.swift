@@ -5,14 +5,15 @@ import SwiftUI
 /// using a target-specific BrandConfig.swift (exclude this file from that target).
 struct BrandConfig {
     // MARK: - Identity
-    static let appName        = "NipponClaw"
-    static let bundleID       = "ai.clawzy.nipponclaw"
+    static let appName        = "Lucy"
+    static let bundleID       = "ai.clawzy.lucy"
     static let marketRegion   = "JP"
 
     // MARK: - Colors
-    /// NipponClaw brand red — #E53935
-    static let brand          = Color(red: 0.898, green: 0.224, blue: 0.208)
-    static let brandDeep      = Color(red: 0.776, green: 0.157, blue: 0.157)
+    /// Lucy coral — #FF6B5A
+    static let brand          = Color(red: 1.0, green: 0.420, blue: 0.353)
+    static let brandDeep      = Color(red: 0.910, green: 0.353, blue: 0.290)
+    static let brandLight     = Color(red: 1.0, green: 0.541, blue: 0.478)
     static let primaryColor   = brand
     static let accentColor    = brand
 
@@ -68,8 +69,8 @@ struct BrandConfig {
     }
 
     // MARK: - Strings
-    static let tagline        = "AI Agents, Unleashed"
-    static let taglineJP      = "AIエージェントを、自由に。"
+    static let tagline        = "あなたの AI フレンド"
+    static let taglineJP      = "あなたの AI フレンド。"
 
     // MARK: - App Store
     static let appStoreID     = ""   // fill after App Store Connect submission
@@ -79,15 +80,38 @@ struct BrandConfig {
 
 // MARK: - Shared brand components
 
-struct NipponLogo: View {
+struct LucyLogo: View {
     var size: CGFloat = 44
 
     var body: some View {
-        Image("ClawzyLogo")
-            .resizable()
-            .scaledToFit()
-            .frame(width: size, height: size)
-            .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
+        ZStack {
+            // Outer glow
+            Circle()
+                .fill(BrandConfig.brand.opacity(0.20))
+                .frame(width: size * 1.4, height: size * 1.4)
+                .blur(radius: size * 0.15)
+            // Mid glow
+            Circle()
+                .fill(BrandConfig.brand.opacity(0.45))
+                .frame(width: size * 1.1, height: size * 1.1)
+                .blur(radius: size * 0.08)
+            // Core sphere
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [BrandConfig.brandLight, BrandConfig.brand, BrandConfig.brandDeep],
+                        center: .init(x: 0.35, y: 0.30),
+                        startRadius: 0,
+                        endRadius: size * 0.55
+                    )
+                )
+                .frame(width: size, height: size)
+            // Specular highlight
+            Circle()
+                .fill(Color.white.opacity(0.35))
+                .frame(width: size * 0.30, height: size * 0.30)
+                .offset(x: -size * 0.12, y: -size * 0.12)
+        }
     }
 }
 

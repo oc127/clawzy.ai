@@ -23,7 +23,7 @@ struct RegisterView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     HStack(spacing: 10) {
-                        NipponLogo(size: 44)
+                        LucyLogo(size: 44)
                         Text(BrandConfig.appName)
                             .font(.title2)
                             .fontWeight(.bold)

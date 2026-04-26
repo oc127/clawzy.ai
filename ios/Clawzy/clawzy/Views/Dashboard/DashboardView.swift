@@ -40,7 +40,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Top bar: logo left, credits + status right
                 HStack(spacing: BrandConfig.Spacing.md) {
-                    NipponLogo(size: 28)
+                    LucyLogo(size: 28)
                     Spacer()
                     if let user = authManager.currentUser {
                         HStack(spacing: 4) {
@@ -65,7 +65,7 @@ struct DashboardView: View {
 
                 // Greeting
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(lang.t("こんにちは 👋", en: "Hello 👋", zh: "你好 👋", ko: "안녕하세요 👋"))
+                    Text(lang.t("おかえり 👋", en: "Welcome back 👋", zh: "欢迎回来 👋", ko: "어서 와 👋"))
                         .font(.title).fontWeight(.bold)
                         .foregroundStyle(.primary)
                     if let user = authManager.currentUser {

@@ -4,7 +4,7 @@ from app.api.v1 import auth, users, agents, models, billing, chat, templates, cl
 from app.api.v1 import workspace, memories, tools
 from app.api.v1 import skills, mcp, scheduler, approvals, channels, webhooks
 from app.api.v1 import characters
-from app.api.v1 import harness, schedule, files
+from app.api.v1 import harness, schedule, files, onboarding
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -31,3 +31,4 @@ api_router.include_router(characters.router)
 api_router.include_router(harness.router)
 api_router.include_router(schedule.router)
 api_router.include_router(files.router)
+api_router.include_router(onboarding.router)

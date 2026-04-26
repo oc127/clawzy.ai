@@ -324,7 +324,7 @@ struct ChatView: View {
                 }
 
                 TextField(
-                    lang.t("メッセージを入力...", en: "Type a message...", zh: "输入消息...", ko: "메시지 입력..."),
+                    lang.t("Lucy に話しかける...", en: "Talk to Lucy...", zh: "和 Lucy 说话...", ko: "Lucy에게 말하기..."),
                     text: $inputText, axis: .vertical
                 )
                 .textFieldStyle(.plain).lineLimit(1...5).focused($isInputFocused)
@@ -542,12 +542,7 @@ struct MessageBubbleView: View {
             }
         } else {
             HStack(alignment: .top, spacing: 10) {
-                ZStack {
-                    Circle().fill(BrandConfig.brand).frame(width: 32, height: 32)
-                    Text("N")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
+                LucyLogo(size: 32)
                 VStack(alignment: .leading, spacing: 4) {
                     if !bubble.images.isEmpty {
                         ImageGridView(images: bubble.images, isUser: false)
@@ -611,10 +606,7 @@ private struct TypingIndicator: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            ZStack {
-                Circle().fill(BrandConfig.brand.opacity(0.10)).frame(width: 30, height: 30)
-                Text("N").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(BrandConfig.brand)
-            }
+            LucyLogo(size: 30)
             HStack(spacing: 4) {
                 ForEach(0..<3) { i in
                     Circle().fill(Color.secondary).frame(width: 7, height: 7)

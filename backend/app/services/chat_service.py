@@ -178,8 +178,14 @@ async def stream_chat_completion(
     # ── 3. Build message history ────────────────────────────────────────────
     history = await get_conversation_history(db, conversation_id)
 
-    # ── 3a. Inject memory context into system prompt ────────────────────────
-    system_prompt = agent.system_prompt or ""
+    # ── 3a. Inject Lucy personality (highest priority) ─────────────────────
+    from app.services.personality_engine import build_lucy_system_prompt
+    system_prompt = build_lucy_system_prompt(
+        base_system_prompt=agent.system_prompt or None,
+        user_name=None,
+    )
+
+    # ── 3b. Inject memory context ───────────────────────────────────────────
     if agent.memory_enabled:
         try:
             from app.services.memory_service import get_memory_context
@@ -189,7 +195,7 @@ async def stream_chat_completion(
         except Exception as exc:
             logger.warning("Failed to load memory context for agent %s: %s", agent.id, exc)
 
-    # ── 3b. Inject relevant skills into system prompt ──────────────────────
+    # ── 3c. Inject relevant skills ──────────────────────
     try:
         from app.services.skill_service import inject_skills_to_prompt
         system_prompt = await inject_skills_to_prompt(db, agent.id, user_content, system_prompt)

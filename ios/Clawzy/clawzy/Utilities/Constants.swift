@@ -49,6 +49,8 @@ enum Constants {
         static func messages(_ conversationId: String) -> String { "/api/v1/conversations/\(conversationId)/messages" }
         static func clawHubSkill(_ slug: String) -> String { "/api/v1/clawhub/skills/\(slug)" }
 
+        static let onboardingLucy = "/api/v1/onboarding/lucy"
+
         static let pipelines = "/api/v1/harness/pipelines"
         static func pipeline(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)" }
         static func pipelineRun(_ id: String) -> String { "/api/v1/harness/pipelines/\(id)/run" }

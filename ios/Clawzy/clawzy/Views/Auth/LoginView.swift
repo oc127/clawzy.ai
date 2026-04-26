@@ -14,7 +14,7 @@ struct LoginView: View {
                 VStack(spacing: 0) {
                     // Logo
                     HStack(spacing: 10) {
-                        NipponLogo(size: 44)
+                        LucyLogo(size: 44)
                         Text(BrandConfig.appName)
                             .font(.title2)
                             .fontWeight(.bold)

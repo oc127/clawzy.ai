@@ -47,6 +47,9 @@
 		F5A6B7C8D9E0005278F5A6B7 /* PluginsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */; };
 		F9647251A9384F689642D72E /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5F83B7D1B484D89BAE249 /* StoreKitManager.swift */; };
 		DD0001042F8F000000000004 /* CronTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0001022F8F000000000001 /* CronTasksView.swift */; };
+		BB0010012F9F000000000001 /* ChatHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010012F9F000000000001 /* ChatHomeView.swift */; };
+		BB0010022F9F000000000002 /* SideMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010022F9F000000000002 /* SideMenuView.swift */; };
+		BB0010032F9F000000000003 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0010032F9F000000000003 /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -92,6 +95,9 @@
 		E4F5A6B7C8D9004167E4F5A6 /* PluginsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginsStore.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E6F70812345678 /* clawzy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = clawzy.entitlements; sourceTree = "<group>"; };
 		F4A5B6C7D8E9001256F4A5B6 /* InstalledPluginsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledPluginsView.swift; sourceTree = "<group>"; };
+		AA0010012F9F000000000001 /* ChatHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHomeView.swift; sourceTree = "<group>"; };
+		AA0010022F9F000000000002 /* SideMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideMenuView.swift; sourceTree = "<group>"; };
+		AA0010032F9F000000000003 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -225,6 +231,7 @@
 			children = (
 				4EBD3CBA2F71354F00F4A127 /* LoginView.swift */,
 				4EBD3CBB2F71354F00F4A127 /* RegisterView.swift */,
+				AA0010032F9F000000000003 /* OnboardingView.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -233,6 +240,7 @@
 			isa = PBXGroup;
 			children = (
 				4EBD3CBD2F71354F00F4A127 /* ChatView.swift */,
+				AA0010012F9F000000000001 /* ChatHomeView.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -290,6 +298,7 @@
 				DD0001032F8F000000000003 /* CronTasks */,
 				4EBD3CC22F71354F00F4A127 /* Dashboard */,
 				F2A3B4C5D6E7F80923456789 /* Market */,
+				BB0010042F9F000000000004 /* Navigation */,
 				4EBD3CC42F71354F00F4A127 /* Settings */,
 			);
 			path = Views;
@@ -321,6 +330,14 @@
 				4EBD3CDF2F717B5500F4A127 /* MarketView.swift */,
 			);
 			path = Market;
+			sourceTree = "<group>";
+		};
+		BB0010042F9F000000000004 /* Navigation */ = {
+			isa = PBXGroup;
+			children = (
+				AA0010022F9F000000000002 /* SideMenuView.swift */,
+			);
+			path = Navigation;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -436,6 +453,9 @@
 				E3F4A5B6C7D8090145E3F4A5 /* InstalledPluginsView.swift in Sources */,
 				CC0001012F8F000000000001 /* ConnectorsView.swift in Sources */,
 				DD0001042F8F000000000004 /* CronTasksView.swift in Sources */,
+				BB0010012F9F000000000001 /* ChatHomeView.swift in Sources */,
+				BB0010022F9F000000000002 /* SideMenuView.swift in Sources */,
+				BB0010032F9F000000000003 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
