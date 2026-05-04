@@ -68,13 +68,13 @@ function StatCard({
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-[#717171] font-medium">{label}</p>
+        <p className="text-sm text-[#717171] dark:text-[#a0a0a0] font-medium">{label}</p>
         <div className="flex items-baseline gap-1.5">
-          <p className="text-2xl font-extrabold text-[#222222]">{value}</p>
-          {sub && <span className="text-sm text-[#717171]">{sub}</span>}
+          <p className="text-2xl font-extrabold text-[#222222] dark:text-white">{value}</p>
+          {sub && <span className="text-sm text-[#717171] dark:text-[#a0a0a0]">{sub}</span>}
         </div>
         {progress && (
-          <div className="mt-2 h-1.5 w-full rounded-full bg-[#ebebeb]">
+          <div className="mt-2 h-1.5 w-full rounded-full bg-[#ebebeb] dark:bg-[#333]">
             <div
               className={`h-1.5 rounded-full transition-all ${
                 progress.used >= progress.total
@@ -92,7 +92,7 @@ function StatCard({
   );
 
   const cardClass =
-    "rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200";
+    "rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200";
 
   if (href) {
     return (
@@ -114,14 +114,14 @@ function UsageChart({ data }: { data: DailyUsage[] }) {
         return (
           <div key={day.date} className="flex flex-1 flex-col items-center gap-1">
             {day.credits > 0 && (
-              <span className="text-[10px] font-medium text-[#717171]">{day.credits}</span>
+              <span className="text-[10px] font-medium text-[#717171] dark:text-[#a0a0a0]">{day.credits}</span>
             )}
             <div
               className="w-full rounded-t-lg bg-gradient-to-t from-[#ff385c] to-[#ff8c69] transition-all hover:from-[#e31c5f] hover:to-[#ff6b35]"
               style={{ height: `${height}%` }}
               title={`${day.date}: ${day.credits} credits`}
             />
-            <span className="text-[10px] text-[#717171]">{label}</span>
+            <span className="text-[10px] text-[#717171] dark:text-[#a0a0a0]">{label}</span>
           </div>
         );
       })}
@@ -132,7 +132,7 @@ function UsageChart({ data }: { data: DailyUsage[] }) {
 function RecentActivity({ transactions }: { transactions: CreditTransaction[] }) {
   if (transactions.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-[#b0b0b0]">No recent activity</p>
+      <p className="py-8 text-center text-sm text-[#b0b0b0] dark:text-[#666]">No recent activity</p>
     );
   }
   return (
@@ -141,14 +141,14 @@ function RecentActivity({ transactions }: { transactions: CreditTransaction[] })
         <div key={tx.id} className="flex items-center justify-between text-sm py-1">
           <div className="flex items-center gap-2.5">
             <div className={`h-2 w-2 rounded-full ${tx.amount > 0 ? "bg-emerald-500" : "bg-[#ff385c]"}`} />
-            <span className="text-[#717171] capitalize">{tx.reason.replace("_", " ")}</span>
+            <span className="text-[#717171] dark:text-[#a0a0a0] capitalize">{tx.reason.replace("_", " ")}</span>
             {tx.model_name && (
-              <span className="rounded-lg bg-[#f7f7f7] border border-[#ebebeb] px-2 py-0.5 text-xs text-[#717171]">
+              <span className="rounded-lg bg-[#f7f7f7] dark:bg-[#262626] border border-[#ebebeb] dark:border-[#333] px-2 py-0.5 text-xs text-[#717171] dark:text-[#a0a0a0]">
                 {tx.model_name}
               </span>
             )}
           </div>
-          <span className={`font-semibold ${tx.amount > 0 ? "text-emerald-600" : "text-[#ff385c]"}`}>
+          <span className={`font-semibold ${tx.amount > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-[#ff385c]"}`}>
             {tx.amount > 0 ? "+" : ""}{tx.amount}
           </span>
         </div>
@@ -202,14 +202,14 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-[#ebebeb] bg-white" role="alert">
+      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a]" role="alert">
         <AlertCircle className="h-8 w-8 text-[#ff385c]" />
-        <p className="text-sm text-[#717171]">{error}</p>
+        <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">{error}</p>
         <Button
           variant="outline"
           size="sm"
           onClick={fetchData}
-          className="border-[#dddddd] text-[#222222] hover:bg-[#f7f7f7]"
+          className="border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
         >
           <RefreshCw className="mr-2 h-3.5 w-3.5" />
           Retry
@@ -225,10 +225,10 @@ export default function DashboardPage() {
     <div className="space-y-7">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-[#222222]">
+        <h1 className="text-2xl font-extrabold text-[#222222] dark:text-white">
           Good morning, {firstName} 👋
         </h1>
-        <p className="mt-1 text-[#717171]">Here&apos;s your account overview.</p>
+        <p className="mt-1 text-[#717171] dark:text-[#a0a0a0]">Here&apos;s your account overview.</p>
       </div>
 
       {/* Stat cards */}
@@ -267,17 +267,17 @@ export default function DashboardPage() {
 
       {/* Chart + Activity */}
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] lg:col-span-2">
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] lg:col-span-2">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="font-bold text-[#222222]">Credit Usage — Last 7 Days</h2>
-            <TrendingUp className="h-4 w-4 text-[#b0b0b0]" />
+            <h2 className="font-bold text-[#222222] dark:text-white">Credit Usage — Last 7 Days</h2>
+            <TrendingUp className="h-4 w-4 text-[#b0b0b0] dark:text-[#666]" />
           </div>
           <UsageChart data={chartData} />
         </div>
 
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-bold text-[#222222]">Recent Activity</h2>
+            <h2 className="font-bold text-[#222222] dark:text-white">Recent Activity</h2>
             <Link href="/billing" className="text-xs font-semibold text-[#ff385c] hover:underline">
               View all
             </Link>
@@ -288,19 +288,19 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <div>
-        <h2 className="mb-4 font-bold text-[#222222]">Quick Actions</h2>
+        <h2 className="mb-4 font-bold text-[#222222] dark:text-white">Quick Actions</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {QUICK_ACTIONS.map((action) => (
             <Link key={action.href} href={action.href}>
-              <div className="flex items-center gap-3 rounded-2xl border border-[#ebebeb] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+              <div className="flex items-center gap-3 rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ${action.gradient}`}>
                   {action.icon}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm text-[#222222]">{action.label}</p>
-                  <p className="text-xs text-[#717171] truncate">{action.desc}</p>
+                  <p className="font-semibold text-sm text-[#222222] dark:text-white">{action.label}</p>
+                  <p className="text-xs text-[#717171] dark:text-[#a0a0a0] truncate">{action.desc}</p>
                 </div>
-                <ArrowRight className="h-4 w-4 text-[#b0b0b0] shrink-0" />
+                <ArrowRight className="h-4 w-4 text-[#b0b0b0] dark:text-[#666] shrink-0" />
               </div>
             </Link>
           ))}

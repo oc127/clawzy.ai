@@ -49,11 +49,11 @@ function formatTime(iso?: string) {
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="flex items-center gap-1 rounded-2xl bg-[#f7f7f7] px-4 py-3 border border-[#ebebeb]">
+      <div className="flex items-center gap-1 rounded-2xl bg-[#f7f7f7] dark:bg-[#262626] px-4 py-3 border border-[#ebebeb] dark:border-[#333]">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="inline-block h-1.5 w-1.5 rounded-full bg-[#b0b0b0]"
+            className="inline-block h-1.5 w-1.5 rounded-full bg-[#b0b0b0] dark:bg-[#666]"
             style={{
               animation: "typing-dot 1.2s infinite",
               animationDelay: `${i * 150}ms`,
@@ -82,7 +82,7 @@ function ChatSkeleton() {
         </div>
       </div>
       <div className="flex flex-1 flex-col">
-        <div className="flex-1 rounded-2xl border border-[#ebebeb] bg-white p-4">
+        <div className="flex-1 rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4">
           <div className="space-y-4">
             <div className="flex justify-end"><Skeleton className="h-10 w-48" /></div>
             <div className="flex justify-start"><Skeleton className="h-16 w-64" /></div>
@@ -155,19 +155,19 @@ function AgentOpsPanel({ agentId, agent, setAgent }: {
   const healthStatus = health?.health_status;
 
   return (
-    <div className="border-t border-[#ebebeb] pt-3 mt-3">
+    <div className="border-t border-[#ebebeb] dark:border-[#333] pt-3 mt-3">
       <button
         onClick={() => setShowOps(!showOps)}
-        className="flex w-full items-center justify-between text-sm font-bold text-[#222222]"
+        className="flex w-full items-center justify-between text-sm font-bold text-[#222222] dark:text-white"
       >
         <span className="flex items-center gap-1.5">
-          <Terminal className="h-3.5 w-3.5 text-[#717171]" />
+          <Terminal className="h-3.5 w-3.5 text-[#717171] dark:text-[#a0a0a0]" />
           Ops Panel
         </span>
         {showOps ? (
-          <ChevronUp className="h-3.5 w-3.5 text-[#b0b0b0]" />
+          <ChevronUp className="h-3.5 w-3.5 text-[#b0b0b0] dark:text-[#666]" />
         ) : (
-          <ChevronDown className="h-3.5 w-3.5 text-[#b0b0b0]" />
+          <ChevronDown className="h-3.5 w-3.5 text-[#b0b0b0] dark:text-[#666]" />
         )}
       </button>
 
@@ -175,52 +175,52 @@ function AgentOpsPanel({ agentId, agent, setAgent }: {
         <div className="mt-3 space-y-3">
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={handleRestart} disabled={restarting || agent.status === "creating"}
-              className="h-7 text-xs border-[#dddddd] text-[#222222] hover:bg-[#f7f7f7] rounded-lg">
+              className="h-7 text-xs border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-lg">
               <RotateCcw className={cn("mr-1 h-3 w-3", restarting && "animate-spin")} />
               {restarting ? "Restarting..." : "Restart"}
             </Button>
             <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loadingHealth}
-              className="h-7 text-xs border-[#dddddd] text-[#222222] hover:bg-[#f7f7f7] rounded-lg">
+              className="h-7 text-xs border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-lg">
               <Heart className="mr-1 h-3 w-3" />
               Health
             </Button>
             <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loadingLogs}
-              className="h-7 text-xs border-[#dddddd] text-[#222222] hover:bg-[#f7f7f7] rounded-lg">
+              className="h-7 text-xs border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-lg">
               <Terminal className="mr-1 h-3 w-3" />
               Logs
             </Button>
           </div>
 
           {health && (
-            <div className="rounded-xl bg-[#f7f7f7] border border-[#ebebeb] p-3 text-xs">
+            <div className="rounded-xl bg-[#f7f7f7] dark:bg-[#262626] border border-[#ebebeb] dark:border-[#333] p-3 text-xs">
               <div className="mb-1 flex items-center gap-2">
-                <span className="text-[#717171]">Status:</span>
+                <span className="text-[#717171] dark:text-[#a0a0a0]">Status:</span>
                 <span className={cn(
                   "rounded-full px-2 py-0.5 font-semibold",
                   healthStatus === "healthy"
-                    ? "bg-emerald-100 text-emerald-700"
+                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
                     : healthStatus === "unhealthy"
-                      ? "bg-red-100 text-red-600"
-                      : "bg-amber-100 text-amber-700"
+                      ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                      : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
                 )}>
                   {healthStatus || health.status}
                 </span>
               </div>
               {health.restart_count !== undefined && (
-                <div className="flex items-center gap-2 text-[#717171]">
-                  <span>Restarts:</span><span className="text-[#222222]">{health.restart_count}</span>
+                <div className="flex items-center gap-2 text-[#717171] dark:text-[#a0a0a0]">
+                  <span>Restarts:</span><span className="text-[#222222] dark:text-white">{health.restart_count}</span>
                 </div>
               )}
               {health.started_at && (
-                <div className="flex items-center gap-2 text-[#717171]">
-                  <span>Up since:</span><span className="text-[#222222]">{formatTime(health.started_at) || "—"}</span>
+                <div className="flex items-center gap-2 text-[#717171] dark:text-[#a0a0a0]">
+                  <span>Up since:</span><span className="text-[#222222] dark:text-white">{formatTime(health.started_at) || "—"}</span>
                 </div>
               )}
             </div>
           )}
 
           {logs !== null && (
-            <div className="max-h-40 overflow-y-auto rounded-xl bg-[#1a1a1a] p-3">
+            <div className="max-h-40 overflow-y-auto rounded-xl bg-[#1a1a1a] dark:bg-[#0d0d0d] p-3">
               <pre className="whitespace-pre-wrap text-[10px] leading-tight text-emerald-400 font-mono">
                 {logs || "(no logs)"}
               </pre>
@@ -360,10 +360,10 @@ export default function AgentDetailPage() {
 
   if (fetchError) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-[#ebebeb] bg-white" role="alert">
+      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a]" role="alert">
         <AlertCircle className="h-8 w-8 text-[#ff385c]" />
-        <p className="text-sm text-[#717171]">{fetchError}</p>
-        <Button variant="outline" size="sm" onClick={fetchData} className="border-[#dddddd]">
+        <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">{fetchError}</p>
+        <Button variant="outline" size="sm" onClick={fetchData} className="border-[#dddddd] dark:border-[#444]">
           <RefreshCw className="mr-2 h-3.5 w-3.5" />
           Retry
         </Button>
@@ -373,8 +373,8 @@ export default function AgentDetailPage() {
 
   if (!agent) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-2xl border border-[#ebebeb] bg-white" role="alert">
-        <p className="text-sm text-[#717171]">Agent not found.</p>
+      <div className="flex h-64 items-center justify-center rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a]" role="alert">
+        <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">Agent not found.</p>
       </div>
     );
   }
@@ -400,27 +400,27 @@ export default function AgentDetailPage() {
         className={cn(
           "w-64 shrink-0 flex-col gap-4 overflow-y-auto",
           showSidebar
-            ? "fixed inset-y-0 left-0 z-30 flex bg-white p-4 pt-18 shadow-xl md:relative md:p-0 md:pt-0 md:shadow-none"
+            ? "fixed inset-y-0 left-0 z-30 flex bg-white dark:bg-[#1a1a1a] p-4 pt-18 shadow-xl md:relative md:p-0 md:pt-0 md:shadow-none"
             : "hidden md:flex"
         )}
       >
         {/* Agent info card */}
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl icon-gradient-red shadow-sm">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-[#222222]">{agent.name}</h2>
-              <p className="text-xs text-[#717171]">{agent.model_name}</p>
+              <h2 className="font-bold text-[#222222] dark:text-white">{agent.name}</h2>
+              <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">{agent.model_name}</p>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                 agent.status === "running"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-[#f7f7f7] text-[#717171]"
+                  ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                  : "bg-[#f7f7f7] dark:bg-[#262626] text-[#717171] dark:text-[#a0a0a0]"
               }`}
             >
               {agent.status}
@@ -434,8 +434,8 @@ export default function AgentDetailPage() {
                 className={cn(
                   "h-7 rounded-lg",
                   agent.status === "running"
-                    ? "text-yellow-600 hover:bg-yellow-50"
-                    : "text-emerald-600 hover:bg-emerald-50"
+                    ? "text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                    : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                 )}
               >
                 {agent.status === "running" ? (
@@ -449,12 +449,12 @@ export default function AgentDetailPage() {
         </div>
 
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-bold text-[#222222]">Conversations</h3>
+          <h3 className="text-sm font-bold text-[#222222] dark:text-white">Conversations</h3>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleNewConversation}
-            className="rounded-lg text-[#717171] hover:bg-[#f7f7f7]"
+            className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -467,8 +467,8 @@ export default function AgentDetailPage() {
               onClick={() => loadConversation(conv.id)}
               className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                 activeConvId === conv.id
-                  ? "bg-[#fff0f2] text-[#ff385c]"
-                  : "text-[#717171] hover:bg-[#f7f7f7] hover:text-[#222222]"
+                  ? "bg-[#fff0f2] dark:bg-[#ff385c]/10 text-[#ff385c]"
+                  : "text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] hover:text-[#222222] dark:hover:text-white"
               }`}
             >
               <MessageSquare className="h-3 w-3 shrink-0" />
@@ -476,21 +476,21 @@ export default function AgentDetailPage() {
             </button>
           ))}
           {conversations.length === 0 && (
-            <p className="px-3 text-xs text-[#b0b0b0]">
+            <p className="px-3 text-xs text-[#b0b0b0] dark:text-[#666]">
               No conversations yet. Send a message to start.
             </p>
           )}
         </div>
 
         {/* Installed Skills */}
-        <div className="border-t border-[#ebebeb] pt-3 mt-3">
+        <div className="border-t border-[#ebebeb] dark:border-[#333] pt-3 mt-3">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-[#222222] flex items-center gap-1.5">
+            <h3 className="text-sm font-bold text-[#222222] dark:text-white flex items-center gap-1.5">
               <Package className="h-3.5 w-3.5" />
               Skills
             </h3>
             <Link href="/clawhub">
-              <Button variant="ghost" size="sm" className="h-6 text-xs text-[#ff385c] hover:bg-[#fff0f2]">
+              <Button variant="ghost" size="sm" className="h-6 text-xs text-[#ff385c] hover:bg-[#fff0f2] dark:hover:bg-[#ff385c]/10">
                 Browse
               </Button>
             </Link>
@@ -499,9 +499,9 @@ export default function AgentDetailPage() {
             {agentSkills.map((as) => (
               <div
                 key={as.id}
-                className="flex items-center justify-between rounded-xl px-2 py-1.5 text-sm hover:bg-[#f7f7f7]"
+                className="flex items-center justify-between rounded-xl px-2 py-1.5 text-sm hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
               >
-                <span className={as.enabled ? "text-[#222222]" : "text-[#b0b0b0] line-through"}>
+                <span className={as.enabled ? "text-[#222222] dark:text-white" : "text-[#b0b0b0] dark:text-[#666] line-through"}>
                   {as.skill.name}
                 </span>
                 <div className="flex items-center gap-1">
@@ -520,7 +520,7 @@ export default function AgentDetailPage() {
                         toast.error("Failed to toggle skill");
                       }
                     }}
-                    className="rounded p-0.5 text-[#b0b0b0] hover:text-[#222222]"
+                    className="rounded p-0.5 text-[#b0b0b0] dark:text-[#666] hover:text-[#222222] dark:hover:text-white"
                     title={as.enabled ? "Disable" : "Enable"}
                     aria-label={as.enabled ? `Disable ${as.skill.name}` : `Enable ${as.skill.name}`}
                   >
@@ -532,7 +532,7 @@ export default function AgentDetailPage() {
                   </button>
                   <button
                     onClick={() => setUninstallTarget(as)}
-                    className="rounded p-0.5 text-[#b0b0b0] hover:text-[#ff385c]"
+                    className="rounded p-0.5 text-[#b0b0b0] dark:text-[#666] hover:text-[#ff385c]"
                     title="Uninstall"
                     aria-label={`Uninstall ${as.skill.name}`}
                   >
@@ -542,7 +542,7 @@ export default function AgentDetailPage() {
               </div>
             ))}
             {agentSkills.length === 0 && (
-              <p className="px-2 text-xs text-[#b0b0b0]">
+              <p className="px-2 text-xs text-[#b0b0b0] dark:text-[#666]">
                 No skills installed.{" "}
                 <Link href="/clawhub" className="text-[#ff385c] hover:underline">
                   Browse ClawHub
@@ -552,7 +552,7 @@ export default function AgentDetailPage() {
           </div>
         </div>
 
-        {/* Ops Panel — inspired by 秋芝 Qclaw */}
+        {/* Ops Panel */}
         <AgentOpsPanel agentId={agentId} agent={agent} setAgent={setAgent} />
       </div>
 
@@ -567,15 +567,15 @@ export default function AgentDetailPage() {
       {/* Right: chat area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto rounded-2xl border border-[#ebebeb] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex-1 overflow-y-auto rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           {messages.length === 0 && !isStreaming ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl icon-gradient-red shadow-md">
                   <Bot className="h-8 w-8 text-white" />
                 </div>
-                <p className="font-semibold text-[#222222]">{agent.name}</p>
-                <p className="mt-1 text-sm text-[#717171]">
+                <p className="font-semibold text-[#222222] dark:text-white">{agent.name}</p>
+                <p className="mt-1 text-sm text-[#717171] dark:text-[#a0a0a0]">
                   Send a message to start chatting.
                 </p>
               </div>
@@ -591,7 +591,7 @@ export default function AgentDetailPage() {
                     className={`max-w-[90%] md:max-w-[75%] rounded-2xl px-4 py-3 text-sm ${
                       msg.role === "user"
                         ? "bg-[#ff385c] text-white shadow-[0_2px_8px_rgba(255,56,92,0.25)]"
-                        : "bg-[#f7f7f7] text-[#222222] border border-[#ebebeb]"
+                        : "bg-[#f7f7f7] dark:bg-[#262626] text-[#222222] dark:text-white border border-[#ebebeb] dark:border-[#333]"
                     }`}
                   >
                     {msg.role === "assistant" ? (
@@ -601,7 +601,7 @@ export default function AgentDetailPage() {
                     )}
                     {(msg.timestamp || msg.usage) && (
                       <div className={`mt-1.5 flex items-center gap-2 text-[10px] ${
-                        msg.role === "user" ? "text-white/60" : "text-[#b0b0b0]"
+                        msg.role === "user" ? "text-white/60" : "text-[#b0b0b0] dark:text-[#666]"
                       }`}>
                         {msg.timestamp && <span>{formatTime(msg.timestamp)}</span>}
                         {msg.usage && (
@@ -635,8 +635,8 @@ export default function AgentDetailPage() {
             className={cn(
               "mt-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm",
               connectionStatus === "reconnecting"
-                ? "bg-amber-50 border border-amber-200 text-amber-700"
-                : "bg-red-50 border border-red-200 text-red-600",
+                ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
+                : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400",
             )}
             role="status"
             aria-live="polite"
@@ -657,7 +657,7 @@ export default function AgentDetailPage() {
 
         {/* Error */}
         {error && connectionStatus === "connected" && (
-          <div className="mt-2 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600" role="alert" aria-live="polite">
+          <div className="mt-2 flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-600 dark:text-red-400" role="alert" aria-live="polite">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{error}</span>
           </div>
@@ -679,7 +679,7 @@ export default function AgentDetailPage() {
               onClick={cancelStream}
               aria-label="Stop generating"
               title="Stop generating"
-              className="border-[#dddddd] text-[#ff385c] hover:bg-red-50"
+              className="border-[#dddddd] dark:border-[#444] text-[#ff385c] hover:bg-red-50 dark:hover:bg-red-900/20"
             >
               <StopCircle className="h-4 w-4" />
             </Button>

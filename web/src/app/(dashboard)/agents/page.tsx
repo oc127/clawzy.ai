@@ -158,10 +158,10 @@ export default function AgentsPage() {
 
   if (fetchError) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-[#ebebeb] bg-white" role="alert">
+      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a]" role="alert">
         <AlertCircle className="h-8 w-8 text-[#ff385c]" />
-        <p className="text-sm text-[#717171]">{fetchError}</p>
-        <Button variant="outline" size="sm" onClick={fetchData} className="border-[#dddddd]">
+        <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">{fetchError}</p>
+        <Button variant="outline" size="sm" onClick={fetchData} className="border-[#dddddd] dark:border-[#444]">
           <RefreshCw className="mr-2 h-3.5 w-3.5" />
           Retry
         </Button>
@@ -174,8 +174,8 @@ export default function AgentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#222222]">Agents</h1>
-          <p className="text-[#717171] mt-0.5">Create and manage your AI agents.</p>
+          <h1 className="text-2xl font-extrabold text-[#222222] dark:text-white">Agents</h1>
+          <p className="text-[#717171] dark:text-[#a0a0a0] mt-0.5">Create and manage your AI agents.</p>
         </div>
         <Button
           onClick={() => setShowCreate(!showCreate)}
@@ -191,12 +191,12 @@ export default function AgentsPage() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-          <h2 className="mb-5 text-lg font-bold text-[#222222]">New Agent</h2>
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <h2 className="mb-5 text-lg font-bold text-[#222222] dark:text-white">New Agent</h2>
 
           {/* Templates */}
           <div className="mb-6">
-            <label className="mb-3 block text-sm font-semibold text-[#717171]">
+            <label className="mb-3 block text-sm font-semibold text-[#717171] dark:text-[#a0a0a0]">
               Choose a template
             </label>
             <div className="grid gap-2 grid-cols-2 sm:grid-cols-5">
@@ -207,15 +207,15 @@ export default function AgentsPage() {
                   onClick={() => applyTemplate(tpl.id)}
                   className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-all hover:border-[#ff385c] ${
                     selectedTemplate === tpl.id
-                      ? "border-[#ff385c] bg-[#fff0f2]"
-                      : "border-[#ebebeb] bg-white"
+                      ? "border-[#ff385c] bg-[#fff0f2] dark:bg-[#ff385c]/10"
+                      : "border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a]"
                   }`}
                 >
                   <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${tpl.gradient} shadow-sm`}>
                     {tpl.icon}
                   </div>
-                  <span className="text-xs font-semibold text-[#222222]">{tpl.name}</span>
-                  <span className="text-[10px] text-[#717171] leading-tight">{tpl.description}</span>
+                  <span className="text-xs font-semibold text-[#222222] dark:text-white">{tpl.name}</span>
+                  <span className="text-[10px] text-[#717171] dark:text-[#a0a0a0] leading-tight">{tpl.description}</span>
                 </button>
               ))}
             </div>
@@ -223,11 +223,11 @@ export default function AgentsPage() {
 
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-[#222222]">Agent Name</label>
+              <label className="mb-1.5 block text-sm font-semibold text-[#222222] dark:text-white">Agent Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Assistant" />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-[#222222]">Model</label>
+              <label className="mb-1.5 block text-sm font-semibold text-[#222222] dark:text-white">Model</label>
               <Select value={modelName} onChange={(e) => setModelName(e.target.value)}>
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
@@ -246,7 +246,7 @@ export default function AgentsPage() {
               <Button
                 type="button"
                 variant="ghost"
-                className="text-[#717171] hover:bg-[#f7f7f7]"
+                className="text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
                 onClick={() => { setShowCreate(false); setSelectedTemplate("blank"); }}
               >
                 Cancel
@@ -258,12 +258,12 @@ export default function AgentsPage() {
 
       {/* Agent list */}
       {agents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#dddddd] bg-white py-20 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f7f7f7]">
-            <Bot className="h-8 w-8 text-[#b0b0b0]" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#dddddd] dark:border-[#444] bg-white dark:bg-[#1a1a1a] py-20 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f7f7f7] dark:bg-[#262626]">
+            <Bot className="h-8 w-8 text-[#b0b0b0] dark:text-[#666]" />
           </div>
-          <h2 className="mb-1 text-lg font-bold text-[#222222]">No agents yet</h2>
-          <p className="mb-6 text-sm text-[#717171]">Create your first AI agent to get started.</p>
+          <h2 className="mb-1 text-lg font-bold text-[#222222] dark:text-white">No agents yet</h2>
+          <p className="mb-6 text-sm text-[#717171] dark:text-[#a0a0a0]">Create your first AI agent to get started.</p>
           <Button
             onClick={() => setShowCreate(true)}
             className="gap-2 bg-[#ff385c] hover:bg-[#e31c5f] text-white rounded-xl font-semibold shadow-sm"
@@ -277,7 +277,7 @@ export default function AgentsPage() {
           {agents.map((agent) => (
             <div
               key={agent.id}
-              className="flex flex-col justify-between rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.10)] transition-all duration-200"
+              className="flex flex-col justify-between rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.10)] transition-all duration-200"
             >
               <div>
                 <div className="mb-3 flex items-center justify-between">
@@ -285,20 +285,20 @@ export default function AgentsPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl icon-gradient-red shadow-sm">
                       <Bot className="h-5 w-5 text-white" />
                     </div>
-                    <h3 className="font-bold text-[#222222]">{agent.name}</h3>
+                    <h3 className="font-bold text-[#222222] dark:text-white">{agent.name}</h3>
                   </div>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                       agent.status === "running"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-[#f7f7f7] text-[#717171]"
+                        ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                        : "bg-[#f7f7f7] dark:bg-[#262626] text-[#717171] dark:text-[#a0a0a0]"
                     }`}
                   >
                     {agent.status}
                   </span>
                 </div>
-                <p className="text-sm text-[#717171]">{agent.model_name}</p>
-                <p className="mt-1 text-xs text-[#b0b0b0]">
+                <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">{agent.model_name}</p>
+                <p className="mt-1 text-xs text-[#b0b0b0] dark:text-[#666]">
                   Created {new Date(agent.created_at).toLocaleDateString()}
                 </p>
               </div>
@@ -307,7 +307,7 @@ export default function AgentsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full border-[#dddddd] text-[#222222] hover:bg-[#f7f7f7] rounded-xl font-semibold"
+                    className="w-full border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-xl font-semibold"
                   >
                     <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
                     Chat
@@ -321,8 +321,8 @@ export default function AgentsPage() {
                     aria-label={agent.status === "running" ? "Stop agent" : "Start agent"}
                     className={`rounded-xl ${
                       agent.status === "running"
-                        ? "text-yellow-600 hover:bg-yellow-50"
-                        : "text-emerald-600 hover:bg-emerald-50"
+                        ? "text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                        : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                     }`}
                   >
                     {agent.status === "running" ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -333,7 +333,7 @@ export default function AgentsPage() {
                   size="sm"
                   onClick={() => setDeleteTarget(agent)}
                   aria-label={`Delete ${agent.name}`}
-                  className="rounded-xl text-[#ff385c] hover:bg-red-50"
+                  className="rounded-xl text-[#ff385c] hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

@@ -95,18 +95,18 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-[#222222]">Settings</h1>
-        <p className="mt-0.5 text-[#717171]">Manage your account and preferences.</p>
+        <h1 className="text-2xl font-extrabold text-[#222222] dark:text-white">Settings</h1>
+        <p className="mt-0.5 text-[#717171] dark:text-[#a0a0a0]">Manage your account and preferences.</p>
       </div>
 
       <div className="max-w-lg space-y-5">
         {/* Profile */}
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl icon-gradient-red shadow-sm">
               <User className="h-4 w-4 text-white" />
             </div>
-            <h2 className="text-base font-bold text-[#222222]">Profile</h2>
+            <h2 className="text-base font-bold text-[#222222] dark:text-white">Profile</h2>
           </div>
 
           {/* Avatar preview */}
@@ -115,18 +115,18 @@ export default function SettingsPage() {
               {initials}
             </div>
             <div>
-              <p className="font-semibold text-[#222222]">{user.name}</p>
-              <p className="text-sm text-[#717171]">{user.email}</p>
+              <p className="font-semibold text-[#222222] dark:text-white">{user.name}</p>
+              <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">{user.email}</p>
             </div>
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-[#222222]">Display Name</label>
+              <label className="block text-sm font-semibold text-[#222222] dark:text-white">Display Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-[#222222]">Avatar URL</label>
+              <label className="block text-sm font-semibold text-[#222222] dark:text-white">Avatar URL</label>
               <Input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://example.com/avatar.png" />
             </div>
             <Button
@@ -140,7 +140,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Change Password */}
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:bg-[#1a1a1a] dark:border-[#333]">
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl icon-gradient-orange shadow-sm">
               <Lock className="h-4 w-4 text-white" />
@@ -172,20 +172,20 @@ export default function SettingsPage() {
         </div>
 
         {/* Budget Manager */}
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl icon-gradient-orange shadow-sm">
               <Shield className="h-4 w-4 text-white" />
             </div>
-            <h2 className="text-base font-bold text-[#222222]">Budget Manager</h2>
+            <h2 className="text-base font-bold text-[#222222] dark:text-white">Budget Manager</h2>
           </div>
-          <p className="mb-4 text-sm text-[#717171]">
+          <p className="mb-4 text-sm text-[#717171] dark:text-[#a0a0a0]">
             Set a daily credit limit to control spending. When the limit is reached,
             your agents will pause until the next day.
           </p>
           <form onSubmit={handleSaveLimit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-[#222222]">Daily Credit Limit</label>
+              <label className="block text-sm font-semibold text-[#222222] dark:text-white">Daily Credit Limit</label>
               <Input
                 type="number"
                 min="0"
@@ -193,21 +193,21 @@ export default function SettingsPage() {
                 onChange={(e) => setDailyLimit(e.target.value)}
                 placeholder="No limit (enter amount to set)"
               />
-              <p className="text-xs text-[#b0b0b0]">Leave empty or 0 to remove the limit.</p>
+              <p className="text-xs text-[#b0b0b0] dark:text-[#666]">Leave empty or 0 to remove the limit.</p>
             </div>
 
             {limitValue > 0 && (
-              <div className="rounded-xl bg-[#f7f7f7] border border-[#ebebeb] p-4">
+              <div className="rounded-xl bg-[#f7f7f7] dark:bg-[#262626] border border-[#ebebeb] dark:border-[#333] p-4">
                 <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-[#717171]">Today&apos;s usage</span>
+                  <span className="text-[#717171] dark:text-[#a0a0a0]">Today&apos;s usage</span>
                   <span className="font-semibold">
-                    <span className={usagePercent >= 100 ? "text-[#ff385c]" : "text-[#222222]"}>
+                    <span className={usagePercent >= 100 ? "text-[#ff385c]" : "text-[#222222] dark:text-white"}>
                       {usedToday}
                     </span>
-                    <span className="text-[#717171]"> / {limitValue} credits</span>
+                    <span className="text-[#717171] dark:text-[#a0a0a0]"> / {limitValue} credits</span>
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-[#ebebeb]">
+                <div className="h-2 w-full rounded-full bg-[#ebebeb] dark:bg-[#333]">
                   <div
                     className={`h-2 rounded-full transition-all ${
                       usagePercent >= 100 ? "bg-[#ff385c]" : usagePercent >= 80 ? "bg-amber-500" : "bg-[#ff385c]"
@@ -236,7 +236,7 @@ export default function SettingsPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="text-[#717171] hover:bg-[#f7f7f7] rounded-xl"
+                  className="text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-xl"
                   onClick={() => {
                     setDailyLimit("");
                     apiPatch("/users/me", { daily_credit_limit: 0 })
@@ -252,12 +252,12 @@ export default function SettingsPage() {
         </div>
 
         {/* Account Info */}
-        <div className="rounded-2xl border border-[#ebebeb] bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl icon-gradient-blue shadow-sm">
               <Info className="h-4 w-4 text-white" />
             </div>
-            <h2 className="text-base font-bold text-[#222222]">Account Info</h2>
+            <h2 className="text-base font-bold text-[#222222] dark:text-white">Account Info</h2>
           </div>
           <div className="space-y-3">
             {[
@@ -266,9 +266,9 @@ export default function SettingsPage() {
               { label: "Credit Balance", value: `${user.credit_balance} credits` },
               { label: "Daily Limit", value: user.daily_credit_limit ? `${user.daily_credit_limit} credits` : "Unlimited" },
             ].map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between py-2 border-b border-[#f7f7f7] last:border-0">
-                <span className="text-sm text-[#717171]">{label}</span>
-                <span className="text-sm font-semibold text-[#222222]">{value}</span>
+              <div key={label} className="flex items-center justify-between py-2 border-b border-[#f7f7f7] dark:border-[#333] last:border-0">
+                <span className="text-sm text-[#717171] dark:text-[#a0a0a0]">{label}</span>
+                <span className="text-sm font-semibold text-[#222222] dark:text-white">{value}</span>
               </div>
             ))}
           </div>
