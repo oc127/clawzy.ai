@@ -1,7 +1,9 @@
 import json
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -241,6 +243,63 @@ async def list_conversations(
         select(Conversation).where(Conversation.agent_id == agent_id).order_by(Conversation.updated_at.desc())
     )
     return list(result.scalars().all())
+
+
+@router.get("/conversations/{conversation_id}/export")
+async def export_conversation(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    format: str = Query(default="md", regex="^(md|json|txt)$"),
+):
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = result.scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    agent = await get_agent(db, conv.agent_id, user.id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc())
+    )
+    messages = list(result.scalars().all())
+
+    if format == "json":
+        data = {
+            "conversation_id": conversation_id,
+            "title": conv.title,
+            "exported_at": datetime.utcnow().isoformat(),
+            "messages": [
+                {
+                    "role": m.role,
+                    "content": m.content,
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
+                    "model_name": m.model_name,
+                    "credits_used": m.credits_used,
+                }
+                for m in messages
+            ],
+        }
+        return data
+
+    if format == "txt":
+        lines = [f"Conversation: {conv.title or 'Untitled'}\n"]
+        for m in messages:
+            ts = m.created_at.strftime("%Y-%m-%d %H:%M") if m.created_at else ""
+            lines.append(f"[{ts}] {m.role.upper()}: {m.content}\n")
+        return PlainTextResponse("".join(lines), media_type="text/plain")
+
+    # Markdown (default)
+    lines = [f"# {conv.title or 'Untitled'}\n\n"]
+    for m in messages:
+        ts = m.created_at.strftime("%Y-%m-%d %H:%M") if m.created_at else ""
+        role_label = "**You**" if m.role == "user" else "**Assistant**"
+        lines.append(f"### {role_label} — {ts}\n\n{m.content}\n\n---\n\n")
+    return PlainTextResponse("".join(lines), media_type="text/markdown")
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[MessageResponse])

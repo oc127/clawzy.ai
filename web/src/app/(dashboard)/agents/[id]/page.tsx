@@ -34,6 +34,7 @@ import {
   StopCircle,
   ChevronDown,
   ChevronUp,
+  Download,
 } from "lucide-react";
 
 function formatTime(iso?: string) {
@@ -334,6 +335,30 @@ export default function AgentDetailPage() {
     setShowSidebar(false);
   };
 
+  const handleExport = async (format: "md" | "json" | "txt") => {
+    if (!activeConvId) {
+      toast.error("No conversation to export");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("clawzy_access_token");
+      const res = await fetch(`/api/v1/conversations/${activeConvId}/export?format=${format}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `conversation.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Exported!");
+    } catch {
+      toast.error("Failed to export conversation");
+    }
+  };
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
@@ -450,14 +475,27 @@ export default function AgentDetailPage() {
 
         <div className="flex items-center justify-between px-1">
           <h3 className="text-sm font-bold text-[#222222] dark:text-white">Conversations</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNewConversation}
-            className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {activeConvId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleExport("md")}
+                title="Export conversation"
+                className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNewConversation}
+              className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 space-y-0.5 overflow-y-auto">
