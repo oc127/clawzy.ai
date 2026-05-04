@@ -11,10 +11,11 @@ from app.deps import get_current_user
 from app.schemas.auth import (
     ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, MessageResponse,
     RefreshRequest, RegisterRequest, ResetPasswordRequest, TokenResponse,
+    VerifyEmailRequest,
 )
 from app.services.auth_service import (
     AuthError, change_password, login_user, register_user,
-    request_password_reset, reset_password,
+    request_password_reset, resend_verification, reset_password, verify_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,27 @@ async def change_password_endpoint(
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.detail)
     return MessageResponse(message="Password changed successfully.")
+
+
+@router.post("/verify-email", response_model=MessageResponse)
+async def verify_email_endpoint(body: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        await verify_email(db, body.token)
+    except AuthError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.detail)
+    return MessageResponse(message="Email verified successfully.")
+
+
+@router.post("/send-verification", response_model=MessageResponse)
+async def send_verification(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await resend_verification(db, user)
+    except AuthError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.detail)
+    return MessageResponse(message="Verification email sent.")
 
 
 @router.post("/refresh", response_model=TokenResponse)

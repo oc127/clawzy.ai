@@ -16,6 +16,7 @@ interface User {
   email: string;
   name: string;
   avatar_url: string | null;
+  email_verified: boolean;
   credit_balance: number;
   daily_credit_limit: number | null;
   created_at: string;

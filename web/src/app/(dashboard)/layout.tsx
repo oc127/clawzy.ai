@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
 import { useTheme } from "@/context/theme-context";
+import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { Logo } from "@/components/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   Bot,
@@ -22,6 +24,7 @@ import {
   Package,
   Sun,
   Moon,
+  Mail,
 } from "lucide-react";
 
 const SIDEBAR_LINKS_CONFIG = [
@@ -44,6 +47,19 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
+
+  const handleResendVerification = useCallback(async () => {
+    setSendingVerification(true);
+    try {
+      await apiPost("/auth/send-verification");
+      toast.success("Verification email sent!");
+    } catch {
+      toast.error("Failed to send verification email");
+    } finally {
+      setSendingVerification(false);
+    }
+  }, []);
 
   const DASHBOARD_KEY_MAP: Record<string, string> = {
     dashboard: t.dashboard.title,
@@ -199,6 +215,21 @@ export default function DashboardLayout({
 
       {/* Main */}
       <main className="flex-1 overflow-x-hidden pt-14 md:pt-0">
+        {!user.email_verified && (
+          <div className="mx-5 mt-5 md:mx-8 md:mt-8 mb-0 flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+            <Mail className="h-4 w-4 shrink-0" />
+            <span className="flex-1">Please verify your email address to secure your account.</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResendVerification}
+              disabled={sendingVerification}
+              className="shrink-0 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg font-semibold"
+            >
+              {sendingVerification ? "Sending..." : "Resend"}
+            </Button>
+          </div>
+        )}
         <div key={pathname} className="animate-page-enter min-h-full p-5 md:p-8">
           {children}
         </div>

@@ -8,7 +8,7 @@ from app.config import settings
 from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
 from app.models.credits import CreditReason, CreditTransaction
 from app.models.user import User
-from app.services.email_service import send_password_reset_email
+from app.services.email_service import send_password_reset_email, send_verification_email
 
 
 class AuthError(Exception):
@@ -22,11 +22,14 @@ async def register_user(db: AsyncSession, email: str, password: str, name: str) 
     if result.scalar_one_or_none() is not None:
         raise AuthError("Email already registered")
 
+    verification_token = secrets.token_urlsafe(48)
     user = User(
         email=email,
         password_hash=hash_password(password),
         name=name,
         credit_balance=settings.signup_bonus_credits,
+        email_verified=False,
+        verification_token=verification_token,
     )
     db.add(user)
     await db.flush()
@@ -44,7 +47,33 @@ async def register_user(db: AsyncSession, email: str, password: str, name: str) 
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
+
+    await send_verification_email(email, verification_token)
+
     return user, access_token, refresh_token
+
+
+async def verify_email(db: AsyncSession, token: str) -> User:
+    """Verify a user's email address using their verification token."""
+    result = await db.execute(select(User).where(User.verification_token == token))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise AuthError("Invalid verification token")
+    user.email_verified = True
+    user.verification_token = None
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def resend_verification(db: AsyncSession, user: User) -> None:
+    """Generate a new verification token and send it."""
+    if user.email_verified:
+        raise AuthError("Email is already verified")
+    token = secrets.token_urlsafe(48)
+    user.verification_token = token
+    await db.commit()
+    await send_verification_email(user.email, token)
 
 
 async def login_user(db: AsyncSession, email: str, password: str) -> tuple[User, str, str]:

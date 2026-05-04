@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -15,6 +15,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(100))
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    verification_token: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     credit_balance: Mapped[int] = mapped_column(Integer, default=500)
     daily_credit_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None = unlimited
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
