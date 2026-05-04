@@ -209,3 +209,31 @@ export function submitSkill(data: {
 export function getMySubmissions(): Promise<SkillSubmission[]> {
   return apiGet<SkillSubmission[]>("/skills/submissions/mine");
 }
+
+// --- Memory ---
+
+import type { Memory, WebFetchResult, CodeExecResult, SubtaskResult } from "./types";
+
+export function getMemories(): Promise<Memory[]> {
+  return apiGet<Memory[]>("/memory");
+}
+
+export function deleteMemory(id: string): Promise<void> {
+  return apiDelete(`/memory/${id}`);
+}
+
+// --- Tools ---
+
+export function webFetch(url: string): Promise<WebFetchResult> {
+  return apiPost<WebFetchResult>("/tools/web-fetch", { url });
+}
+
+export function execCode(agentId: string, code: string, language = "python"): Promise<CodeExecResult> {
+  return apiPost<CodeExecResult>("/tools/exec", { agent_id: agentId, code, language });
+}
+
+// --- Subtasks ---
+
+export function runSubtask(agentId: string, task: string, parentConversationId?: string): Promise<SubtaskResult> {
+  return apiPost<SubtaskResult>("/subtasks", { agent_id: agentId, task, parent_conversation_id: parentConversationId });
+}

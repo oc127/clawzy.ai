@@ -12,6 +12,7 @@ from app.config import settings
 from app.models.agent import Agent, AgentStatus
 from app.models.chat import Conversation, Message, MessageRole
 from app.services.credits_service import InsufficientCreditsError, deduct_credits
+from app.services.memory_service import extract_memories, get_relevant_memories
 from app.services.smart_router import smart_route
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,34 @@ async def stream_chat_completion(
 
     # Build message history for context
     history = await get_conversation_history(db, conversation_id)
+
+    # Inject persistent memories into system prompt
+    memories = await get_relevant_memories(db, user_id, agent.id)
+    if memories:
+        memory_block = "Relevant memories about this user:\n" + "\n".join(f"- {m}" for m in memories)
+        if history and history[0].get("role") == "system":
+            history[0]["content"] += f"\n\n{memory_block}"
+        else:
+            history.insert(0, {"role": "system", "content": memory_block})
+
+    # Inject installed skill prompt templates
+    from app.models.skill import AgentSkill as AgentSkillModel, Skill as SkillModel
+    skill_result = await db.execute(
+        select(SkillModel.prompt_template)
+        .join(AgentSkillModel, AgentSkillModel.skill_id == SkillModel.id)
+        .where(
+            AgentSkillModel.agent_id == agent.id,
+            AgentSkillModel.enabled == True,
+            SkillModel.prompt_template.isnot(None),
+        )
+    )
+    skill_prompts = [row[0] for row in skill_result.all() if row[0]]
+    if skill_prompts:
+        skills_block = "Active skills:\n" + "\n---\n".join(skill_prompts)
+        if history and history[0].get("role") == "system":
+            history[0]["content"] += f"\n\n{skills_block}"
+        else:
+            history.insert(0, {"role": "system", "content": skills_block})
 
     # Smart model routing — auto-downgrade simple tasks to cheaper models
     effective_model, was_downgraded = smart_route(agent.model_name, user_content, history_len=len(history))
@@ -317,3 +346,35 @@ async def stream_chat_completion(
             },
         }
     )
+
+    # Background: extract memories from this conversation
+    try:
+        updated_history = await get_conversation_history(db, conversation_id)
+        await extract_memories(db, user_id, agent.id, conversation_id, updated_history)
+    except Exception:
+        logger.debug("Memory extraction skipped", exc_info=True)
+
+
+async def run_subtask(
+    db: AsyncSession,
+    user_id: str,
+    agent: Agent,
+    task_description: str,
+    parent_conversation_id: str,
+) -> str:
+    """Run a sub-agent task: create a temporary conversation, get a single response."""
+    conv = Conversation(agent_id=agent.id, title=f"[subtask] {task_description[:60]}")
+    db.add(conv)
+    await db.flush()
+    await db.commit()
+
+    full_response = ""
+    async for event_str in stream_chat_completion(db, user_id, agent, conv.id, task_description):
+        event = json.loads(event_str)
+        if event["type"] == "stream":
+            full_response += event["content"]
+        elif event["type"] == "error":
+            full_response = f"[Subtask error: {event['message']}]"
+            break
+
+    return full_response

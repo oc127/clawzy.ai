@@ -147,6 +147,7 @@ const zh: Translations = {
     models: "模型",
     billing: "账单",
     settings: "设置",
+    memory: "记忆",
     clawhub: "ClawHub",
     credits: "积分",
     usage: "用量",

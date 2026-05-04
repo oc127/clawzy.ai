@@ -69,6 +69,7 @@ export interface Skill {
   name: string;
   summary: string;
   description: string;
+  prompt_template: string | null;
   category: string;
   tags: string[] | null;
   icon_url: string | null;
@@ -119,6 +120,33 @@ export interface SkillReview {
   content: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Memory {
+  id: string;
+  fact: string;
+  agent_id: string | null;
+  source_conversation_id: string | null;
+  created_at: string;
+}
+
+export interface WebFetchResult {
+  url: string;
+  content: string;
+  title: string;
+  type: string;
+  error: string | null;
+}
+
+export interface CodeExecResult {
+  stdout: string;
+  stderr: string;
+  exit_code: number;
+}
+
+export interface SubtaskResult {
+  result: string;
+  conversation_id: string | null;
 }
 
 export interface SkillSubmission {

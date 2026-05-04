@@ -147,6 +147,7 @@ const ja: Translations = {
     models: "モデル",
     billing: "請求",
     settings: "設定",
+    memory: "メモリ",
     clawhub: "ClawHub",
     credits: "クレジット",
     usage: "使用量",

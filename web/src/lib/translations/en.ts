@@ -156,6 +156,7 @@ const en = {
     models: "Models",
     billing: "Billing",
     settings: "Settings",
+    memory: "Memory",
     clawhub: "ClawHub",
     credits: "Credits",
     usage: "Usage",

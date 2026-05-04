@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ChatMarkdown } from "@/components/chat-markdown";
+import { ArtifactsPanel, type Artifact } from "@/components/artifacts-panel";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/context/language-context";
 import Link from "next/link";
@@ -35,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  FileText,
 } from "lucide-react";
 
 function formatTime(iso?: string) {
@@ -247,6 +249,8 @@ export default function AgentDetailPage() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [uninstallTarget, setUninstallTarget] = useState<AgentSkill | null>(null);
   const [uninstalling, setUninstalling] = useState(false);
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [showArtifacts, setShowArtifacts] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { t } = useLanguage();
@@ -297,6 +301,29 @@ export default function AgentDetailPage() {
   useEffect(() => {
     fetchData();
   }, [agentId]);
+
+  // Extract artifacts (code blocks) from assistant messages
+  useEffect(() => {
+    const extracted: Artifact[] = [];
+    const codeBlockRe = /```(\w+)?\n([\s\S]*?)```/g;
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      let match;
+      while ((match = codeBlockRe.exec(msg.content)) !== null) {
+        const lang = match[1] || "text";
+        const code = match[2].trimEnd();
+        const id = `${lang}-${extracted.length}`;
+        extracted.push({
+          id,
+          name: `snippet-${extracted.length + 1}.${lang === "text" ? "txt" : lang}`,
+          type: "code",
+          content: code,
+          language: lang,
+        });
+      }
+    }
+    setArtifacts(extracted);
+  }, [messages]);
 
   // Auto-scroll
   useEffect(() => {
@@ -602,7 +629,8 @@ export default function AgentDetailPage() {
         />
       )}
 
-      {/* Right: chat area */}
+      {/* Right: chat area + artifacts */}
+      <div className="flex flex-1 gap-4 min-w-0">
       <div className="flex flex-1 flex-col min-w-0">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
@@ -710,6 +738,21 @@ export default function AgentDetailPage() {
             disabled={isStreaming || connectionStatus !== "connected"}
             className="flex-1"
           />
+          {artifacts.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowArtifacts(!showArtifacts)}
+              aria-label="Toggle artifacts"
+              title="View code artifacts"
+              className={cn(
+                "border-[#dddddd] dark:border-[#444] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]",
+                showArtifacts ? "text-[#ff385c]" : "text-[#717171] dark:text-[#a0a0a0]"
+              )}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          )}
           {isStreaming ? (
             <Button
               type="button"
@@ -732,6 +775,12 @@ export default function AgentDetailPage() {
             </Button>
           )}
         </form>
+      </div>
+
+      {/* Artifacts panel */}
+      {showArtifacts && artifacts.length > 0 && (
+        <ArtifactsPanel artifacts={artifacts} onClose={() => setShowArtifacts(false)} />
+      )}
       </div>
 
       {/* Uninstall confirmation */}

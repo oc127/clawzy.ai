@@ -147,6 +147,7 @@ const ko: Translations = {
     models: "모델",
     billing: "결제",
     settings: "설정",
+    memory: "메모리",
     clawhub: "ClawHub",
     credits: "크레딧",
     usage: "사용량",

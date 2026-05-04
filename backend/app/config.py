@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # --- Credits ---
     signup_bonus_credits: int = 500
 
+    # --- LINE Messaging API ---
+    line_channel_secret: str = ""
+    line_channel_access_token: str = ""
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

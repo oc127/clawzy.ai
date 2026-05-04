@@ -15,6 +15,7 @@ class Skill(Base):
     name: Mapped[str] = mapped_column(String(200))
     summary: Mapped[str] = mapped_column(String(500))
     description: Mapped[str] = mapped_column(Text)
+    prompt_template: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(50), index=True)
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

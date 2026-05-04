@@ -25,6 +25,7 @@ import {
   Sun,
   Moon,
   Mail,
+  Brain,
 } from "lucide-react";
 
 const SIDEBAR_LINKS_CONFIG = [
@@ -32,6 +33,7 @@ const SIDEBAR_LINKS_CONFIG = [
   { href: "/agents", key: "agents" as const, icon: Bot, gradient: "icon-gradient-blue" },
   { href: "/clawhub", key: "clawhub" as const, icon: Package, gradient: "icon-gradient-purple" },
   { href: "/models", key: "models" as const, icon: Cpu, gradient: "icon-gradient-teal" },
+  { href: "/memory", key: "memory" as const, icon: Brain, gradient: "icon-gradient-pink" },
   { href: "/billing", key: "billing" as const, icon: CreditCard, gradient: "icon-gradient-green" },
   { href: "/settings", key: "settings" as const, icon: Settings, gradient: "icon-gradient-orange" },
 ];
@@ -65,6 +67,7 @@ export default function DashboardLayout({
     dashboard: t.dashboard.title,
     agents: t.dashboard.agents,
     clawhub: t.dashboard.clawhub,
+    memory: t.dashboard.memory,
     models: t.dashboard.models,
     billing: t.dashboard.billing,
     settings: t.dashboard.settings,
