@@ -18,7 +18,7 @@ async def send_verification_email(to_email: str, token: str) -> None:
         return
 
     msg = EmailMessage()
-    msg["Subject"] = "Clawzy - メール認証 / Verify Your Email"
+    msg["Subject"] = "Lucy - メール認証 / Verify Your Email"
     msg["From"] = settings.smtp_from_email
     msg["To"] = to_email
     msg.set_content(
@@ -53,7 +53,7 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
     reset_url = f"{settings.frontend_url}/reset-password?token={reset_token}"
 
     msg = EmailMessage()
-    msg["Subject"] = "NipponClaw - パスワードリセット / Password Reset"
+    msg["Subject"] = "Lucy - パスワードリセット / Password Reset"
     msg["From"] = settings.smtp_from_email
     msg["To"] = to_email
     msg.set_content(

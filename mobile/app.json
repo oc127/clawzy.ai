@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "NipponClaw",
-    "slug": "nipponclaw",
+    "name": "Lucy",
+    "slug": "lucy",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "nipponclaw",
+    "scheme": "lucy",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.nipponclaw.app",
+      "bundleIdentifier": "com.lucy.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSAppTransportSecurity": {
@@ -17,7 +17,7 @@
       }
     },
     "android": {
-      "package": "com.nipponclaw.app"
+      "package": "com.lucy.app"
     },
     "plugins": [
       "expo-router",

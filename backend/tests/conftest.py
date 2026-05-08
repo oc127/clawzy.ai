@@ -1,4 +1,4 @@
-"""Shared test fixtures for the Clawzy backend test suite.
+"""Shared test fixtures for the Lucy backend test suite.
 
 Uses SQLite in-memory via aiosqlite so tests run without PostgreSQL/Redis/Docker.
 """
@@ -93,7 +93,7 @@ async def client(db: AsyncSession):
 async def test_user(db: AsyncSession) -> User:
     """Create and return a test user with 500 credits."""
     user = User(
-        email="test@clawzy.ai",
+        email="test@thelucy.ai",
         password_hash=hash_password("password123"),
         name="Test User",
         credit_balance=500,
@@ -157,7 +157,7 @@ async def test_skill(db: AsyncSession) -> Skill:
 async def second_user(db: AsyncSession) -> User:
     """Create a second user for ownership tests."""
     user = User(
-        email="other@clawzy.ai",
+        email="other@thelucy.ai",
         password_hash=hash_password("password456"),
         name="Other User",
         credit_balance=500,

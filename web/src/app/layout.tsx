@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/context/theme-context";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "NipponClaw — Your AI Agent, Any Brain.",
+  title: "Lucy — Your AI Agent, Any Brain.",
   description:
     "AI agent platform powered by multiple LLM models. Create custom agents, chat with any AI model, pay only for what you use.",
   icons: {

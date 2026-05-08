@@ -31,7 +31,7 @@ class DockerManager:
         model_name: str,
         ws_port: int,
     ) -> str:
-        """Create and start an OpenClaw container for a user's agent."""
+        """Create and start an OpenClaw container for a user agent."""
         # Generate per-agent config and write to host directory
         config = self._generate_agent_config(model_name, litellm_key)
         config_dir = os.path.join(settings.openclaw_agent_config_dir, agent_id)
@@ -46,7 +46,7 @@ class DockerManager:
 
         container = self.client.containers.run(
             image=settings.openclaw_image,
-            name=f"clawzy-agent-{agent_id}",
+            name=f"lucy-agent-{agent_id}",
             detach=True,
             restart_policy={"Name": "unless-stopped"},
             environment={
@@ -70,8 +70,8 @@ class DockerManager:
                 },
             },
             labels={
-                "clawzy.agent_id": agent_id,
-                "clawzy.managed": "true",
+                "lucy.agent_id": agent_id,
+                "lucy.managed": "true",
             },
         )
         return container.id
@@ -198,7 +198,7 @@ class DockerManager:
     def wait_for_healthy(self, agent_id: str, timeout: int = 30) -> bool:
         """Poll the container's /healthz endpoint until it responds 200."""
         # Use Docker network container name (backend runs inside Docker)
-        container_name = f"clawzy-agent-{agent_id}"
+        container_name = f"lucy-agent-{agent_id}"
         url = f"http://{container_name}:18789/healthz"
         deadline = time.time() + timeout
         while time.time() < deadline:

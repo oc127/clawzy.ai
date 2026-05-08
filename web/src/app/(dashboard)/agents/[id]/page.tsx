@@ -368,7 +368,7 @@ export default function AgentDetailPage() {
       return;
     }
     try {
-      const token = localStorage.getItem("clawzy_access_token");
+      const token = localStorage.getItem("lucy_access_token");
       const res = await fetch(`/api/v1/conversations/${activeConvId}/export?format=${format}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -610,7 +610,7 @@ export default function AgentDetailPage() {
               <p className="px-2 text-xs text-[#b0b0b0] dark:text-[#666]">
                 No skills installed.{" "}
                 <Link href="/clawhub" className="text-[#ff385c] hover:underline">
-                  Browse ClawHub
+                  Browse LucyHub
                 </Link>
               </p>
             )}

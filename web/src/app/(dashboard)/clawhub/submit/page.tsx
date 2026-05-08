@@ -110,7 +110,7 @@ export default function SubmitSkillPage() {
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to ClawHub
+        Back to LucyHub
       </Link>
 
       <div className="flex items-center gap-3 mb-1">

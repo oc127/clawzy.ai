@@ -3,11 +3,11 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # --- App ---
-    app_name: str = "Clawzy.ai"
+    app_name: str = "Lucy.ai"
     debug: bool = False
 
     # --- Database ---
-    database_url: str = "postgresql+asyncpg://clawzy:clawzy@localhost:5432/clawzy"
+    database_url: str = "postgresql+asyncpg://lucy:lucy@localhost:5432/lucy"
 
     # --- Redis ---
     redis_url: str = "redis://localhost:6379/0"
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # --- LiteLLM ---
     litellm_url: str = "http://localhost:4000"
-    litellm_master_key: str = "sk-clawzy-change-me"
+    litellm_master_key: str = "sk-lucy-change-me"
 
     # --- Stripe ---
     stripe_secret_key: str = ""
@@ -28,12 +28,12 @@ class Settings(BaseSettings):
 
     # --- OpenClaw ---
     openclaw_image: str = "ghcr.io/openclaw/openclaw:latest"
-    openclaw_network: str = "clawzy-network"
+    openclaw_network: str = "lucy-network"
     openclaw_port_start: int = 19000
     openclaw_port_end: int = 19999
     openclaw_gateway_url: str = "http://localhost:18789"
     openclaw_gateway_token: str = ""
-    openclaw_agent_config_dir: str = "/var/lib/clawzy/agents"
+    openclaw_agent_config_dir: str = "/var/lib/lucy/agents"
 
     # --- CORS ---
     cors_origins: str = "*"  # comma-separated origins, or "*" for dev
@@ -47,9 +47,9 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    smtp_from_email: str = "noreply@nipponclaw.com"
+    smtp_from_email: str = "noreply@thelucy.ai"
     password_reset_expire_minutes: int = 60
-    frontend_url: str = "https://www.nipponclaw.com"
+    frontend_url: str = "https://www.thelucy.ai"
 
     # --- Credits ---
     signup_bonus_credits: int = 500

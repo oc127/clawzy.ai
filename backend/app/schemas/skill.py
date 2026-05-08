@@ -12,7 +12,7 @@ class SkillResponse(BaseModel):
     category: str
     tags: list[str] | None = None
     icon_url: str | None = None
-    clawhub_url: str | None = None
+    lucyhub_url: str | None = None
     author: str | None = None
     version: str | None = None
     install_count: int = 0

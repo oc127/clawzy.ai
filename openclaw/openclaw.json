@@ -15,7 +15,7 @@
     "mode": "merge",
     "providers": {
       "deepseek-chat": {
-        "baseUrl": "http://clawzy-litellm:4000/v1",
+        "baseUrl": "http://lucy-litellm:4000/v1",
         "apiKey": "${LITELLM_MASTER_KEY}",
         "api": "openai-completions",
         "models": [
@@ -30,7 +30,7 @@
         ]
       },
       "deepseek-reasoner": {
-        "baseUrl": "http://clawzy-litellm:4000/v1",
+        "baseUrl": "http://lucy-litellm:4000/v1",
         "apiKey": "${LITELLM_MASTER_KEY}",
         "api": "openai-completions",
         "models": [
@@ -45,7 +45,7 @@
         ]
       },
       "qwen-max": {
-        "baseUrl": "http://clawzy-litellm:4000/v1",
+        "baseUrl": "http://lucy-litellm:4000/v1",
         "apiKey": "${LITELLM_MASTER_KEY}",
         "api": "openai-completions",
         "models": [
@@ -60,7 +60,7 @@
         ]
       },
       "qwen-plus": {
-        "baseUrl": "http://clawzy-litellm:4000/v1",
+        "baseUrl": "http://lucy-litellm:4000/v1",
         "apiKey": "${LITELLM_MASTER_KEY}",
         "api": "openai-completions",
         "models": [
@@ -75,7 +75,7 @@
         ]
       },
       "qwen-turbo": {
-        "baseUrl": "http://clawzy-litellm:4000/v1",
+        "baseUrl": "http://lucy-litellm:4000/v1",
         "apiKey": "${LITELLM_MASTER_KEY}",
         "api": "openai-completions",
         "models": [

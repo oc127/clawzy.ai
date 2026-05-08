@@ -146,7 +146,7 @@ async def install_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id:
     await db.commit()
     await db.refresh(agent_skill)
 
-    # Update agent's OpenClaw config
+    # Update agent config
     await _sync_agent_skills_config(db, agent_id)
 
     return agent_skill
@@ -173,7 +173,7 @@ async def uninstall_skill(db: AsyncSession, agent_id: str, skill_id: str, user_i
     await db.delete(agent_skill)
     await db.commit()
 
-    # Update agent's OpenClaw config
+    # Update agent config
     await _sync_agent_skills_config(db, agent_id)
 
 
@@ -194,7 +194,7 @@ async def toggle_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id: 
     await db.commit()
     await db.refresh(agent_skill)
 
-    # Update agent's OpenClaw config
+    # Update agent config
     await _sync_agent_skills_config(db, agent_id)
 
     return agent_skill
@@ -378,7 +378,7 @@ async def get_submission_by_id(db: AsyncSession, submission_id: str) -> SkillSub
 async def _sync_agent_skills_config(db: AsyncSession, agent_id: str) -> None:
     """Regenerate the agent's openclaw.json with current skills config.
 
-    OpenClaw's file watcher detects the change and hot-reloads automatically.
+    The file watcher detects the change and hot-reloads automatically.
     """
     # Get the agent
     result = await db.execute(select(Agent).where(Agent.id == agent_id))

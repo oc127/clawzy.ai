@@ -1,4 +1,4 @@
-"""LINE Messaging API webhook — bridges LINE messages to Clawzy agents."""
+"""LINE Messaging API webhook — bridges LINE messages to Lucy agents."""
 
 import hashlib
 import hmac
@@ -86,12 +86,12 @@ async def line_webhook(
 
         async with async_session() as db:
             result = await db.execute(
-                select(User).where(User.email == f"line_{line_user_id}@clawzy.ai")
+                select(User).where(User.email == f"line_{line_user_id}@thelucy.ai")
             )
             user = result.scalar_one_or_none()
 
             if user is None:
-                await reply_to_line(reply_token, "Please link your Clawzy account first at our website.")
+                await reply_to_line(reply_token, "Please link your Lucy account first at our website.")
                 continue
 
             result = await db.execute(

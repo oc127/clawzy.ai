@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column("category", sa.String(50), nullable=False, index=True),
         sa.Column("tags", sa.JSON(), nullable=True),
         sa.Column("icon_url", sa.String(500), nullable=True),
-        sa.Column("clawhub_url", sa.String(500), nullable=True),
+        sa.Column("lucyhub_url", sa.String(500), nullable=True),
         sa.Column("author", sa.String(200), nullable=True),
         sa.Column("version", sa.String(50), nullable=True),
         sa.Column("install_count", sa.Integer(), nullable=False, default=0, index=True),

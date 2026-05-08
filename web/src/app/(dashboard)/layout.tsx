@@ -118,7 +118,7 @@ export default function DashboardLayout({
           <Menu className="h-5 w-5" />
         </button>
         <span className="ml-3 text-base font-extrabold text-[#222222] dark:text-white">
-          <span className="text-[#ff385c]">Nippon</span>Claw
+          Lucy
         </span>
       </div>
 

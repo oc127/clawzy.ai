@@ -4,7 +4,7 @@ import { router } from "expo-router";
 
 /** Dev: set `extra.apiBaseUrl` in app.json to your backend LAN IP (same Wi‑Fi as the phone/simulator Mac). */
 export function getApiBase(): string {
-  if (!__DEV__) return "https://www.nipponclaw.com/api/v1";
+  if (!__DEV__) return "https://www.thelucy.ai/api/v1";
   const fromConfig = Constants.expoConfig?.extra?.apiBaseUrl as string | undefined;
   if (fromConfig?.startsWith("http")) return fromConfig.replace(/\/$/, "");
   return "http://192.168.2.172/api/v1";

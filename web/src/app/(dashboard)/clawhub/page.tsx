@@ -92,7 +92,7 @@ export default function ClawHubPage() {
         setCategories(c);
         setAllTags(tags);
       })
-      .catch((err) => setFetchError(err.message || "Failed to load ClawHub"))
+      .catch((err) => setFetchError(err.message || "Failed to load LucyHub"))
       .finally(() => setLoading(false));
   };
 
@@ -137,7 +137,7 @@ export default function ClawHubPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl icon-gradient-purple shadow-sm">
               <Package className="h-4 w-4 text-white" />
             </div>
-            <h1 className="text-2xl font-extrabold text-[#222222] dark:text-white">ClawHub</h1>
+            <h1 className="text-2xl font-extrabold text-[#222222] dark:text-white">LucyHub</h1>
           </div>
           <p className="text-[#717171] dark:text-[#a0a0a0] ml-12">
             Discover and install skills to supercharge your agents.

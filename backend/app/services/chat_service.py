@@ -143,18 +143,18 @@ async def stream_chat_completion(
         )
 
     # Build ordered list of endpoints to try.
-    # Priority: per-user OpenClaw container → shared OpenClaw gateway.
-    # All chat goes through OpenClaw — no direct LiteLLM fallback.
+    # Priority: per-user gateway container → shared gateway.
+    # All chat goes through the gateway — no direct LiteLLM fallback.
     endpoints = []
 
     if agent.ws_port and agent.gateway_token and agent.status == AgentStatus.running:
         # Use Docker network container name (not 127.0.0.1, which is the backend itself)
-        container_name = f"clawzy-agent-{agent.id}"
+        container_name = f"lucy-agent-{agent.id}"
         endpoints.append(
             (
                 f"http://{container_name}:18789/v1/chat/completions",
                 f"Bearer {agent.gateway_token}",
-                "per-user OpenClaw",
+                "per-user gateway",
             )
         )
 
@@ -163,17 +163,17 @@ async def stream_chat_completion(
             (
                 f"{settings.openclaw_gateway_url}/v1/chat/completions",
                 f"Bearer {settings.openclaw_gateway_token}",
-                "shared OpenClaw gateway",
+                "shared gateway",
             )
         )
 
     if not endpoints:
-        logger.error("No OpenClaw endpoints configured — check OPENCLAW_GATEWAY_URL and OPENCLAW_GATEWAY_TOKEN")
+        logger.error("No gateway endpoints configured — check OPENCLAW_GATEWAY_URL and OPENCLAW_GATEWAY_TOKEN")
         yield json.dumps(
             {
                 "type": "error",
                 "code": "configuration_error",
-                "message": "OpenClaw gateway not configured",
+                "message": "Gateway not configured",
             }
         )
         return

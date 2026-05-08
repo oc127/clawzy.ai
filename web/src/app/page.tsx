@@ -302,7 +302,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <span className="text-xl">🦞</span>
             <span className="text-lg font-extrabold text-[#222222]">
-              <span className="text-[#ff385c]">Nippon</span>Claw
+              Lucy
             </span>
           </div>
           <div className="flex items-center gap-6 text-sm text-[#717171]">
@@ -311,7 +311,7 @@ export default function Home() {
             <Link href="/legal/terms" className="hover:text-[#222222] transition-colors">{t.footer.terms ?? "Terms"}</Link>
             <Link href="/legal/privacy" className="hover:text-[#222222] transition-colors">{t.footer.privacy ?? "Privacy"}</Link>
             <Link href="/legal/tokushoho" className="hover:text-[#222222] transition-colors">{t.footer.tokushoho ?? "特商法表示"}</Link>
-            <span>&copy; {new Date().getFullYear()} NipponClaw. {t.footer.rights}</span>
+            <span>&copy; {new Date().getFullYear()} Lucy. {t.footer.rights}</span>
           </div>
         </div>
       </footer>

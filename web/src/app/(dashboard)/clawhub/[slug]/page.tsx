@@ -171,7 +171,7 @@ export default function SkillDetailPage() {
       <div>
         <p className="text-red-400">{error || "Skill not found"}</p>
         <Link href="/clawhub" className="mt-4 inline-block text-sm text-primary hover:underline">
-          Back to ClawHub
+          Back to LucyHub
         </Link>
       </div>
     );
@@ -187,7 +187,7 @@ export default function SkillDetailPage() {
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to ClawHub
+        Back to LucyHub
       </Link>
 
       {/* Header card */}
@@ -317,7 +317,7 @@ export default function SkillDetailPage() {
         </div>
       </Card>
 
-      {/* ClawHub link */}
+      {/* LucyHub link */}
       {skill.clawhub_url && (
         <a
           href={skill.clawhub_url}
@@ -325,7 +325,7 @@ export default function SkillDetailPage() {
           rel="noopener noreferrer"
           className="mb-6 inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
-          View on ClawHub <ExternalLink className="h-3 w-3" />
+          View on LucyHub <ExternalLink className="h-3 w-3" />
         </a>
       )}
 

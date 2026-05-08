@@ -68,7 +68,7 @@ const zh: Translations = {
   },
   reviews: {
     title: "深受用户喜爱",
-    subtitle: "加入数千名正在使用 NipponClaw 构建 Agent 的用户。",
+    subtitle: "加入数千名正在使用 Lucy 构建 Agent 的用户。",
     items: [
       { name: "裕木", role: "软件工程师，东京", text: "我 24/7 运行 3 个 Agent 用于编码、研究和写作，是我用过最好的 AI 平台。" },
       { name: "春人", role: "产品经理", text: "按需付费模式太完美了，在 DeepSeek 和 Qwen 之间无缝切换。" },
@@ -92,7 +92,7 @@ const zh: Translations = {
   auth: {
     login: {
       title: "欢迎回来",
-      subtitle: "登录您的 NipponClaw 账户",
+      subtitle: "登录您的 Lucy 账户",
       email: "邮箱地址",
       password: "密码",
       submit: "登录",
@@ -115,7 +115,7 @@ const zh: Translations = {
       perk1: "500 积分免费赠送",
       perk2: "使用 6+ 个 AI 模型",
       perk3: "无需信用卡",
-      leftTitle: "加入 NipponClaw",
+      leftTitle: "加入 Lucy",
       agreePrefix: "注册即表示您同意我们的",
       termsLink: "服务条款",
       agreeAnd: "和",
@@ -148,7 +148,7 @@ const zh: Translations = {
     billing: "账单",
     settings: "设置",
     memory: "记忆",
-    clawhub: "ClawHub",
+    clawhub: "LucyHub",
     credits: "积分",
     usage: "用量",
     recentActivity: "最近活动",

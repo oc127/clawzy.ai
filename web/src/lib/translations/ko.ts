@@ -68,7 +68,7 @@ const ko: Translations = {
   },
   reviews: {
     title: "사용자들의 사랑을 받고 있습니다",
-    subtitle: "NipponClaw로 구축하는 수천 명의 사용자와 함께하세요.",
+    subtitle: "Lucy로 구축하는 수천 명의 사용자와 함께하세요.",
     items: [
       { name: "유키", role: "소프트웨어 엔지니어, 도쿄", text: "코딩, 리서치, 글쓰기를 위해 3개의 에이전트를 24시간 실행하고 있어요. 사용해 본 최고의 AI 플랫폼입니다." },
       { name: "하루토", role: "프로덕트 매니저", text: "사용한 만큼 지불하는 방식이 완벽해요. DeepSeek와 Qwen 사이를 원활하게 전환할 수 있습니다." },
@@ -92,7 +92,7 @@ const ko: Translations = {
   auth: {
     login: {
       title: "다시 오신 것을 환영합니다",
-      subtitle: "NipponClaw 계정에 로그인하세요",
+      subtitle: "Lucy 계정에 로그인하세요",
       email: "이메일 주소",
       password: "비밀번호",
       submit: "로그인",
@@ -115,7 +115,7 @@ const ko: Translations = {
       perk1: "500 크레딧 무료 제공",
       perk2: "6개 이상의 AI 모델 이용",
       perk3: "신용카드 불필요",
-      leftTitle: "NipponClaw에 참여하세요",
+      leftTitle: "Lucy에 참여하세요",
       agreePrefix: "가입하면",
       termsLink: "이용약관",
       agreeAnd: "및",
@@ -148,7 +148,7 @@ const ko: Translations = {
     billing: "결제",
     settings: "설정",
     memory: "메모리",
-    clawhub: "ClawHub",
+    clawhub: "LucyHub",
     credits: "크레딧",
     usage: "사용량",
     recentActivity: "최근 활동",

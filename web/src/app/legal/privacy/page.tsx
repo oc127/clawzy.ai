@@ -14,7 +14,7 @@ export default function PrivacyPage() {
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl">🦞</span>
             <span className="text-lg font-extrabold">
-              <span className="text-[#ff385c]">Nippon</span>Claw
+              Lucy
             </span>
           </Link>
           <div className="flex gap-4 text-sm text-[#717171]">
@@ -43,7 +43,7 @@ function PrivacyJa() {
 
       <h2>1. はじめに</h2>
       <p>
-        NipponClaw（以下「当社」）は、ユーザーのプライバシーを重視し、個人情報の保護に関する法律（個人情報保護法 / APPI）を遵守します。本プライバシーポリシーは、当社が収集、使用、保護する情報について説明します。
+        Lucy（以下「当社」）は、ユーザーのプライバシーを重視し、個人情報の保護に関する法律（個人情報保護法 / APPI）を遵守します。本プライバシーポリシーは、当社が収集、使用、保護する情報について説明します。
       </p>
 
       <h2>2. 収集する情報</h2>
@@ -120,7 +120,7 @@ function PrivacyJa() {
         <li><strong>利用停止権</strong>：個人データの利用停止を請求する権利</li>
       </ul>
       <p>
-        これらの権利行使については、support@nipponclaw.com までご連絡ください。
+        これらの権利行使については、support@thelucy.ai までご連絡ください。
       </p>
 
       <h2>9. Cookie</h2>
@@ -143,8 +143,8 @@ function PrivacyJa() {
         プライバシーに関するご質問・ご要望は、以下までご連絡ください。
       </p>
       <p>
-        NipponClaw プライバシー担当<br />
-        メール：support@nipponclaw.com
+        Lucy プライバシー担当<br />
+        メール：support@thelucy.ai
       </p>
     </article>
   );
@@ -158,7 +158,7 @@ function PrivacyEn() {
 
       <h2>1. Introduction</h2>
       <p>
-        NipponClaw (&quot;we&quot;, &quot;us&quot;) is committed to protecting your privacy and complying with Japan&apos;s Act on the Protection of Personal Information (APPI). This Privacy Policy explains how we collect, use, and protect your information.
+        Lucy (&quot;we&quot;, &quot;us&quot;) is committed to protecting your privacy and complying with Japan&apos;s Act on the Protection of Personal Information (APPI). This Privacy Policy explains how we collect, use, and protect your information.
       </p>
 
       <h2>2. Information We Collect</h2>
@@ -234,7 +234,7 @@ function PrivacyEn() {
         <li><strong>Deletion</strong>: Request deletion of your data</li>
         <li><strong>Cessation</strong>: Request cessation of data processing</li>
       </ul>
-      <p>To exercise these rights, contact support@nipponclaw.com.</p>
+      <p>To exercise these rights, contact support@thelucy.ai.</p>
 
       <h2>9. Cookies</h2>
       <p>
@@ -254,8 +254,8 @@ function PrivacyEn() {
       <h2>12. Contact</h2>
       <p>
         For privacy inquiries, contact:<br />
-        NipponClaw Privacy Team<br />
-        Email: support@nipponclaw.com
+        Lucy Privacy Team<br />
+        Email: support@thelucy.ai
       </p>
     </article>
   );

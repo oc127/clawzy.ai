@@ -1,4 +1,4 @@
-"""Seed the skills table with initial ClawHub data.
+"""Seed the skills table with initial LucyHub data.
 
 Usage: python -m app.data.seed_skills
 """

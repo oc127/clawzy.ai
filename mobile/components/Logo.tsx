@@ -16,12 +16,11 @@ export function Logo({ size = "md", showText = true }: LogoProps) {
   return (
     <View style={styles.container}>
       <View style={[styles.mark, { width: iconSize, height: iconSize, borderRadius }]}>
-        <Text style={[styles.markText, { fontSize }]}>N</Text>
+        <Text style={[styles.markText, { fontSize }]}>L</Text>
       </View>
       {showText && (
         <Text style={[styles.text, { fontSize: textSize }]}>
-          <Text style={styles.nippon}>Nippon</Text>
-          <Text style={styles.claw}>Claw</Text>
+          <Text style={styles.lucy}>Lucy</Text>
         </Text>
       )}
     </View>
@@ -33,7 +32,7 @@ export function LogoMark({ size = 36 }: { size?: number }) {
   const fontSize = Math.round(size * 0.48);
   return (
     <View style={[styles.mark, { width: size, height: size, borderRadius }]}>
-      <Text style={[styles.markText, { fontSize }]}>N</Text>
+      <Text style={[styles.markText, { fontSize }]}>L</Text>
     </View>
   );
 }
@@ -58,10 +57,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.5,
   },
-  nippon: {
+  lucy: {
     color: colors.primary,
-  },
-  claw: {
-    color: colors.text,
   },
 });

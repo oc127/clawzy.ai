@@ -14,7 +14,7 @@ export default function TokushohoPage() {
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl">🦞</span>
             <span className="text-lg font-extrabold">
-              <span className="text-[#ff385c]">Nippon</span>Claw
+              Lucy
             </span>
           </Link>
           <div className="flex gap-4 text-sm text-[#717171]">
@@ -45,7 +45,7 @@ function TokushohoJa() {
         <tbody>
           <tr>
             <td className="font-semibold w-48">販売事業者</td>
-            <td>NipponClaw</td>
+            <td>Lucy</td>
           </tr>
           <tr>
             <td className="font-semibold">運営責任者</td>
@@ -61,15 +61,15 @@ function TokushohoJa() {
           </tr>
           <tr>
             <td className="font-semibold">メールアドレス</td>
-            <td>support@nipponclaw.com</td>
+            <td>support@thelucy.ai</td>
           </tr>
           <tr>
             <td className="font-semibold">URL</td>
-            <td>https://www.nipponclaw.com</td>
+            <td>https://www.thelucy.ai</td>
           </tr>
           <tr>
             <td className="font-semibold">サービス名称</td>
-            <td>NipponClaw AIエージェントプラットフォーム</td>
+            <td>Lucy AIエージェントプラットフォーム</td>
           </tr>
           <tr>
             <td className="font-semibold">販売価格</td>
@@ -137,7 +137,7 @@ function TokushohoEn() {
         <tbody>
           <tr>
             <td className="font-semibold w-48">Seller</td>
-            <td>NipponClaw</td>
+            <td>Lucy</td>
           </tr>
           <tr>
             <td className="font-semibold">Responsible Person</td>
@@ -153,15 +153,15 @@ function TokushohoEn() {
           </tr>
           <tr>
             <td className="font-semibold">Email</td>
-            <td>support@nipponclaw.com</td>
+            <td>support@thelucy.ai</td>
           </tr>
           <tr>
             <td className="font-semibold">URL</td>
-            <td>https://www.nipponclaw.com</td>
+            <td>https://www.thelucy.ai</td>
           </tr>
           <tr>
             <td className="font-semibold">Service Name</td>
-            <td>NipponClaw AI Agent Platform</td>
+            <td>Lucy AI Agent Platform</td>
           </tr>
           <tr>
             <td className="font-semibold">Pricing</td>

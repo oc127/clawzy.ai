@@ -16,7 +16,7 @@ async def web_fetch(url: str) -> dict:
         async with httpx.AsyncClient(
             timeout=20.0,
             follow_redirects=True,
-            headers={"User-Agent": "ClawzyBot/1.0 (web-fetch)"},
+            headers={"User-Agent": "LucyBot/1.0 (web-fetch)"},
         ) as client:
             resp = await client.get(url)
             resp.raise_for_status()

@@ -73,7 +73,7 @@ const en = {
   // Reviews
   reviews: {
     title: "Loved by creators",
-    subtitle: "Join thousands of users building with NipponClaw.",
+    subtitle: "Join thousands of users building with Lucy.",
     items: [
       { name: "Yuki T.", role: "Software Engineer, Tokyo", text: "I run 3 agents 24/7 for coding, research, and writing. Best AI platform I've tried." },
       { name: "Haruto M.", role: "Product Manager", text: "The pay-as-you-go model is perfect. Switching between DeepSeek and Qwen is seamless." },
@@ -100,7 +100,7 @@ const en = {
   auth: {
     login: {
       title: "Welcome back",
-      subtitle: "Sign in to your NipponClaw account",
+      subtitle: "Sign in to your Lucy account",
       email: "Email address",
       password: "Password",
       submit: "Sign in",
@@ -123,7 +123,7 @@ const en = {
       perk1: "500 free credits to start",
       perk2: "Access to 6+ AI models",
       perk3: "No credit card required",
-      leftTitle: "Join NipponClaw",
+      leftTitle: "Join Lucy",
       agreePrefix: "By signing up, you agree to our",
       termsLink: "Terms of Service",
       agreeAnd: "and",
@@ -157,7 +157,7 @@ const en = {
     billing: "Billing",
     settings: "Settings",
     memory: "Memory",
-    clawhub: "ClawHub",
+    clawhub: "LucyHub",
     credits: "Credits",
     usage: "Usage",
     recentActivity: "Recent Activity",

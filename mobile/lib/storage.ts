@@ -1,9 +1,9 @@
 import * as SecureStore from "expo-secure-store";
 
 const K = {
-  access: "nipponclaw_access_token",
-  refresh: "nipponclaw_refresh_token",
-  locale: "nipponclaw_locale",
+  access: "lucy_access_token",
+  refresh: "lucy_refresh_token",
+  locale: "lucy_locale",
 } as const;
 
 export async function saveTokens(access: string, refresh: string) {

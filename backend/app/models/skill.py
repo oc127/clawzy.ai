@@ -19,7 +19,7 @@ class Skill(Base):
     category: Mapped[str] = mapped_column(String(50), index=True)
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    clawhub_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    lucyhub_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     author: Mapped[str | None] = mapped_column(String(200), nullable=True)
     version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     install_count: Mapped[int] = mapped_column(Integer, default=0, index=True)

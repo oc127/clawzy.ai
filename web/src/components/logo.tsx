@@ -22,8 +22,7 @@ export function Logo({ size = "md", className }: LogoProps) {
     <span className={cn("inline-flex items-center gap-2", className)}>
       <LogoMark size={iconSize} />
       <span className={cn("font-extrabold tracking-tight leading-none", textSize)}>
-        <span style={{ color: "#FF385C" }}>Nippon</span>
-        <span style={{ color: "#222222" }}>Claw</span>
+        <span style={{ color: "#FF385C" }}>Lucy</span>
       </span>
     </span>
   );

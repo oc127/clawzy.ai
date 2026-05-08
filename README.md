@@ -1,8 +1,8 @@
-# Nippon Claw
+# Lucy
 
 > Your AI Lobster, Any Brain.
 >
-> OpenClaw-as-a-Service — 为每位用户提供独立的 AI Agent 实例，支持多模型路由、Credits 计费和 ClawHub 技能市场。
+> OpenClaw-as-a-Service — 为每位用户提供独立的 AI Agent 实例，支持多模型路由、Credits 计费和 LucyHub 技能市场。
 
 ---
 
@@ -25,8 +25,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-org/nipponclaw.git
-cd nipponclaw
+git clone https://github.com/your-org/lucy.git
+cd lucy
 ```
 
 ### 2. 配置环境变量
@@ -70,7 +70,7 @@ open http://localhost
 ## 目录结构
 
 ```
-nipponclaw/
+lucy/
 ├── backend/          # FastAPI 后端
 │   ├── app/
 │   │   ├── api/      # 路由 (auth, agents, chat, billing, skills, models)
