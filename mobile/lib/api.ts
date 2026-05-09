@@ -135,30 +135,24 @@ export interface User {
 }
 export const getMe = () => apiGet<User>("/users/me");
 
-// ── Agents ────────────────────────────────────────────────────────────────────
-/** Matches backend AgentResponse */
-export interface Agent {
-  id: string;
-  name: string;
-  model_name: string;
-  status: string;
-  created_at: string;
-  ws_port?: number | null;
-  last_active_at?: string | null;
+// ── Lucy ──────────────────────────────────────────────────────────────────────
+/** Matches backend LucyState */
+export interface LucyState {
+  personality_type: string;
+  mood: string;
+  affection: number;
+  relationship_stage: string;
+  interaction_streak: number;
+  total_interactions: number;
+  unlocked_expressions: string[];
+  preferred_model: string;
+  last_interaction_at: string | null;
 }
-export interface AgentCreate {
-  name: string;
-  model_name: string;
-}
-export const getAgents = () => apiGet<Agent[]>("/agents");
-export const getAgent = (id: string) => apiGet<Agent>(`/agents/${id}`);
-export const createAgent = (data: AgentCreate) => apiPost<Agent>("/agents", data);
-export const updateAgent = (id: string, data: { name?: string; model_name?: string }) =>
-  apiPatch<Agent>(`/agents/${id}`, data);
-export const deleteAgent = (id: string) => apiDelete(`/agents/${id}`);
-export const startAgent = (id: string) => apiPost<Agent>(`/agents/${id}/start`);
-export const stopAgent = (id: string) => apiPost<Agent>(`/agents/${id}/stop`);
-export const restartAgent = (id: string) => apiPost<Agent>(`/agents/${id}/restart`);
+export const getLucyState = () => apiGet<LucyState>("/lucy/state");
+export const getLucyPersonality = () => apiGet<{ personality_type: string; traits: string[] }>("/lucy/personality");
+export const getLucyExpressions = () => apiGet<string[]>("/lucy/expressions");
+export const postLucyInteraction = (data: { message: string }) =>
+  apiPost<{ response: string }>("/lucy/interaction", data);
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export interface Message {
@@ -169,17 +163,16 @@ export interface Message {
 }
 export interface Conversation {
   id: string;
-  agent_id: string;
   title: string;
   created_at: string;
   updated_at: string;
 }
-export const getConversations = (agentId: string) =>
-  apiGet<Conversation[]>(`/agents/${agentId}/conversations`);
-export const getMessages = (agentId: string, convId: string) =>
-  apiGet<Message[]>(`/agents/${agentId}/conversations/${convId}/messages`);
-export const createConversation = (agentId: string) =>
-  apiPost<Conversation>(`/agents/${agentId}/conversations`);
+export const getConversations = () =>
+  apiGet<Conversation[]>("/lucy/conversations");
+export const getMessages = (convId: string) =>
+  apiGet<Message[]>(`/lucy/conversations/${convId}/messages`);
+export const createConversation = () =>
+  apiPost<Conversation>("/lucy/conversations");
 
 // ── Models ────────────────────────────────────────────────────────────────────
 /** Matches backend ModelInfo */

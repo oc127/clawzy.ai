@@ -3,31 +3,6 @@ import { View, StyleSheet } from "react-native";
 import { colors, radius } from "@/lib/theme";
 import { useLanguage } from "@/context/LanguageContext";
 
-// Inline SVG-based tab icons (no extra lib needed)
-function HomeIcon({ focused }: { focused: boolean }) {
-  return (
-    <View style={[styles.icon, focused && styles.iconActive]}>
-      <View style={[styles.iconInner, { backgroundColor: focused ? colors.white : "transparent" }]} />
-    </View>
-  );
-}
-
-function TabBarIcon({ label, focused }: { label: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    home: "⊞",
-    agents: "🤖",
-    discover: "✦",
-    settings: "⚙",
-  };
-  return (
-    <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
-      <View>
-        {/* We rely on Expo's default icon rendering via tabBarIcon */}
-      </View>
-    </View>
-  );
-}
-
 export default function TabsLayout() {
   const { t } = useLanguage();
 
@@ -47,25 +22,25 @@ export default function TabsLayout() {
         options={{
           title: t.tabs.home,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="⊞" focused={focused} />
+            <TabIcon emoji="💬" focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
-        name="agents"
+        name="status"
         options={{
-          title: t.tabs.agents,
+          title: t.tabs.status,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🤖" focused={focused} />
+            <TabIcon emoji="💖" focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
-        name="discover"
+        name="memory"
         options={{
-          title: t.tabs.discover,
+          title: t.tabs.memory,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="✦" focused={focused} />
+            <TabIcon emoji="📝" focused={focused} />
           ),
         }}
       />
@@ -111,11 +86,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 2,
   },
-  tabIcon: {},
-  tabIconActive: {},
-  icon: { width: 22, height: 22, borderRadius: 6 },
-  iconActive: { backgroundColor: colors.primary },
-  iconInner: { flex: 1, borderRadius: 4 },
   tabIconWrapper: {
     width: 28,
     height: 28,

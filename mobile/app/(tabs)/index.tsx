@@ -1,70 +1,195 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  RefreshControl, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator,
+  Modal, FlatList, Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Link } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { getAgents, type Agent } from "@/lib/api";
+import {
+  getConversations, getMessages, createConversation,
+  getApiHost,
+  type Message, type Conversation,
+} from "@/lib/api";
+import { getAccessToken } from "@/lib/storage";
 import { Logo } from "@/components/Logo";
-import { Card } from "@/components/ui/Card";
-import { colors, spacing, radius, typography, shadow } from "@/lib/theme";
+import { colors, spacing, radius, typography } from "@/lib/theme";
 
-function StatCard({ label, value, emoji, bg }: { label: string; value: string; emoji: string; bg: string }) {
+function MessageBubble({ msg }: { msg: Message }) {
+  const isUser = msg.role === "user";
   return (
-    <Card style={[styles.statCard, { flex: 1 }]}>
-      <View style={[styles.statIcon, { backgroundColor: bg }]}>
-        <Text style={{ fontSize: 18 }}>{emoji}</Text>
+    <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
+      {!isUser && (
+        <View style={styles.lucyAvatar}>
+          <Text style={{ fontSize: 14 }}>L</Text>
+        </View>
+      )}
+      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
+        <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>
+          {msg.content}
+        </Text>
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </Card>
+    </View>
   );
 }
 
-function AgentRow({ agent }: { agent: Agent }) {
-  const statusColor = agent.status === "running" ? colors.success : agent.status === "error" ? colors.error : colors.textMuted;
-  return (
-    <Link href={`/agents/${agent.id}`} asChild>
-      <TouchableOpacity style={styles.agentRow} activeOpacity={0.7}>
-        <View style={styles.agentIcon}>
-          <Text style={{ fontSize: 20 }}>🤖</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.agentName} numberOfLines={1}>{agent.name}</Text>
-          <Text style={styles.agentModel} numberOfLines={1}>{agent.model_name}</Text>
-        </View>
-        <View style={styles.statusDot(statusColor)} />
-      </TouchableOpacity>
-    </Link>
-  );
-}
-
-export default function DashboardScreen() {
+export default function ChatScreen() {
   const insets = useSafeAreaInsets();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [a] = await Promise.all([getAgents(), refreshUser()]);
-      setAgents(a);
+      const convs = await getConversations();
+      setConversations(convs);
+      if (convs.length > 0) {
+        setConversation(convs[0]);
+        const msgs = await getMessages(convs[0].id);
+        setMessages(msgs);
+      }
     } catch {
       // ignore
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, [refreshUser]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const onRefresh = () => { setRefreshing(true); load(); };
+  const switchConversation = useCallback(async (conv: Conversation) => {
+    setShowHistory(false);
+    setConversation(conv);
+    setMessages([]);
+    setStreamingText("");
+    try {
+      const msgs = await getMessages(conv.id);
+      setMessages(msgs);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const startNewChat = useCallback(() => {
+    setShowHistory(false);
+    setConversation(null);
+    setMessages([]);
+    setStreamingText("");
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }, [messages, streamingText]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || sending) return;
+    const userText = input.trim();
+    setInput("");
+    setSending(true);
+    setStreamingText("");
+
+    // Create conversation if needed
+    let convId = conversation?.id;
+    if (!convId) {
+      try {
+        const conv = await createConversation();
+        setConversation(conv);
+        setConversations((prev) => [conv, ...prev]);
+        convId = conv.id;
+      } catch {
+        setSending(false);
+        return;
+      }
+    }
+
+    // Add user message locally
+    const userMsg: Message = {
+      id: `local-${Date.now()}`,
+      role: "user",
+      content: userText,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    // Stream response via Lucy endpoint
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(
+        `${getApiHost()}/api/v1/lucy/conversations/${convId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ content: userText }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed");
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No reader");
+
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+        for (const line of lines) {
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content ?? "";
+            fullText += delta;
+            setStreamingText(fullText);
+          } catch {
+            // ignore parse errors
+          }
+        }
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `local-${Date.now() + 1}`,
+          role: "assistant",
+          content: fullText,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      setStreamingText("");
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `local-err-${Date.now()}`,
+          role: "assistant",
+          content: t.common.error,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      setStreamingText("");
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -74,183 +199,273 @@ export default function DashboardScreen() {
     );
   }
 
-  const runningAgents = agents.filter((a) => a.status === "running").length;
-
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Logo size="sm" />
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>
-            {user?.name?.charAt(0).toUpperCase() ?? "?"}
-          </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Lucy</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => setShowHistory(true)}
+          style={styles.historyBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.historyIcon}>☰</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={startNewChat}
+          style={styles.newChatBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.newChatIcon}>+</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Welcome */}
-      <View style={styles.welcomeSection}>
-        <Text style={styles.welcomeLabel}>{t.dashboard.welcome},</Text>
-        <Text style={styles.welcomeName}>{user?.name?.split(" ")[0] ?? ""} 👋</Text>
-      </View>
-
-      {/* Stat cards */}
-      <View style={styles.statsRow}>
-        <StatCard
-          label={t.dashboard.credits}
-          value={user?.credit_balance?.toLocaleString() ?? "0"}
-          emoji="💳"
-          bg={colors.primaryLight}
-        />
-        <StatCard
-          label={t.dashboard.agents}
-          value={`${runningAgents}/${agents.length}`}
-          emoji="🤖"
-          bg={colors.indigoLight}
-        />
-      </View>
-
-      {/* My Agents */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t.tabs.agents}</Text>
-          <Link href="/agents" asChild>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>{t.dashboard.seeAll}</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-
-        {agents.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>🤖</Text>
-            <Text style={styles.emptyTitle}>{t.agents.noAgents}</Text>
-            <Text style={styles.emptySubtitle}>{t.agents.createFirst}</Text>
-            <Link href="/agents" asChild>
-              <TouchableOpacity style={styles.createBtn}>
-                <Text style={styles.createBtnText}>+ {t.agents.newAgent}</Text>
-              </TouchableOpacity>
-            </Link>
+      {/* Messages */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.messages}
+        contentContainerStyle={styles.messagesContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {messages.length === 0 && !streamingText ? (
+          <View style={styles.emptyChat}>
+            <Text style={{ fontSize: 40 }}>L</Text>
+            <Text style={styles.emptyChatTitle}>Lucy</Text>
+            <Text style={styles.emptyChatSubtitle}>{t.chat.noMessages}</Text>
           </View>
         ) : (
-          <Card style={styles.agentsList}>
-            {agents.slice(0, 3).map((agent, i) => (
-              <View key={agent.id}>
-                <AgentRow agent={agent} />
-                {i < Math.min(agents.length, 3) - 1 && <View style={styles.divider} />}
-              </View>
+          <>
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} msg={msg} />
             ))}
-          </Card>
+            {streamingText ? (
+              <MessageBubble
+                msg={{ id: "streaming", role: "assistant", content: streamingText, created_at: "" }}
+              />
+            ) : null}
+            {sending && !streamingText ? (
+              <View style={styles.typingIndicator}>
+                <View style={styles.lucyAvatar}>
+                  <Text style={{ fontSize: 14 }}>L</Text>
+                </View>
+                <View style={styles.typingBubble}>
+                  <ActivityIndicator size="small" color={colors.textMuted} />
+                  <Text style={styles.typingText}>{t.chat.typing}</Text>
+                </View>
+              </View>
+            ) : null}
+          </>
         )}
+      </ScrollView>
+
+      {/* Input */}
+      <View style={[styles.inputBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <TextInput
+          style={styles.textInput}
+          placeholder={t.chat.placeholder}
+          placeholderTextColor={colors.textMuted}
+          value={input}
+          onChangeText={setInput}
+          multiline
+          maxLength={4000}
+          returnKeyType="default"
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnDisabled]}
+          onPress={sendMessage}
+          disabled={!input.trim() || sending}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.sendIcon}>↑</Text>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+
+      {/* Conversation History Modal */}
+      <Modal visible={showHistory} animationType="slide" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowHistory(false)}>
+          <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + spacing.lg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t.chat.newConv}</Text>
+              <TouchableOpacity onPress={() => setShowHistory(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.newChatRow} onPress={startNewChat}>
+              <Text style={styles.newChatRowIcon}>+</Text>
+              <Text style={styles.newChatRowText}>{t.chat.newConv}</Text>
+            </TouchableOpacity>
+            <FlatList
+              data={conversations}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.convRow,
+                    item.id === conversation?.id && styles.convRowActive,
+                  ]}
+                  onPress={() => switchConversation(item)}
+                >
+                  <Text style={styles.convTitle} numberOfLines={1}>
+                    {item.title || `Chat ${item.id.slice(0, 8)}`}
+                  </Text>
+                  <Text style={styles.convDate}>
+                    {new Date(item.updated_at).toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.convEmpty}>{t.chat.noMessages}</Text>
+              }
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.backgroundSecondary },
-  content: { paddingBottom: 32 },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  headerTitle: { ...typography.md, ...typography.bold, color: colors.text },
+  historyBtn: { padding: 4 },
+  historyIcon: { fontSize: 20, color: colors.textSecondary },
+  newChatBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: "center", justifyContent: "center",
+  },
+  newChatIcon: { color: colors.white, fontSize: 18, fontWeight: "700", marginTop: -1 },
+  messages: { flex: 1 },
+  messagesContent: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
+  emptyChat: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.sm, paddingTop: 80 },
+  emptyChatTitle: { ...typography.lg, ...typography.bold, color: colors.text },
+  emptyChatSubtitle: { ...typography.base, color: colors.textSecondary },
+  bubbleRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm },
+  bubbleRowUser: { justifyContent: "flex-end" },
+  lucyAvatar: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center", justifyContent: "center",
+    marginBottom: 2,
+  },
+  bubble: {
+    maxWidth: "80%",
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  bubbleUser: {
+    backgroundColor: colors.primary,
+    borderBottomRightRadius: 4,
+  },
+  bubbleAssistant: {
+    backgroundColor: colors.white,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  bubbleText: { ...typography.base, color: colors.text, lineHeight: 22 },
+  bubbleTextUser: { color: colors.white },
+  typingIndicator: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm },
+  typingBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.xl,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  typingText: { ...typography.sm, color: colors.textSecondary },
+  inputBar: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  textInput: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 120,
+    borderWidth: 1.5,
+    borderColor: colors.borderInput,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 11,
+    paddingBottom: 11,
+    color: colors.text,
+    ...typography.base,
+    backgroundColor: colors.backgroundSecondary,
+  },
+  sendBtn: {
+    width: 44, height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: colors.white, ...typography.base, ...typography.bold },
-  welcomeSection: {
+  sendBtnDisabled: { backgroundColor: colors.border },
+  sendIcon: { color: colors.white, fontSize: 20, fontWeight: "700", marginTop: -2 },
+  // Modal styles
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
     backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl + 4,
+    borderTopRightRadius: radius.xl + 4,
+    maxHeight: "70%",
+    paddingTop: spacing.lg,
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
   },
-  welcomeLabel: { ...typography.base, color: colors.textSecondary },
-  welcomeName: { ...typography.xxl, ...typography.extrabold, color: colors.text },
-  statsRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
-  },
-  statCard: { gap: 4, alignItems: "flex-start" },
-  statIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  statValue: { ...typography.xl, ...typography.extrabold, color: colors.text },
-  statLabel: { ...typography.xs, color: colors.textSecondary },
-  section: { paddingHorizontal: spacing.xl, marginTop: spacing.sm },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  modalHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     marginBottom: spacing.md,
   },
-  sectionTitle: { ...typography.lg, ...typography.bold, color: colors.text },
-  seeAll: { ...typography.sm, color: colors.primary, ...typography.semibold },
-  emptyCard: {
-    backgroundColor: colors.white,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.xxl,
-    alignItems: "center",
-    gap: spacing.sm,
+  modalTitle: { ...typography.lg, ...typography.bold, color: colors.text },
+  modalClose: { fontSize: 20, color: colors.textMuted, padding: 4 },
+  newChatRow: {
+    flexDirection: "row", alignItems: "center", gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+    marginBottom: spacing.sm,
   },
-  emptyEmoji: { fontSize: 36, marginBottom: 4 },
-  emptyTitle: { ...typography.md, ...typography.bold, color: colors.text },
-  emptySubtitle: { ...typography.sm, color: colors.textSecondary, textAlign: "center" },
-  createBtn: {
-    marginTop: 4,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
+  newChatRowIcon: { fontSize: 20, color: colors.primary, fontWeight: "700" },
+  newChatRowText: { ...typography.base, ...typography.bold, color: colors.primary },
+  convRow: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    marginBottom: 2,
   },
-  createBtnText: { ...typography.sm, ...typography.bold, color: colors.primary },
-  agentsList: { padding: 0, overflow: "hidden" },
-  agentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  agentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: colors.indigoLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  agentName: { ...typography.base, ...typography.semibold, color: colors.text },
-  agentModel: { ...typography.xs, color: colors.textMuted, marginTop: 2 },
-  statusDot: (color: string) => ({
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: color,
-  }),
-  divider: { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.lg },
+  convRowActive: { backgroundColor: colors.primaryLight },
+  convTitle: { ...typography.base, color: colors.text, marginBottom: 2 },
+  convDate: { ...typography.xs, color: colors.textMuted },
+  convEmpty: { ...typography.sm, color: colors.textSecondary, textAlign: "center", paddingVertical: spacing.xl },
 });
