@@ -29,7 +29,6 @@ class Conversation(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
-    agent = relationship("Agent", back_populates="conversations")
     user = relationship("User", backref="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 

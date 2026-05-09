@@ -15,16 +15,27 @@ from app.schemas.billing import (
     CreditTransactionResponse,
     PlanResponse,
 )
-from app.services.agent_service import get_user_plan
 from app.services.credits_service import get_usage_last_7_days, get_usage_this_period, get_usage_today
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
+
+async def _get_user_plan(db: AsyncSession, user_id: str) -> str:
+    """Return the active plan name for a user, defaulting to 'free'."""
+    result = await db.execute(
+        select(Subscription.plan)
+        .where(Subscription.user_id == user_id, Subscription.status == SubStatus.active)
+        .order_by(Subscription.created_at.desc())
+        .limit(1)
+    )
+    plan = result.scalar_one_or_none()
+    return plan.value if plan else "free"
+
 PLANS = [
-    PlanResponse(id="free", name="Free", price_monthly=0, credits_included=500, max_agents=1),
-    PlanResponse(id="starter", name="Starter", price_monthly=9, credits_included=3000, max_agents=1),
-    PlanResponse(id="pro", name="Pro", price_monthly=19, credits_included=8000, max_agents=3),
-    PlanResponse(id="business", name="Business", price_monthly=39, credits_included=20000, max_agents=10),
+    PlanResponse(id="free", name="Free", price_monthly=0, credits_included=500),
+    PlanResponse(id="starter", name="Starter", price_monthly=9, credits_included=3000),
+    PlanResponse(id="pro", name="Pro", price_monthly=19, credits_included=8000),
+    PlanResponse(id="business", name="Business", price_monthly=39, credits_included=20000),
 ]
 
 PLAN_MAP = {p.id: p for p in PLANS}
@@ -35,7 +46,7 @@ async def get_credits(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    plan = await get_user_plan(db, user.id)
+    plan = await _get_user_plan(db, user.id)
     used = await get_usage_this_period(db, user.id)
     return CreditsResponse(balance=user.credit_balance, used_this_period=used, plan=plan)
 
@@ -94,7 +105,7 @@ async def subscribe_plan(
     if not target_plan:
         raise HTTPException(status_code=400, detail="Invalid plan")
 
-    current_plan = await get_user_plan(db, user.id)
+    current_plan = await _get_user_plan(db, user.id)
     if current_plan == body.plan:
         raise HTTPException(status_code=400, detail="You are already on this plan")
 

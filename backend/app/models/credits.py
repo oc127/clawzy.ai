@@ -34,4 +34,3 @@ class CreditTransaction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True)
 
     user = relationship("User", back_populates="credit_transactions")
-    agent = relationship("Agent", back_populates="credit_transactions")

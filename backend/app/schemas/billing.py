@@ -27,7 +27,6 @@ class PlanResponse(BaseModel):
     name: str
     price_monthly: float
     credits_included: int
-    max_agents: int
 
 
 class CheckoutRequest(BaseModel):

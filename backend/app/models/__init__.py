@@ -1,4 +1,3 @@
-from app.models.agent import Agent
 from app.models.chat import Conversation, Message
 from app.models.credits import CreditTransaction
 from app.models.lucy_state import LucyState
@@ -11,7 +10,6 @@ __all__ = [
     "User",
     "Subscription",
     "CreditTransaction",
-    "Agent",
     "Conversation",
     "Message",
     "LucyState",

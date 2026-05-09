@@ -48,7 +48,6 @@ class AgentSkill(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     installed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    agent = relationship("Agent", back_populates="agent_skills")
     skill = relationship("Skill", back_populates="agent_skills")
 
 

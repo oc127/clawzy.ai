@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.database import Base, get_db
 from app.core.security import create_access_token, hash_password
-from app.models.agent import Agent, AgentStatus
 from app.models.skill import Skill
 from app.models.user import User
 
@@ -49,12 +48,8 @@ async def client(db: AsyncSession):
     """FastAPI test client with DB override and docker_manager mock."""
     # Mock docker_manager globally to prevent real Docker calls
     mock_dm = MagicMock()
-    mock_dm.create_agent_container.return_value = "fake-container-id"
-    mock_dm.wait_for_healthy.return_value = True
     mock_dm.start_container.return_value = None
     mock_dm.stop_container.return_value = None
-    mock_dm.remove_container.return_value = None
-    mock_dm.generate_agent_config.return_value = {"model": "test"}
 
     # Disable rate limiting for tests
     from app.config import settings as _settings
@@ -64,14 +59,10 @@ async def client(db: AsyncSession):
 
     # Import modules first so patch string paths resolve
     import app.core.docker_manager as _dm_mod  # noqa: F811
-    import app.services.agent_service as _agent_svc  # noqa: F811
     from app.main import app as fastapi_app
 
     with (
-        patch.object(_agent_svc, "docker_manager", mock_dm),
         patch.object(_dm_mod, "docker_manager", mock_dm),
-        patch("os.makedirs"),
-        patch("builtins.open", MagicMock()),
     ):
 
         async def override_get_db():
@@ -114,24 +105,6 @@ async def test_user_token(test_user: User) -> str:
 async def auth_headers(test_user_token: str) -> dict:
     """Return authorization headers for test user."""
     return {"Authorization": f"Bearer {test_user_token}"}
-
-
-@pytest_asyncio.fixture
-async def test_agent(db: AsyncSession, test_user: User) -> Agent:
-    """Create a test agent."""
-    agent = Agent(
-        user_id=test_user.id,
-        name="Test Agent",
-        model_name="deepseek-chat",
-        status=AgentStatus.running,
-        ws_port=19000,
-        container_id="fake-container-id",
-        gateway_token="fake-token",
-    )
-    db.add(agent)
-    await db.commit()
-    await db.refresh(agent)
-    return agent
 
 
 @pytest_asyncio.fixture

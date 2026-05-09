@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 
 # Columns added after initial deployment — ensure they exist on upgrade
 _COLUMN_MIGRATIONS = [
-    "ALTER TABLE agents ADD COLUMN IF NOT EXISTS gateway_token VARCHAR(100)",
-    "ALTER TABLE agents ADD COLUMN IF NOT EXISTS container_id VARCHAR(100)",
-    "ALTER TABLE agents ADD COLUMN IF NOT EXISTS ws_port INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_credit_limit INTEGER",
     "ALTER TABLE skills ADD COLUMN IF NOT EXISTS security_status VARCHAR(20) DEFAULT 'unreviewed'",
 ]
