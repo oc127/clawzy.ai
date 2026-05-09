@@ -73,7 +73,7 @@ export interface Skill {
   category: string;
   tags: string[] | null;
   icon_url: string | null;
-  clawhub_url: string | null;
+  lucyhub_url: string | null;
   author: string | null;
   version: string | null;
   install_count: number;

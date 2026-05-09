@@ -120,7 +120,7 @@ export function updatePersonality(data: { personality_type: string; custom_perso
   return apiPatch<LucyState>("/lucy/personality", data);
 }
 
-// --- Skills / ClawHub API ---
+// --- Skills / LucyHub API ---
 
 import type { SkillBrief, Skill, AgentSkill, SkillReview, SkillSubmission } from "./types";
 
