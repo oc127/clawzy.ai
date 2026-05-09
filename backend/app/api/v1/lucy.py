@@ -14,9 +14,12 @@ from app.schemas.lucy import (
     LucyStateResponse,
     ModelUpdate,
     PersonalityUpdate,
+    PushChannelsResponse,
+    PushChannelsUpdate,
     SoulResponse,
     SoulUpdate,
 )
+from app.services.push_service import PushChannel
 from app.services.soul_engine import get_relationship_stage, get_unlockable_expressions
 
 router = APIRouter(prefix="/lucy", tags=["lucy"])
@@ -238,4 +241,71 @@ async def get_expressions(
         unlocked=sorted(unlocked),
         locked=locked,
         next_unlock_at=next_unlock_at,
+    )
+
+
+# --------------------------------------------------------------------------- #
+#  Push notification channel preferences
+# --------------------------------------------------------------------------- #
+
+VALID_PUSH_CHANNELS = {ch.value for ch in PushChannel}
+
+
+@router.get("/push-channels", response_model=PushChannelsResponse)
+async def get_push_channels(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the user's enabled push notification channels."""
+    state = await _get_or_create_lucy_state(db, user.id)
+    return PushChannelsResponse(
+        push_channels=state.push_channels or ["websocket"],
+        line_user_id=state.line_user_id,
+        push_quiet_start=state.push_quiet_start,
+        push_quiet_end=state.push_quiet_end,
+    )
+
+
+@router.patch("/push-channels", response_model=PushChannelsResponse)
+async def update_push_channels(
+    body: PushChannelsUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update the user's push notification channel preferences."""
+    state = await _get_or_create_lucy_state(db, user.id)
+
+    if body.push_channels is not None:
+        invalid = [ch for ch in body.push_channels if ch not in VALID_PUSH_CHANNELS]
+        if invalid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid push channels: {', '.join(invalid)}. Valid: {', '.join(sorted(VALID_PUSH_CHANNELS))}",
+            )
+        state.push_channels = body.push_channels
+
+    if body.push_quiet_start is not None:
+        if not (0 <= body.push_quiet_start <= 23):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="push_quiet_start must be between 0 and 23",
+            )
+        state.push_quiet_start = body.push_quiet_start
+
+    if body.push_quiet_end is not None:
+        if not (0 <= body.push_quiet_end <= 23):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="push_quiet_end must be between 0 and 23",
+            )
+        state.push_quiet_end = body.push_quiet_end
+
+    await db.commit()
+    await db.refresh(state)
+
+    return PushChannelsResponse(
+        push_channels=state.push_channels or ["websocket"],
+        line_user_id=state.line_user_id,
+        push_quiet_start=state.push_quiet_start,
+        push_quiet_end=state.push_quiet_end,
     )

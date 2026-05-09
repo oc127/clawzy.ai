@@ -19,6 +19,7 @@ from app.services.chat_service import (
     stream_chat_completion,
 )
 from app.services.credits_service import DailyLimitExceededError, check_daily_limit
+from app.services.push_service import register_connection, unregister_connection
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ async def ws_chat(websocket: WebSocket):
         await db.commit()
 
     await websocket.accept()
+    register_connection(user_id, websocket)
 
     try:
         while True:
@@ -241,6 +243,8 @@ async def ws_chat(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: user=%s", user_id)
+    finally:
+        unregister_connection(user_id, websocket)
 
 
 # --------------------------------------------------------------------------- #

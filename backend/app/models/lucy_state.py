@@ -37,6 +37,12 @@ class LucyState(Base):
     # Model preference
     preferred_model: Mapped[str] = mapped_column(String(100), default="deepseek-chat")
 
+    # Push notification preferences
+    push_channels: Mapped[list] = mapped_column(JSON, default=lambda: ["websocket"])  # enabled channels
+    line_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # LINE user ID for push
+    push_quiet_start: Mapped[int | None] = mapped_column(Integer, nullable=True)  # quiet hours start (0-23)
+    push_quiet_end: Mapped[int | None] = mapped_column(Integer, nullable=True)  # quiet hours end (0-23)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 

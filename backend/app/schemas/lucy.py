@@ -42,3 +42,16 @@ class ExpressionsResponse(BaseModel):
     unlocked: list[str]
     locked: list[str]
     next_unlock_at: int
+
+
+class PushChannelsResponse(BaseModel):
+    push_channels: list[str]
+    line_user_id: str | None = None
+    push_quiet_start: int | None = None
+    push_quiet_end: int | None = None
+
+
+class PushChannelsUpdate(BaseModel):
+    push_channels: list[str] | None = None
+    push_quiet_start: int | None = None
+    push_quiet_end: int | None = None
