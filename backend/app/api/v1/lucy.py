@@ -17,6 +17,7 @@ from app.schemas.lucy import (
     SoulResponse,
     SoulUpdate,
 )
+from app.services.soul_engine import get_relationship_stage, get_unlockable_expressions
 
 router = APIRouter(prefix="/lucy", tags=["lucy"])
 
@@ -75,7 +76,17 @@ async def get_lucy_state(
 ):
     """Get the current user's Lucy state."""
     state = await _get_or_create_lucy_state(db, user.id)
-    return state
+    return LucyStateResponse(
+        personality_type=state.personality_type,
+        mood=state.mood,
+        affection=state.affection,
+        relationship_stage=get_relationship_stage(state.affection),
+        interaction_streak=state.interaction_streak,
+        total_interactions=state.total_interactions,
+        unlocked_expressions=state.unlocked_expressions or [],
+        preferred_model=state.preferred_model,
+        last_interaction_at=state.last_interaction_at,
+    )
 
 
 @router.patch("/personality", response_model=LucyStateResponse)

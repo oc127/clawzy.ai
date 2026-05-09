@@ -7,6 +7,7 @@ class LucyStateResponse(BaseModel):
     personality_type: str
     mood: str
     affection: int
+    relationship_stage: str
     interaction_streak: int
     total_interactions: int
     unlocked_expressions: list[str]
