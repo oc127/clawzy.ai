@@ -106,7 +106,7 @@ export default function SubmitSkillPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href="/clawhub"
+        href="/lucyhub"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />

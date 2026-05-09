@@ -11,10 +11,9 @@ import {
   createReview,
   updateReview,
   deleteReview,
-  apiGet,
   installSkill,
 } from "@/lib/api";
-import type { Skill, SkillBrief, SkillReview, Agent } from "@/lib/types";
+import type { Skill, SkillBrief, SkillReview } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +29,6 @@ import {
   Tag,
   ExternalLink,
   Check,
-  ChevronDown,
   Zap,
   MessageSquare,
   Trash2,
@@ -45,11 +43,9 @@ export default function SkillDetailPage() {
   const [recommended, setRecommended] = useState<SkillBrief[]>([]);
   const [reviews, setReviews] = useState<SkillReview[]>([]);
   const [myReview, setMyReview] = useState<SkillReview | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAgentPicker, setShowAgentPicker] = useState(false);
-  const [installing, setInstalling] = useState<string | null>(null);
-  const [installed, setInstalled] = useState<Set<string>>(new Set());
+  const [installing, setInstalling] = useState(false);
+  const [installed, setInstalled] = useState(false);
   const [error, setError] = useState("");
 
   // Review form
@@ -81,24 +77,20 @@ export default function SkillDetailPage() {
       .catch(() => setError("Skill not found"))
       .finally(() => setLoading(false));
 
-    // Fetch user's agents for install picker
-    apiGet<Agent[]>("/agents")
-      .then(setAgents)
-      .catch(() => {});
   }, [slug]);
 
-  const handleInstall = async (agentId: string) => {
+  const handleInstall = async () => {
     if (!skill) return;
-    setInstalling(agentId);
+    setInstalling(true);
     try {
-      await installSkill(agentId, skill.id);
-      setInstalled((prev) => new Set(prev).add(agentId));
+      await installSkill(skill.id);
+      setInstalled(true);
       toast.success(`Installed ${skill.name}`);
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : "Failed to install skill";
       toast.error(detail);
     } finally {
-      setInstalling(null);
+      setInstalling(false);
     }
   };
 
@@ -170,7 +162,7 @@ export default function SkillDetailPage() {
     return (
       <div>
         <p className="text-red-400">{error || "Skill not found"}</p>
-        <Link href="/clawhub" className="mt-4 inline-block text-sm text-primary hover:underline">
+        <Link href="/lucyhub" className="mt-4 inline-block text-sm text-primary hover:underline">
           Back to LucyHub
         </Link>
       </div>
@@ -183,7 +175,7 @@ export default function SkillDetailPage() {
     <div className="mx-auto max-w-4xl">
       {/* Back button */}
       <Link
-        href="/clawhub"
+        href="/lucyhub"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -242,7 +234,7 @@ export default function SkillDetailPage() {
                   {skill.tags.map((tag) => (
                     <Link
                       key={tag}
-                      href={`/clawhub?tag=${encodeURIComponent(tag)}`}
+                      href={`/lucyhub?tag=${encodeURIComponent(tag)}`}
                       className="rounded bg-accent px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {tag}
@@ -254,52 +246,24 @@ export default function SkillDetailPage() {
           </div>
 
           {/* Install button */}
-          <div className="relative shrink-0">
+          <div className="shrink-0">
             <Button
-              onClick={() => setShowAgentPicker(!showAgentPicker)}
+              onClick={handleInstall}
+              disabled={installing || installed}
               className="gap-2"
             >
-              <Download className="h-4 w-4" />
-              Install to Agent
-              <ChevronDown className="h-3 w-3" />
+              {installed ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Installed
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  {installing ? "Installing..." : "Install for Lucy"}
+                </>
+              )}
             </Button>
-
-            {/* Agent picker dropdown */}
-            {showAgentPicker && (
-              <div className="absolute right-0 top-full z-10 mt-2 w-64 rounded-lg border border-border bg-card shadow-xl">
-                <div className="p-2">
-                  <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                    Select an agent
-                  </p>
-                  {agents.length === 0 ? (
-                    <p className="px-2 py-3 text-sm text-muted-foreground">
-                      No agents yet.{" "}
-                      <Link href="/agents" className="text-primary hover:underline">
-                        Create one
-                      </Link>
-                    </p>
-                  ) : (
-                    agents.map((agent) => (
-                      <button
-                        key={agent.id}
-                        onClick={() => handleInstall(agent.id)}
-                        disabled={installing === agent.id || installed.has(agent.id)}
-                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent disabled:opacity-50"
-                      >
-                        <span>{agent.name}</span>
-                        {installed.has(agent.id) ? (
-                          <Check className="h-4 w-4 text-green-400" />
-                        ) : installing === agent.id ? (
-                          <span className="text-xs text-muted-foreground">Installing...</span>
-                        ) : (
-                          <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </Card>
@@ -318,9 +282,9 @@ export default function SkillDetailPage() {
       </Card>
 
       {/* LucyHub link */}
-      {skill.clawhub_url && (
+      {skill.lucyhub_url && (
         <a
-          href={skill.clawhub_url}
+          href={skill.lucyhub_url}
           target="_blank"
           rel="noopener noreferrer"
           className="mb-6 inline-flex items-center gap-1 text-sm text-primary hover:underline"
@@ -538,7 +502,7 @@ export default function SkillDetailPage() {
             {recommended.slice(0, 6).map((rs) => {
               const RIcon = CATEGORY_ICONS[rs.category] || Zap;
               return (
-                <Link key={rs.id} href={`/clawhub/${rs.slug}`}>
+                <Link key={rs.id} href={`/lucyhub/${rs.slug}`}>
                   <div className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary/30 hover:bg-accent/50 cursor-pointer">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <RIcon className="h-4 w-4" />

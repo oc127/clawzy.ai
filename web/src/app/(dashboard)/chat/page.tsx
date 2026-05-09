@@ -1,43 +1,52 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
-import { apiGet, apiPost, getAgentSkills, uninstallSkill, toggleAgentSkill } from "@/lib/api";
-import type { Agent, Conversation, Message, AgentSkill } from "@/lib/types";
+import { apiGet, getLucyState } from "@/lib/api";
+import type { Conversation, Message, LucyState } from "@/lib/types";
 import { useChat } from "@/hooks/use-chat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ArtifactsPanel, type Artifact } from "@/components/artifacts-panel";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/context/language-context";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
-  Bot,
   Send,
   Plus,
   MessageSquare,
-  Play,
-  Square,
   PanelLeftOpen,
   PanelLeftClose,
-  Package,
-  Trash2,
-  ToggleLeft,
-  ToggleRight,
   AlertCircle,
   RefreshCw,
-  RotateCcw,
   Heart,
-  Terminal,
   StopCircle,
-  ChevronDown,
-  ChevronUp,
   Download,
   FileText,
 } from "lucide-react";
+
+/* ------------------------------------------------------------------ */
+/*  Mood emoji mapping                                                 */
+/* ------------------------------------------------------------------ */
+
+const MOOD_EMOJI: Record<string, string> = {
+  happy: "\u{1F60A}",
+  curious: "\u{1F914}",
+  excited: "\u{1F929}",
+  calm: "\u{1F60C}",
+  playful: "\u{1F63C}",
+  focused: "\u{1F9D0}",
+  loving: "\u{1F970}",
+  neutral: "\u{1F642}",
+};
+
+function moodEmoji(mood: string): string {
+  return MOOD_EMOJI[mood.toLowerCase()] ?? "\u{1F642}";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 function formatTime(iso?: string) {
   if (!iso) return null;
@@ -99,163 +108,54 @@ function ChatSkeleton() {
   );
 }
 
-// --- Agent Ops Panel ---
-function AgentOpsPanel({ agentId, agent, setAgent }: {
-  agentId: string;
-  agent: Agent;
-  setAgent: (a: Agent) => void;
-}) {
-  const [showOps, setShowOps] = useState(false);
-  const [health, setHealth] = useState<{
-    status?: string;
-    running?: boolean;
-    started_at?: string;
-    health_status?: string;
-    restart_count?: number;
-  } | null>(null);
-  const [logs, setLogs] = useState<string | null>(null);
-  const [loadingHealth, setLoadingHealth] = useState(false);
-  const [loadingLogs, setLoadingLogs] = useState(false);
-  const [restarting, setRestarting] = useState(false);
+/* ------------------------------------------------------------------ */
+/*  Lucy status badge                                                  */
+/* ------------------------------------------------------------------ */
 
-  const fetchHealth = async () => {
-    setLoadingHealth(true);
-    try {
-      const h = await apiGet<typeof health>(`/agents/${agentId}/health`);
-      setHealth(h);
-    } catch {
-      toast.error("Failed to fetch health");
-    } finally {
-      setLoadingHealth(false);
-    }
-  };
-
-  const fetchLogs = async () => {
-    setLoadingLogs(true);
-    try {
-      const res = await apiGet<{ logs: string }>(`/agents/${agentId}/logs`);
-      setLogs(res.logs);
-    } catch {
-      toast.error("Failed to fetch logs");
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
-
-  const handleRestart = async () => {
-    setRestarting(true);
-    try {
-      const updated = await apiPost<Agent>(`/agents/${agentId}/restart`);
-      setAgent(updated);
-      toast.success("Agent restarted");
-    } catch {
-      toast.error("Failed to restart agent");
-    } finally {
-      setRestarting(false);
-    }
-  };
-
-  const healthStatus = health?.health_status;
-
+function LucyStatusBadge({ lucy }: { lucy: LucyState }) {
   return (
-    <div className="border-t border-[#ebebeb] dark:border-[#333] pt-3 mt-3">
-      <button
-        onClick={() => setShowOps(!showOps)}
-        className="flex w-full items-center justify-between text-sm font-bold text-[#222222] dark:text-white"
+    <div className="flex flex-wrap items-center gap-2 text-xs text-[#717171] dark:text-[#a0a0a0]">
+      <span
+        className="rounded-full bg-[#f7f7f7] dark:bg-[#262626] border border-[#ebebeb] dark:border-[#333] px-2.5 py-0.5"
+        title={`Mood: ${lucy.mood}`}
       >
-        <span className="flex items-center gap-1.5">
-          <Terminal className="h-3.5 w-3.5 text-[#717171] dark:text-[#a0a0a0]" />
-          Ops Panel
-        </span>
-        {showOps ? (
-          <ChevronUp className="h-3.5 w-3.5 text-[#b0b0b0] dark:text-[#666]" />
-        ) : (
-          <ChevronDown className="h-3.5 w-3.5 text-[#b0b0b0] dark:text-[#666]" />
-        )}
-      </button>
-
-      {showOps && (
-        <div className="mt-3 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleRestart} disabled={restarting || agent.status === "creating"}
-              className="h-7 text-xs border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-lg">
-              <RotateCcw className={cn("mr-1 h-3 w-3", restarting && "animate-spin")} />
-              {restarting ? "Restarting..." : "Restart"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loadingHealth}
-              className="h-7 text-xs border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-lg">
-              <Heart className="mr-1 h-3 w-3" />
-              Health
-            </Button>
-            <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loadingLogs}
-              className="h-7 text-xs border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-lg">
-              <Terminal className="mr-1 h-3 w-3" />
-              Logs
-            </Button>
-          </div>
-
-          {health && (
-            <div className="rounded-xl bg-[#f7f7f7] dark:bg-[#262626] border border-[#ebebeb] dark:border-[#333] p-3 text-xs">
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-[#717171] dark:text-[#a0a0a0]">Status:</span>
-                <span className={cn(
-                  "rounded-full px-2 py-0.5 font-semibold",
-                  healthStatus === "healthy"
-                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                    : healthStatus === "unhealthy"
-                      ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                      : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                )}>
-                  {healthStatus || health.status}
-                </span>
-              </div>
-              {health.restart_count !== undefined && (
-                <div className="flex items-center gap-2 text-[#717171] dark:text-[#a0a0a0]">
-                  <span>Restarts:</span><span className="text-[#222222] dark:text-white">{health.restart_count}</span>
-                </div>
-              )}
-              {health.started_at && (
-                <div className="flex items-center gap-2 text-[#717171] dark:text-[#a0a0a0]">
-                  <span>Up since:</span><span className="text-[#222222] dark:text-white">{formatTime(health.started_at) || "—"}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {logs !== null && (
-            <div className="max-h-40 overflow-y-auto rounded-xl bg-[#1a1a1a] dark:bg-[#0d0d0d] p-3">
-              <pre className="whitespace-pre-wrap text-[10px] leading-tight text-emerald-400 font-mono">
-                {logs || "(no logs)"}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+        {moodEmoji(lucy.mood)} {lucy.mood}
+      </span>
+      <span
+        className="rounded-full bg-[#fff0f2] dark:bg-[#ff385c]/10 border border-[#ffd6dd] dark:border-[#ff385c]/20 px-2.5 py-0.5 text-[#ff385c]"
+        title={`Affection: ${lucy.affection}%`}
+      >
+        <Heart className="mr-0.5 inline h-3 w-3" />
+        {lucy.affection}
+      </span>
+      <span
+        className="rounded-full bg-[#f7f7f7] dark:bg-[#262626] border border-[#ebebeb] dark:border-[#333] px-2.5 py-0.5"
+        title={`Relationship: ${lucy.relationship_stage}`}
+      >
+        {lucy.relationship_stage}
+      </span>
     </div>
   );
 }
 
-export default function AgentDetailPage() {
-  const params = useParams();
-  const agentId = params.id as string;
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
 
-  const [agent, setAgent] = useState<Agent | null>(null);
+export default function LucyChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [agentSkills, setAgentSkills] = useState<AgentSkill[]>([]);
+  const [lucyState, setLucyState] = useState<LucyState | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [showSidebar, setShowSidebar] = useState(false);
-  const [uninstallTarget, setUninstallTarget] = useState<AgentSkill | null>(null);
-  const [uninstalling, setUninstalling] = useState(false);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [showArtifacts, setShowArtifacts] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { t } = useLanguage();
   const { messages, setMessages, isStreaming, error, sendMessage, cancelStream, connectionStatus } = useChat({
-    agentId,
     conversationId: activeConvId,
     onConversationCreated: (id) => {
       setActiveConvId(id);
@@ -263,44 +163,30 @@ export default function AgentDetailPage() {
     },
   });
 
-  const handleToggleAgent = useCallback(async () => {
-    if (!agent) return;
-    const action = agent.status === "running" ? "stop" : "start";
-    try {
-      const updated = await apiPost<Agent>(`/agents/${agentId}/${action}`);
-      setAgent(updated);
-      toast.success(`Agent ${action === "start" ? "started" : "stopped"}`);
-    } catch {
-      toast.error(`Failed to ${action} agent`);
-    }
-  }, [agent, agentId]);
-
   const fetchConversations = () => {
-    apiGet<Conversation[]>(`/agents/${agentId}/conversations`)
+    apiGet<Conversation[]>("/lucy/conversations")
       .then(setConversations)
       .catch(() => toast.error("Failed to load conversations"));
   };
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
     setFetchError(null);
     Promise.all([
-      apiGet<Agent>(`/agents/${agentId}`),
-      apiGet<Conversation[]>(`/agents/${agentId}/conversations`),
-      getAgentSkills(agentId),
+      apiGet<Conversation[]>("/lucy/conversations"),
+      getLucyState(),
     ])
-      .then(([a, c, s]) => {
-        setAgent(a);
+      .then(([c, ls]) => {
         setConversations(c);
-        setAgentSkills(s);
+        setLucyState(ls);
       })
-      .catch((err) => setFetchError(err.message || "Failed to load agent"))
+      .catch((err) => setFetchError(err.message || "Failed to load data"))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, [agentId]);
+  }, [fetchData]);
 
   // Extract artifacts (code blocks) from assistant messages
   useEffect(() => {
@@ -393,21 +279,6 @@ export default function AgentDetailPage() {
     setInput("");
   };
 
-  const handleUninstallSkill = async () => {
-    if (!uninstallTarget) return;
-    setUninstalling(true);
-    try {
-      await uninstallSkill(agentId, uninstallTarget.skill.id);
-      setAgentSkills((prev) => prev.filter((s) => s.id !== uninstallTarget.id));
-      toast.success(`${uninstallTarget.skill.name} uninstalled`);
-    } catch {
-      toast.error("Failed to uninstall skill");
-    } finally {
-      setUninstalling(false);
-      setUninstallTarget(null);
-    }
-  };
-
   if (loading) return <ChatSkeleton />;
 
   if (fetchError) {
@@ -419,14 +290,6 @@ export default function AgentDetailPage() {
           <RefreshCw className="mr-2 h-3.5 w-3.5" />
           Retry
         </Button>
-      </div>
-    );
-  }
-
-  if (!agent) {
-    return (
-      <div className="flex h-64 items-center justify-center rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a]" role="alert">
-        <p className="text-sm text-[#717171] dark:text-[#a0a0a0]">Agent not found.</p>
       </div>
     );
   }
@@ -447,7 +310,7 @@ export default function AgentDetailPage() {
         )}
       </button>
 
-      {/* Left sidebar: agent info + conversations */}
+      {/* Left sidebar: Lucy info + conversations */}
       <div
         className={cn(
           "w-64 shrink-0 flex-col gap-4 overflow-y-auto",
@@ -456,48 +319,22 @@ export default function AgentDetailPage() {
             : "hidden md:flex"
         )}
       >
-        {/* Agent info card */}
+        {/* Lucy info card */}
         <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl icon-gradient-red shadow-sm">
-              <Bot className="h-5 w-5 text-white" />
+              <Heart className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-[#222222] dark:text-white">{agent.name}</h2>
-              <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">{agent.model_name}</p>
+              <h2 className="font-bold text-[#222222] dark:text-white">Lucy</h2>
+              <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">Your AI companion</p>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                agent.status === "running"
-                  ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                  : "bg-[#f7f7f7] dark:bg-[#262626] text-[#717171] dark:text-[#a0a0a0]"
-              }`}
-            >
-              {agent.status}
-            </span>
-            {(agent.status === "running" || agent.status === "stopped") && (
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={agent.status === "running" ? "Stop agent" : "Start agent"}
-                onClick={handleToggleAgent}
-                className={cn(
-                  "h-7 rounded-lg",
-                  agent.status === "running"
-                    ? "text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
-                    : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                )}
-              >
-                {agent.status === "running" ? (
-                  <Square className="h-3 w-3" />
-                ) : (
-                  <Play className="h-3 w-3" />
-                )}
-              </Button>
-            )}
-          </div>
+          {lucyState && (
+            <div className="mt-3">
+              <LucyStatusBadge lucy={lucyState} />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between px-1">
@@ -546,79 +383,6 @@ export default function AgentDetailPage() {
             </p>
           )}
         </div>
-
-        {/* Installed Skills */}
-        <div className="border-t border-[#ebebeb] dark:border-[#333] pt-3 mt-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-[#222222] dark:text-white flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" />
-              Skills
-            </h3>
-            <Link href="/clawhub">
-              <Button variant="ghost" size="sm" className="h-6 text-xs text-[#ff385c] hover:bg-[#fff0f2] dark:hover:bg-[#ff385c]/10">
-                Browse
-              </Button>
-            </Link>
-          </div>
-          <div className="space-y-0.5">
-            {agentSkills.map((as) => (
-              <div
-                key={as.id}
-                className="flex items-center justify-between rounded-xl px-2 py-1.5 text-sm hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
-              >
-                <span className={as.enabled ? "text-[#222222] dark:text-white" : "text-[#b0b0b0] dark:text-[#666] line-through"}>
-                  {as.skill.name}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={async () => {
-                      const newEnabled = !as.enabled;
-                      try {
-                        await toggleAgentSkill(agentId, as.skill.id, newEnabled);
-                        setAgentSkills((prev) =>
-                          prev.map((s) =>
-                            s.id === as.id ? { ...s, enabled: newEnabled } : s
-                          )
-                        );
-                        toast.success(`Skill ${newEnabled ? "enabled" : "disabled"}`);
-                      } catch {
-                        toast.error("Failed to toggle skill");
-                      }
-                    }}
-                    className="rounded p-0.5 text-[#b0b0b0] dark:text-[#666] hover:text-[#222222] dark:hover:text-white"
-                    title={as.enabled ? "Disable" : "Enable"}
-                    aria-label={as.enabled ? `Disable ${as.skill.name}` : `Enable ${as.skill.name}`}
-                  >
-                    {as.enabled ? (
-                      <ToggleRight className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <ToggleLeft className="h-4 w-4" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setUninstallTarget(as)}
-                    className="rounded p-0.5 text-[#b0b0b0] dark:text-[#666] hover:text-[#ff385c]"
-                    title="Uninstall"
-                    aria-label={`Uninstall ${as.skill.name}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {agentSkills.length === 0 && (
-              <p className="px-2 text-xs text-[#b0b0b0] dark:text-[#666]">
-                No skills installed.{" "}
-                <Link href="/clawhub" className="text-[#ff385c] hover:underline">
-                  Browse LucyHub
-                </Link>
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Ops Panel */}
-        <AgentOpsPanel agentId={agentId} agent={agent} setAgent={setAgent} />
       </div>
 
       {/* Overlay for mobile sidebar */}
@@ -638,12 +402,17 @@ export default function AgentDetailPage() {
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl icon-gradient-red shadow-md">
-                  <Bot className="h-8 w-8 text-white" />
+                  <Heart className="h-8 w-8 text-white" />
                 </div>
-                <p className="font-semibold text-[#222222] dark:text-white">{agent.name}</p>
+                <p className="font-semibold text-[#222222] dark:text-white">Lucy</p>
                 <p className="mt-1 text-sm text-[#717171] dark:text-[#a0a0a0]">
                   Send a message to start chatting.
                 </p>
+                {lucyState && (
+                  <p className="mt-2 text-xs text-[#b0b0b0] dark:text-[#666]">
+                    {moodEmoji(lucyState.mood)} Feeling {lucyState.mood}
+                  </p>
+                )}
               </div>
             </div>
           ) : (
@@ -734,7 +503,7 @@ export default function AgentDetailPage() {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={`Message ${agent.name}...`}
+            placeholder="Message Lucy..."
             disabled={isStreaming || connectionStatus !== "connected"}
             className="flex-1"
           />
@@ -782,18 +551,6 @@ export default function AgentDetailPage() {
         <ArtifactsPanel artifacts={artifacts} onClose={() => setShowArtifacts(false)} />
       )}
       </div>
-
-      {/* Uninstall confirmation */}
-      <ConfirmDialog
-        open={!!uninstallTarget}
-        title="Uninstall Skill"
-        message={`Are you sure you want to uninstall "${uninstallTarget?.skill.name}"? This action cannot be undone.`}
-        confirmLabel="Uninstall"
-        variant="danger"
-        loading={uninstalling}
-        onConfirm={handleUninstallSkill}
-        onCancel={() => setUninstallTarget(null)}
-      />
     </div>
   );
 }

@@ -162,6 +162,9 @@ html {
 .icon-gradient-teal {
   background: linear-gradient(135deg, #14b8a6 0%, #22d3ee 100%);
 }
+.icon-gradient-pink {
+  background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
+}
 
 @media (prefers-reduced-motion: reduce) {
   * {

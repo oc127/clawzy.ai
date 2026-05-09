@@ -104,6 +104,22 @@ export function apiDelete(path: string): Promise<void> {
   return request<void>(path, { method: "DELETE" });
 }
 
+// --- Lucy ---
+
+import type { LucyState } from "./types";
+
+export function getLucyState(): Promise<LucyState> {
+  return apiGet<LucyState>("/lucy/state");
+}
+
+export function recordInteraction(): Promise<LucyState> {
+  return apiPost<LucyState>("/lucy/interaction");
+}
+
+export function updatePersonality(data: { personality_type: string; custom_personality_prompt?: string }): Promise<LucyState> {
+  return apiPatch<LucyState>("/lucy/personality", data);
+}
+
 // --- Skills / ClawHub API ---
 
 import type { SkillBrief, Skill, AgentSkill, SkillReview, SkillSubmission } from "./types";
@@ -151,16 +167,16 @@ export function getAgentSkills(agentId: string): Promise<AgentSkill[]> {
   return apiGet<AgentSkill[]>(`/skills/agents/${agentId}/installed`);
 }
 
-export function installSkill(agentId: string, skillId: string): Promise<AgentSkill> {
-  return apiPost<AgentSkill>(`/skills/agents/${agentId}/install`, { skill_id: skillId });
+export function installSkill(skillId: string): Promise<AgentSkill> {
+  return apiPost<AgentSkill>("/skills/lucy/skills/install", { skill_id: skillId });
 }
 
-export function uninstallSkill(agentId: string, skillId: string): Promise<void> {
-  return apiDelete(`/skills/agents/${agentId}/uninstall/${skillId}`);
+export function uninstallSkill(skillId: string): Promise<void> {
+  return apiDelete(`/skills/lucy/skills/uninstall/${skillId}`);
 }
 
-export function toggleAgentSkill(agentId: string, skillId: string, enabled: boolean): Promise<AgentSkill> {
-  return apiPatch<AgentSkill>(`/skills/agents/${agentId}/toggle/${skillId}`, { enabled });
+export function getLucySkills(): Promise<AgentSkill[]> {
+  return apiGet<AgentSkill[]>("/skills/lucy/skills");
 }
 
 // --- Reviews ---

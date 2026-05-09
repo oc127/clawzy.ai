@@ -13,9 +13,9 @@ import { Logo } from "@/components/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { toast } from "sonner";
 import {
-  LayoutDashboard,
-  Bot,
-  Cpu,
+  MessageSquare,
+  Heart,
+  Sparkles,
   CreditCard,
   Settings,
   LogOut,
@@ -29,11 +29,11 @@ import {
 } from "lucide-react";
 
 const SIDEBAR_LINKS_CONFIG = [
-  { href: "/dashboard", key: "dashboard" as const, icon: LayoutDashboard, gradient: "icon-gradient-red" },
-  { href: "/agents", key: "agents" as const, icon: Bot, gradient: "icon-gradient-blue" },
-  { href: "/clawhub", key: "clawhub" as const, icon: Package, gradient: "icon-gradient-purple" },
-  { href: "/models", key: "models" as const, icon: Cpu, gradient: "icon-gradient-teal" },
-  { href: "/memory", key: "memory" as const, icon: Brain, gradient: "icon-gradient-pink" },
+  { href: "/chat", key: "chat" as const, icon: MessageSquare, gradient: "icon-gradient-red" },
+  { href: "/status", key: "status" as const, icon: Heart, gradient: "icon-gradient-pink" },
+  { href: "/memory", key: "memory" as const, icon: Brain, gradient: "icon-gradient-purple" },
+  { href: "/personality", key: "personality" as const, icon: Sparkles, gradient: "icon-gradient-blue" },
+  { href: "/lucyhub", key: "lucyhub" as const, icon: Package, gradient: "icon-gradient-teal" },
   { href: "/billing", key: "billing" as const, icon: CreditCard, gradient: "icon-gradient-green" },
   { href: "/settings", key: "settings" as const, icon: Settings, gradient: "icon-gradient-orange" },
 ];
@@ -64,11 +64,11 @@ export default function DashboardLayout({
   }, []);
 
   const DASHBOARD_KEY_MAP: Record<string, string> = {
-    dashboard: t.dashboard.title,
-    agents: t.dashboard.agents,
-    clawhub: t.dashboard.clawhub,
+    chat: t.dashboard.chat,
+    status: t.dashboard.status,
     memory: t.dashboard.memory,
-    models: t.dashboard.models,
+    personality: t.dashboard.personality,
+    lucyhub: t.dashboard.lucyhub,
     billing: t.dashboard.billing,
     settings: t.dashboard.settings,
   };
@@ -157,7 +157,7 @@ export default function DashboardLayout({
           {sidebarLinks.map((link) => {
             const isActive =
               pathname === link.href ||
-              (link.href !== "/dashboard" && pathname.startsWith(link.href + "/"));
+              (link.href !== "/chat" && pathname.startsWith(link.href + "/"));
             return (
               <Link
                 key={link.label}

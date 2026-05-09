@@ -20,7 +20,7 @@ export interface ChatMessage {
 export type ConnectionStatus = "connected" | "reconnecting" | "disconnected";
 
 interface UseChatOptions {
-  agentId: string;
+  agentId?: string;
   conversationId: string | null;
   onConversationCreated?: (id: string) => void;
 }
@@ -72,9 +72,10 @@ export function useChat({
       setConnectionStatus("reconnecting");
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(
-        `${protocol}//${window.location.host}/api/v1/ws/chat/${agentId}?token=${token}`,
-      );
+      const wsPath = agentId
+        ? `${protocol}//${window.location.host}/api/v1/ws/chat/${agentId}?token=${token}`
+        : `${protocol}//${window.location.host}/api/v1/ws/chat?token=${token}`;
+      const ws = new WebSocket(wsPath);
 
       ws.onopen = () => {
         if (unmounted) return;

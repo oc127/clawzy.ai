@@ -35,7 +35,7 @@ function SkeletonEl({ className }: { className?: string }) {
   return <div className={`skeleton-shimmer rounded-2xl ${className ?? ""}`} />;
 }
 
-function ClawHubSkeleton() {
+function LucyHubSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -64,7 +64,7 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
   );
 }
 
-export default function ClawHubPage() {
+export default function LucyHubPage() {
   const [trending, setTrending] = useState<SkillBrief[]>([]);
   const [skills, setSkills] = useState<SkillBrief[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -113,7 +113,7 @@ export default function ClawHubPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, searchQuery, sortBy, activeTag]);
 
-  if (loading) return <ClawHubSkeleton />;
+  if (loading) return <LucyHubSkeleton />;
 
   if (fetchError) {
     return (
@@ -143,7 +143,7 @@ export default function ClawHubPage() {
             Discover and install skills to supercharge your agents.
           </p>
         </div>
-        <Link href="/clawhub/submit">
+        <Link href="/lucyhub/submit">
           <Button variant="outline" className="gap-2 border-[#dddddd] dark:border-[#444] text-[#222222] dark:text-white hover:bg-[#f7f7f7] dark:hover:bg-[#262626] rounded-xl font-semibold">
             <Plus className="h-4 w-4" />
             Submit Skill
@@ -208,7 +208,7 @@ export default function ClawHubPage() {
 
           <div className="grid gap-4 md:grid-cols-3 mb-4">
             {trending.slice(0, 3).map((skill, i) => (
-              <Link key={skill.id} href={`/clawhub/${skill.slug}`}>
+              <Link key={skill.id} href={`/lucyhub/${skill.slug}`}>
                 <div className="flex flex-col rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer h-full">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full icon-gradient-red text-sm font-bold text-white shadow-sm">
@@ -236,7 +236,7 @@ export default function ClawHubPage() {
           {trending.length > 3 && (
             <div className="grid gap-2 md:grid-cols-2">
               {trending.slice(3).map((skill, i) => (
-                <Link key={skill.id} href={`/clawhub/${skill.slug}`}>
+                <Link key={skill.id} href={`/lucyhub/${skill.slug}`}>
                   <div className="flex items-center gap-3 rounded-xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-3 hover:border-[#dddddd] dark:hover:border-[#444] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] transition-colors cursor-pointer">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f7f7f7] dark:bg-[#262626] text-xs font-semibold text-[#717171] dark:text-[#a0a0a0]">{i + 4}</span>
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg icon-gradient-purple shadow-sm">
@@ -299,7 +299,7 @@ export default function ClawHubPage() {
       {/* Skills grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {skills.map((skill) => (
-          <Link key={skill.id} href={`/clawhub/${skill.slug}`}>
+          <Link key={skill.id} href={`/lucyhub/${skill.slug}`}>
             <div className="flex flex-col rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer h-full">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl icon-gradient-purple shadow-sm">

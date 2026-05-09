@@ -149,6 +149,18 @@ export interface SubtaskResult {
   conversation_id: string | null;
 }
 
+export interface LucyState {
+  personality_type: string;
+  mood: string;
+  affection: number;
+  relationship_stage: string;
+  interaction_streak: number;
+  total_interactions: number;
+  unlocked_expressions: string[];
+  preferred_model: string;
+  last_interaction_at: string | null;
+}
+
 export interface SkillSubmission {
   id: string;
   user_id: string;
