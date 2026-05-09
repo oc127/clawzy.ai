@@ -1,4 +1,4 @@
-"""Chat service — streams LLM responses via LiteLLM and manages conversations."""
+"""Chat service — streams LLM responses for Lucy companion and manages conversations."""
 
 import json
 import logging
@@ -9,19 +9,33 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.agent import Agent, AgentStatus
 from app.models.chat import Conversation, Message, MessageRole
+from app.models.lucy_state import LucyState
 from app.services.credits_service import InsufficientCreditsError, deduct_credits
 from app.services.memory_service import extract_memories, get_relevant_memories
+from app.services.safety_guard import SafetyGuard
 from app.services.smart_router import smart_route
+from app.services.soul_engine import (
+    analyze_mood,
+    build_system_prompt,
+    calculate_affection_delta,
+    get_unlockable_expressions,
+)
 
 logger = logging.getLogger(__name__)
+
+# Fixed identifier used as agent_id placeholder in conversations for Lucy.
+LUCY_AGENT_ID = "lucy"
 
 
 async def get_or_create_conversation(
     db: AsyncSession, agent_id: str, conversation_id: str | None = None
 ) -> Conversation:
-    """Get existing conversation or create a new one."""
+    """Get existing conversation or create a new one.
+
+    ``agent_id`` is kept in the signature for backward compatibility with the
+    Conversation model; callers should pass ``LUCY_AGENT_ID``.
+    """
     if conversation_id:
         result = await db.execute(
             select(Conversation).where(
@@ -76,21 +90,45 @@ async def get_conversation_history(db: AsyncSession, conversation_id: str, limit
     return [{"role": m.role.value, "content": m.content} for m in messages]
 
 
+async def _fetch_skill_prompts(db: AsyncSession, lucy_state: LucyState) -> list[str]:
+    """Query enabled skill prompt templates for the user's Lucy instance.
+
+    We reuse the AgentSkill join table with ``LUCY_AGENT_ID`` as a placeholder.
+    If no rows match the fixed identifier we fall back to an empty list.
+    """
+    from app.models.skill import AgentSkill as AgentSkillModel, Skill as SkillModel
+
+    result = await db.execute(
+        select(SkillModel.prompt_template)
+        .join(AgentSkillModel, AgentSkillModel.skill_id == SkillModel.id)
+        .where(
+            AgentSkillModel.agent_id == LUCY_AGENT_ID,
+            AgentSkillModel.enabled == True,  # noqa: E712
+            SkillModel.prompt_template.isnot(None),
+        )
+    )
+    return [row[0] for row in result.all() if row[0]]
+
+
 async def stream_chat_completion(
     db: AsyncSession,
     user_id: str,
-    agent: Agent,
+    lucy_state: LucyState,
     conversation_id: str,
     user_content: str,
 ):
     """
-    Stream a chat completion from LiteLLM.
+    Stream a chat completion for Lucy.
 
     Yields JSON-encoded event dicts:
       {"type": "stream", "content": "..."}
       {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
+    # ── Safety Guard setup ──
+    guard = SafetyGuard()
+    guard.start_turn()
+
     # Save user message
     await save_message(db, conversation_id, MessageRole.user, user_content)
     await db.commit()
@@ -98,77 +136,38 @@ async def stream_chat_completion(
     # Build message history for context
     history = await get_conversation_history(db, conversation_id)
 
-    # Inject persistent memories into system prompt
-    memories = await get_relevant_memories(db, user_id, agent.id)
-    if memories:
-        memory_block = "Relevant memories about this user:\n" + "\n".join(f"- {m}" for m in memories)
-        if history and history[0].get("role") == "system":
-            history[0]["content"] += f"\n\n{memory_block}"
-        else:
-            history.insert(0, {"role": "system", "content": memory_block})
+    # ── Soul Engine: build system prompt ──
+    memories = await get_relevant_memories(db, user_id)
+    skill_prompts = await _fetch_skill_prompts(db, lucy_state)
+    system_prompt = build_system_prompt(lucy_state, memories, skill_prompts)
 
-    # Inject installed skill prompt templates
-    from app.models.skill import AgentSkill as AgentSkillModel, Skill as SkillModel
-    skill_result = await db.execute(
-        select(SkillModel.prompt_template)
-        .join(AgentSkillModel, AgentSkillModel.skill_id == SkillModel.id)
-        .where(
-            AgentSkillModel.agent_id == agent.id,
-            AgentSkillModel.enabled == True,
-            SkillModel.prompt_template.isnot(None),
-        )
-    )
-    skill_prompts = [row[0] for row in skill_result.all() if row[0]]
-    if skill_prompts:
-        skills_block = "Active skills:\n" + "\n---\n".join(skill_prompts)
-        if history and history[0].get("role") == "system":
-            history[0]["content"] += f"\n\n{skills_block}"
-        else:
-            history.insert(0, {"role": "system", "content": skills_block})
+    # Append concise instruction from Safety Guard when token budget is running low
+    concise_instruction = guard.token_budget.get_concise_instruction()
+    if concise_instruction:
+        system_prompt += f"\n\n{concise_instruction}"
+
+    # Prepend the assembled system prompt to the message history
+    history.insert(0, {"role": "system", "content": system_prompt})
 
     # Smart model routing — auto-downgrade simple tasks to cheaper models
-    effective_model, was_downgraded = smart_route(agent.model_name, user_content, history_len=len(history))
+    effective_model, was_downgraded = smart_route(lucy_state.preferred_model, user_content, history_len=len(history))
     from app.services.credits_service import CREDIT_RATES
 
     if effective_model not in CREDIT_RATES:
-        logger.error("smart_route returned unknown model %s, falling back to %s", effective_model, agent.model_name)
-        effective_model = agent.model_name
+        logger.error("smart_route returned unknown model %s, falling back to %s", effective_model, lucy_state.preferred_model)
+        effective_model = lucy_state.preferred_model
         was_downgraded = False
     if was_downgraded:
         logger.info(
-            "Smart route: downgraded %s → %s for agent %s",
-            agent.model_name,
+            "Smart route: downgraded %s -> %s for user %s",
+            lucy_state.preferred_model,
             effective_model,
-            agent.id,
+            user_id,
         )
 
-    # Build ordered list of endpoints to try.
-    # Priority: per-user gateway container → shared gateway.
-    # All chat goes through the gateway — no direct LiteLLM fallback.
-    endpoints = []
-
-    if agent.ws_port and agent.gateway_token and agent.status == AgentStatus.running:
-        # Use Docker network container name (not 127.0.0.1, which is the backend itself)
-        container_name = f"lucy-agent-{agent.id}"
-        endpoints.append(
-            (
-                f"http://{container_name}:18789/v1/chat/completions",
-                f"Bearer {agent.gateway_token}",
-                "per-user gateway",
-            )
-        )
-
-    if settings.openclaw_gateway_url and settings.openclaw_gateway_token:
-        endpoints.append(
-            (
-                f"{settings.openclaw_gateway_url}/v1/chat/completions",
-                f"Bearer {settings.openclaw_gateway_token}",
-                "shared gateway",
-            )
-        )
-
-    if not endpoints:
-        logger.error("No gateway endpoints configured — check OPENCLAW_GATEWAY_URL and OPENCLAW_GATEWAY_TOKEN")
+    # ── Gateway endpoint (shared only — no per-agent containers) ──
+    if not (settings.openclaw_gateway_url and settings.openclaw_gateway_token):
+        logger.error("Gateway not configured — check OPENCLAW_GATEWAY_URL and OPENCLAW_GATEWAY_TOKEN")
         yield json.dumps(
             {
                 "type": "error",
@@ -177,6 +176,9 @@ async def stream_chat_completion(
             }
         )
         return
+
+    gateway_url = f"{settings.openclaw_gateway_url}/v1/chat/completions"
+    gateway_auth = f"Bearer {settings.openclaw_gateway_token}"
 
     payload = {
         "model": effective_model,
@@ -189,79 +191,68 @@ async def stream_chat_completion(
     tokens_input = 0
     tokens_output = 0
 
-    # Try each endpoint in order; fall back on connection errors.
-    last_error = None
-    for url, auth, label in endpoints:
-        headers = {
-            "Authorization": auth,
-            "Content-Type": "application/json",
-        }
-        try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                async with client.stream("POST", url, headers=headers, json=payload) as response:
-                    if response.status_code != 200:
-                        body = await response.aread()
-                        logger.error("LiteLLM error %s: %s", response.status_code, body)
-                        yield json.dumps(
-                            {
-                                "type": "error",
-                                "code": "model_error",
-                                "message": f"Model returned HTTP {response.status_code}",
-                            }
-                        )
-                        return
+    headers = {
+        "Authorization": gateway_auth,
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", gateway_url, headers=headers, json=payload) as response:
+                if response.status_code != 200:
+                    body = await response.aread()
+                    logger.error("LiteLLM error %s: %s", response.status_code, body)
+                    yield json.dumps(
+                        {
+                            "type": "error",
+                            "code": "model_error",
+                            "message": f"Model returned HTTP {response.status_code}",
+                        }
+                    )
+                    return
 
-                    async for line in response.aiter_lines():
-                        if not line.startswith("data: "):
-                            continue
-                        data_str = line[6:]
-                        if data_str.strip() == "[DONE]":
-                            break
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str.strip() == "[DONE]":
+                        break
 
-                        try:
-                            chunk = json.loads(data_str)
-                        except json.JSONDecodeError:
-                            continue
+                    try:
+                        chunk = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
 
-                        # Extract content delta
-                        choices = chunk.get("choices", [])
-                        if choices:
-                            delta = choices[0].get("delta", {})
-                            content = delta.get("content")
-                            if content:
-                                full_content += content
-                                yield json.dumps({"type": "stream", "content": content})
+                    # Extract content delta
+                    choices = chunk.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content")
+                        if content:
+                            full_content += content
+                            yield json.dumps({"type": "stream", "content": content})
 
-                        # Extract usage if present (final chunk)
-                        usage = chunk.get("usage")
-                        if usage:
-                            tokens_input = usage.get("prompt_tokens", 0)
-                            tokens_output = usage.get("completion_tokens", 0)
+                    # Extract usage if present (final chunk)
+                    usage = chunk.get("usage")
+                    if usage:
+                        tokens_input = usage.get("prompt_tokens", 0)
+                        tokens_output = usage.get("completion_tokens", 0)
 
-            # Success — break out of retry loop
-            break
-
-        except httpx.ConnectError as exc:
-            logger.warning("Cannot connect to %s (%s), trying next endpoint", label, url)
-            last_error = exc
-            continue
-        except httpx.TimeoutException:
-            yield json.dumps(
-                {
-                    "type": "error",
-                    "code": "timeout",
-                    "message": "Model request timed out",
-                }
-            )
-            return
-    else:
-        # All endpoints failed with ConnectError
-        logger.error("All model endpoints unreachable: %s", last_error)
+    except httpx.ConnectError as exc:
+        logger.error("Cannot connect to shared gateway (%s): %s", gateway_url, exc)
         yield json.dumps(
             {
                 "type": "error",
                 "code": "connection_error",
                 "message": "Cannot connect to model service",
+            }
+        )
+        return
+    except httpx.TimeoutException:
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "timeout",
+                "message": "Model request timed out",
             }
         )
         return
@@ -282,6 +273,9 @@ async def stream_chat_completion(
     if tokens_output == 0:
         tokens_output = max(1, len(full_content) // 4)
 
+    # ── Safety Guard: record token usage ──
+    guard.record_tokens(tokens_input + tokens_output)
+
     # Deduct credits
     try:
         credits_used = await deduct_credits(
@@ -290,7 +284,6 @@ async def stream_chat_completion(
             effective_model,
             tokens_input,
             tokens_output,
-            agent.id,
         )
     except InsufficientCreditsError:
         # Still save the message but warn user
@@ -321,8 +314,23 @@ async def stream_chat_completion(
     if conv and conv.title == "New conversation":
         conv.title = user_content[:80]
 
-    # Update agent last_active_at
-    agent.last_active_at = datetime.now(UTC)
+    # ── Post-chat emotion & affection update ──
+    updated_history = await get_conversation_history(db, conversation_id)
+
+    new_mood = await analyze_mood(updated_history)
+    lucy_state.mood = new_mood
+    lucy_state.total_interactions = (lucy_state.total_interactions or 0) + 1
+    lucy_state.last_interaction_at = datetime.now(UTC)
+
+    affection_delta = calculate_affection_delta("chat", new_mood)
+    lucy_state.affection = min(100, max(0, (lucy_state.affection or 0) + affection_delta))
+
+    # Check for newly unlocked expressions
+    all_unlocked = get_unlockable_expressions(lucy_state.affection)
+    current_unlocked = lucy_state.unlocked_expressions or []
+    if set(all_unlocked) != set(current_unlocked):
+        lucy_state.unlocked_expressions = all_unlocked
+
     await db.commit()
 
     # Refresh user balance
@@ -349,8 +357,7 @@ async def stream_chat_completion(
 
     # Background: extract memories from this conversation
     try:
-        updated_history = await get_conversation_history(db, conversation_id)
-        await extract_memories(db, user_id, agent.id, conversation_id, updated_history)
+        await extract_memories(db, user_id, LUCY_AGENT_ID, conversation_id, updated_history)
     except Exception:
         logger.debug("Memory extraction skipped", exc_info=True)
 
@@ -358,18 +365,18 @@ async def stream_chat_completion(
 async def run_subtask(
     db: AsyncSession,
     user_id: str,
-    agent: Agent,
+    lucy_state: LucyState,
     task_description: str,
     parent_conversation_id: str,
 ) -> str:
-    """Run a sub-agent task: create a temporary conversation, get a single response."""
-    conv = Conversation(agent_id=agent.id, title=f"[subtask] {task_description[:60]}")
+    """Run a sub-task: create a temporary conversation, get a single response."""
+    conv = Conversation(agent_id=LUCY_AGENT_ID, title=f"[subtask] {task_description[:60]}")
     db.add(conv)
     await db.flush()
     await db.commit()
 
     full_response = ""
-    async for event_str in stream_chat_completion(db, user_id, agent, conv.id, task_description):
+    async for event_str in stream_chat_completion(db, user_id, lucy_state, conv.id, task_description):
         event = json.loads(event_str)
         if event["type"] == "stream":
             full_response += event["content"]

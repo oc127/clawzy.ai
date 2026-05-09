@@ -1,4 +1,4 @@
-"""LINE Messaging API webhook — bridges LINE messages to Lucy agents."""
+"""LINE Messaging API webhook — bridges LINE messages to Lucy companion."""
 
 import hashlib
 import hmac
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.database import async_session
-from app.models.agent import Agent, AgentStatus
+from app.models.lucy_state import LucyState
 from app.models.user import User
 from app.services.chat_service import get_or_create_conversation, stream_chat_completion
 
@@ -95,22 +95,21 @@ async def line_webhook(
                 continue
 
             result = await db.execute(
-                select(Agent)
-                .where(Agent.user_id == user.id, Agent.status == AgentStatus.running)
-                .order_by(Agent.last_active_at.desc())
-                .limit(1)
+                select(LucyState).where(LucyState.user_id == user.id)
             )
-            agent = result.scalar_one_or_none()
+            lucy_state = result.scalar_one_or_none()
 
-            if agent is None:
-                await reply_to_line(reply_token, "No active agent found. Please start an agent on the dashboard.")
-                continue
+            if lucy_state is None:
+                # Create a default LucyState for the user
+                lucy_state = LucyState(user_id=user.id)
+                db.add(lucy_state)
+                await db.flush()
 
-            conv = await get_or_create_conversation(db, agent.id, None)
+            conv = await get_or_create_conversation(db, lucy_state.id, None)
             await db.commit()
 
             full_response = ""
-            async for event_str in stream_chat_completion(db, user.id, agent, conv.id, user_text):
+            async for event_str in stream_chat_completion(db, user.id, lucy_state, conv.id, user_text):
                 event_data = json.loads(event_str)
                 if event_data["type"] == "stream":
                     full_response += event_data["content"]

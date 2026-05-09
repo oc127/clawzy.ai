@@ -212,4 +212,45 @@ class DockerManager:
         return False
 
 
+    async def run_sandbox(self, language: str, code: str, timeout: int = 30) -> dict:
+        """Run code in an ephemeral sandbox container."""
+        image_map = {
+            "python": "python:3.12-slim",
+            "node": "node:20-slim",
+            "bash": "ubuntu:22.04",
+        }
+        image = image_map.get(language, "ubuntu:22.04")
+
+        if language == "python":
+            cmd = ["python", "-c", code]
+        elif language == "node":
+            cmd = ["node", "-e", code]
+        else:
+            cmd = ["bash", "-c", code]
+
+        container = self.client.containers.run(
+            image,
+            cmd,
+            detach=True,
+            mem_limit="256m",
+            network_disabled=True,
+            remove=False,
+        )
+
+        try:
+            result = container.wait(timeout=timeout)
+            stdout = container.logs(stdout=True, stderr=False).decode()
+            stderr = container.logs(stdout=False, stderr=True).decode()
+            return {
+                "stdout": stdout,
+                "stderr": stderr,
+                "exit_code": result.get("StatusCode", -1),
+            }
+        except Exception as e:
+            container.kill()
+            return {"stdout": "", "stderr": str(e), "exit_code": -1}
+        finally:
+            container.remove(force=True)
+
+
 docker_manager = DockerManager()
