@@ -12,7 +12,7 @@ SKILL_SEEDS = [
         "summary": "Search the web in real-time to find current information and answer questions.",
         "description": """## Web Search
 
-Enable your agent to search the internet for real-time information.
+Enable Lucy to search the internet for real-time information.
 
 ### Features
 - Search Google, Bing, and other search engines
@@ -71,7 +71,7 @@ Perform comprehensive research by searching multiple sources, cross-referencing 
         "summary": "Search and retrieve Wikipedia articles in any language.",
         "description": """## Wikipedia
 
-Access Wikipedia's vast knowledge base directly from your agent.
+Access Wikipedia's vast knowledge base directly from Lucy.
 
 ### Features
 - Search articles in 300+ languages
@@ -97,7 +97,7 @@ Access Wikipedia's vast knowledge base directly from your agent.
         "summary": "Perform mathematical calculations, unit conversions, and statistical analysis.",
         "description": """## Calculator
 
-A powerful computation tool for your agent.
+A powerful computation tool for Lucy.
 
 ### Features
 - Basic and advanced math operations
@@ -213,7 +213,7 @@ Run code safely inside a sandboxed environment.
         "summary": "Interact with GitHub repositories, issues, pull requests, and more.",
         "description": """## GitHub
 
-Full GitHub integration for your AI agent.
+Full GitHub integration for Lucy.
 
 ### Features
 - Browse repositories and files
@@ -238,10 +238,10 @@ Full GitHub integration for your AI agent.
     {
         "slug": "git",
         "name": "Git",
-        "summary": "Execute git commands to manage version control within agent workspace.",
+        "summary": "Execute git commands to manage version control within Lucy's workspace.",
         "description": """## Git
 
-Enable your agent to use git version control.
+Enable Lucy to use git version control.
 
 ### Features
 - Clone, pull, push repositories
@@ -443,7 +443,7 @@ High-quality translation powered by multiple translation engines.
         "summary": "Send, read, and manage emails through Gmail, Outlook, and other providers.",
         "description": """## Email
 
-Full email management for your AI agent.
+Full email management for Lucy.
 
 ### Features
 - Send and receive emails
@@ -471,7 +471,7 @@ Full email management for your AI agent.
         "summary": "Send messages, manage channels, and interact with Slack workspaces.",
         "description": """## Slack
 
-Integrate your agent with Slack for team communication.
+Integrate Lucy with Slack for team communication.
 
 ### Features
 - Send and read messages in channels
@@ -618,7 +618,7 @@ Run system commands with built-in safety guardrails.
         "summary": "Store and recall information across conversations for persistent context.",
         "description": """## Long-term Memory
 
-Give your agent persistent memory across conversations.
+Give Lucy persistent memory across conversations.
 
 ### Features
 - Store key facts and preferences

@@ -216,7 +216,7 @@ async def install_skill(
     user: User = Depends(get_current_user),
 ):
     try:
-        await skill_service.install_skill(db, body.skill_id, user.id)
+        await skill_service.install_skill(db, body.skill_id)
         # Reload with skill relationship
         skills = await skill_service.get_lucy_skills(db)
         return next(s for s in skills if s.skill_id == body.skill_id)
@@ -231,7 +231,7 @@ async def uninstall_skill(
     user: User = Depends(get_current_user),
 ):
     try:
-        await skill_service.uninstall_skill(db, skill_id, user.id)
+        await skill_service.uninstall_skill(db, skill_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -244,7 +244,7 @@ async def toggle_skill(
     user: User = Depends(get_current_user),
 ):
     try:
-        await skill_service.toggle_skill(db, skill_id, user.id, body.enabled)
+        await skill_service.toggle_skill(db, skill_id, body.enabled)
         skills = await skill_service.get_lucy_skills(db)
         return next(s for s in skills if s.skill_id == skill_id)
     except ValueError as e:

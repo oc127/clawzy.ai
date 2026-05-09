@@ -112,10 +112,10 @@ async def get_recommended_skills(db: AsyncSession, skill_id: str, limit: int = 6
     return recommendations
 
 
-# ─── Agent Skill Install / Uninstall ───
+# ─── Lucy Skill Install / Uninstall ───
 
 
-async def install_skill(db: AsyncSession, skill_id: str, user_id: str) -> AgentSkill:
+async def install_skill(db: AsyncSession, skill_id: str) -> AgentSkill:
     # Verify skill exists
     skill = await get_skill_by_id(db, skill_id)
     if skill is None:
@@ -141,7 +141,7 @@ async def install_skill(db: AsyncSession, skill_id: str, user_id: str) -> AgentS
     return agent_skill
 
 
-async def uninstall_skill(db: AsyncSession, skill_id: str, user_id: str) -> None:
+async def uninstall_skill(db: AsyncSession, skill_id: str) -> None:
     result = await db.execute(
         select(AgentSkill).where(AgentSkill.agent_id == LUCY_AGENT_ID, AgentSkill.skill_id == skill_id)
     )
@@ -158,7 +158,7 @@ async def uninstall_skill(db: AsyncSession, skill_id: str, user_id: str) -> None
     await db.commit()
 
 
-async def toggle_skill(db: AsyncSession, skill_id: str, user_id: str, enabled: bool) -> AgentSkill:
+async def toggle_skill(db: AsyncSession, skill_id: str, enabled: bool) -> AgentSkill:
     result = await db.execute(
         select(AgentSkill).where(AgentSkill.agent_id == LUCY_AGENT_ID, AgentSkill.skill_id == skill_id)
     )

@@ -199,7 +199,7 @@ async def get_relevant_memories(
     limit: int = 10,
     memory_type: str | None = None,
 ) -> list[str]:
-    """Retrieve active memories for a user, optionally filtered by agent and type."""
+    """Retrieve active memories for a user, optionally filtered by type."""
     q = select(Memory.fact).where(
         Memory.user_id == user_id,
         Memory.is_active.is_(True),

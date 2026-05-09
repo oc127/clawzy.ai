@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     openclaw_port_end: int = 19999
     openclaw_gateway_url: str = "http://localhost:18789"
     openclaw_gateway_token: str = ""
-    openclaw_agent_config_dir: str = "/var/lib/lucy/agents"
+    lucy_data_dir: str = "/var/lib/lucy/data"
 
     # --- CORS ---
     cors_origins: str = "*"  # comma-separated origins, or "*" for dev
