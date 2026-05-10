@@ -34,6 +34,9 @@ class LucyState(Base):
     persona_md: Mapped[str] = mapped_column(Text, default="")
     taste_md: Mapped[str] = mapped_column(Text, default="")
 
+    # Adaptive transparency — inferred user technical level
+    user_level: Mapped[str] = mapped_column(String(20), default="intermediate")
+
     # Model preference
     preferred_model: Mapped[str] = mapped_column(String(100), default="deepseek-chat")
 
