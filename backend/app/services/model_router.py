@@ -63,7 +63,7 @@ _CODE_PATTERNS = re.compile(
     r"SELECT |INSERT |CREATE TABLE|ALTER TABLE|"
     r"<div|<span|<html|\.css|\.js|\.py|\.ts|"
     r"写代码|写个|コードを|code|debug|bug|error|traceback|exception|"
-    r"api|endpoint|database|query|schema|migration|deploy|"
+    r"\bapi\b|endpoint|database|query|schema|migration|deploy|"
     r"git |docker |npm |pip |cargo )",
     re.IGNORECASE,
 )
