@@ -12,8 +12,11 @@ from app.config import settings
 from app.models.chat import Conversation, Message, MessageRole
 from app.models.lucy_state import LucyState
 from app.services.credits_service import InsufficientCreditsError, deduct_credits
+from app.services.cultural_engine import CulturalFrame, detect_cultural_frame
 from app.services.epistemic_engine import assess_confidence, calibrate_response
+from app.services.existential_memory import get_lucy_narrative
 from app.services.memory_service import extract_memories, get_relevant_memories
+from app.services.model_router import route as model_route
 from app.services.safety_guard import SafetyGuard
 from app.services.smart_router import smart_route
 from app.services.soul_engine import (
@@ -22,6 +25,7 @@ from app.services.soul_engine import (
     calculate_affection_delta,
     get_unlockable_expressions,
 )
+from app.services.symbiotic_evolution import get_evolution_context
 from app.services.transparency_engine import (
     assess_user_level,
     detect_task_type,
@@ -145,7 +149,33 @@ async def stream_chat_completion(
     # ── Soul Engine: build system prompt ──
     memories = await get_relevant_memories(db, user_id)
     skill_prompts = await _fetch_skill_prompts(db, lucy_state)
-    system_prompt = build_system_prompt(lucy_state, memories, skill_prompts)
+    lucy_experiences = await get_lucy_narrative(db, user_id, limit=5)
+    evolution_ctx = await get_evolution_context(db, user_id)
+
+    # ── Cultural Frame Switching: detect and apply cultural cognitive framework ──
+    try:
+        cached_frame = getattr(lucy_state, "cultural_frame", None)
+        if cached_frame and cached_frame != "universal":
+            cultural_frame = CulturalFrame(cached_frame)
+        else:
+            cultural_frame = await detect_cultural_frame(
+                messages=history,
+                user_language=None,
+                user_memories=memories,
+            )
+            # Cache the detected frame on the state to avoid re-detection
+            if hasattr(lucy_state, "cultural_frame"):
+                lucy_state.cultural_frame = cultural_frame.value
+    except Exception:
+        logger.debug("Cultural frame detection skipped", exc_info=True)
+        cultural_frame = None
+
+    system_prompt = build_system_prompt(
+        lucy_state, memories, skill_prompts,
+        lucy_experiences=lucy_experiences or None,
+        evolution_context=evolution_ctx or None,
+        cultural_frame=cultural_frame,
+    )
 
     # ── Adaptive Transparency: assess user level & inject instructions ──
     try:
@@ -166,19 +196,35 @@ async def stream_chat_completion(
     # Prepend the assembled system prompt to the message history
     history.insert(0, {"role": "system", "content": system_prompt})
 
-    # Smart model routing — auto-downgrade simple tasks to cheaper models
-    effective_model, was_downgraded = smart_route(lucy_state.preferred_model, user_content, history_len=len(history))
+    # ── Morphogenic Fluidity: intelligent model routing based on task nature ──
+    try:
+        route_config = await model_route(
+            message=user_content,
+            conversation_context=history,
+            user_preferred_model=lucy_state.preferred_model,
+        )
+        effective_model = route_config["model"]
+        cognitive_mode = route_config.get("cognitive_mode", "conversational")
+        was_downgraded = effective_model != lucy_state.preferred_model
+    except Exception:
+        logger.debug("Model router failed, falling back to smart_route", exc_info=True)
+        route_config = None
+        cognitive_mode = "conversational"
+        effective_model, was_downgraded = smart_route(lucy_state.preferred_model, user_content, history_len=len(history))
+
     from app.services.credits_service import CREDIT_RATES
 
     if effective_model not in CREDIT_RATES:
-        logger.error("smart_route returned unknown model %s, falling back to %s", effective_model, lucy_state.preferred_model)
+        logger.error("model_route returned unknown model %s, falling back to %s", effective_model, lucy_state.preferred_model)
         effective_model = lucy_state.preferred_model
         was_downgraded = False
+        route_config = None
     if was_downgraded:
         logger.info(
-            "Smart route: downgraded %s -> %s for user %s",
+            "Model route: %s -> %s (mode=%s) for user %s",
             lucy_state.preferred_model,
             effective_model,
+            cognitive_mode,
             user_id,
         )
 
@@ -200,9 +246,12 @@ async def stream_chat_completion(
     payload = {
         "model": effective_model,
         "messages": history,
-        "max_tokens": 4096,
+        "max_tokens": route_config.get("max_tokens", 4096) if route_config else 4096,
         "stream": True,
     }
+    # Apply temperature from model router if available
+    if route_config and "temperature" in route_config:
+        payload["temperature"] = route_config["temperature"]
 
     full_content = ""
     tokens_input = 0
@@ -385,6 +434,7 @@ async def stream_chat_completion(
                 "tokens_output": tokens_output,
                 "model": effective_model,
                 "routed": was_downgraded,
+                "cognitive_mode": cognitive_mode,
             },
         }
     )
@@ -394,6 +444,23 @@ async def stream_chat_completion(
         await extract_memories(db, user_id, LUCY_AGENT_ID, conversation_id, updated_history)
     except Exception:
         logger.debug("Memory extraction skipped", exc_info=True)
+
+    # Background: record Lucy's existential experience (if significant)
+    try:
+        from app.services.existential_memory import process_conversation_for_experience
+
+        user_mems = await get_relevant_memories(db, user_id, limit=5)
+        await process_conversation_for_experience(db, user_id, updated_history, lucy_state, user_mems)
+    except Exception:
+        logger.debug("Experience recording skipped", exc_info=True)
+
+    # Background: update symbiotic evolution cognitive profile
+    try:
+        from app.services.symbiotic_evolution import process_conversation_for_evolution
+
+        await process_conversation_for_evolution(db, user_id, updated_history, lucy_state)
+    except Exception:
+        logger.debug("Symbiotic evolution update skipped", exc_info=True)
 
 
 async def run_subtask(

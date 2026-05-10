@@ -11,6 +11,7 @@ from typing import Any
 import litellm
 
 from app.models.lucy_state import LucyState
+from app.services.cultural_engine import CulturalFrame, get_cultural_context
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,9 @@ def build_system_prompt(
     lucy_state: LucyState,
     memories: list[str],
     skills: list[str],
+    lucy_experiences: list[str] | None = None,
+    evolution_context: str | None = None,
+    cultural_frame: CulturalFrame | None = None,
 ) -> str:
     """Assemble the full system prompt from layered personality components."""
     sections: list[str] = []
@@ -179,6 +183,11 @@ def build_system_prompt(
     taste = lucy_state.taste_md.strip() if lucy_state.taste_md and lucy_state.taste_md.strip() else DEFAULT_TASTE
     sections.append(taste)
 
+    # 3.5. Cultural Frame — cognitive framework adapted to user's culture
+    if cultural_frame and cultural_frame != CulturalFrame.UNIVERSAL:
+        cultural_context = get_cultural_context(cultural_frame)
+        sections.append(cultural_context)
+
     # 4. Mood — current emotional state
     mood = lucy_state.mood or "neutral"
     mood_effect = _MOOD_EFFECTS.get(mood, _MOOD_EFFECTS["neutral"])
@@ -191,12 +200,24 @@ def build_system_prompt(
             sections.append(style)
             break
 
-    # 6. Memory — things Lucy remembers
+    # 6. Memory — things Lucy remembers about the user
     if memories:
         memory_block = "Things you remember about this person:\n" + "\n".join(f"- {m}" for m in memories)
         sections.append(memory_block)
 
-    # 7. Skills — active capabilities
+    # 7. Existential Memory — Lucy's own experiences with this person
+    if lucy_experiences:
+        experience_block = (
+            "Your own memories of this relationship (things you experienced together):\n"
+            + "\n".join(f"- {exp}" for exp in lucy_experiences)
+        )
+        sections.append(experience_block)
+
+    # 8. Symbiotic Evolution — how this person thinks and grows
+    if evolution_context and evolution_context.strip():
+        sections.append(evolution_context)
+
+    # 9. Skills — active capabilities
     if skills:
         skills_block = "Your active skills:\n" + "\n---\n".join(skills)
         sections.append(skills_block)

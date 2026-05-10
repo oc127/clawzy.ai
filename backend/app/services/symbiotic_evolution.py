@@ -12,7 +12,7 @@ The user isn't just "training" Lucy. Lucy is also expanding the user's thinking.
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import litellm
 from sqlalchemy import select

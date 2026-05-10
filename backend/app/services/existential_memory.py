@@ -110,10 +110,7 @@ def should_record(messages: list[dict], lucy_state: LucyState) -> bool:
         return True
 
     # High-affection conversations tend to be meaningful
-    if lucy_state.affection and lucy_state.affection >= 50 and len(messages) >= 8:
-        return True
-
-    return False
+    return bool(lucy_state.affection and lucy_state.affection >= 50 and len(messages) >= 8)
 
 
 # ─── LLM-Based Experience Generation ───
