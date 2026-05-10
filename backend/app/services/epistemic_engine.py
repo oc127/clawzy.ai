@@ -158,8 +158,6 @@ def _get_hedging_template(personality_type: str, level: str) -> str:
     """Pick a hedging template matching personality and uncertainty level."""
     templates = _HEDGING_TEMPLATES.get(personality_type, _HEDGING_TEMPLATES["少女"])
     options = templates.get(level, templates["uncertain"])
-    # Rotate based on a simple hash to avoid always picking the same one
-    import hashlib
     return options[0]  # Deterministic for now; could rotate based on context
 
 

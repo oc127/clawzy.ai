@@ -12,6 +12,7 @@ from app.config import settings
 from app.models.chat import Conversation, Message, MessageRole
 from app.models.lucy_state import LucyState
 from app.services.credits_service import InsufficientCreditsError, deduct_credits
+from app.services.epistemic_engine import assess_confidence, calibrate_response
 from app.services.memory_service import extract_memories, get_relevant_memories
 from app.services.safety_guard import SafetyGuard
 from app.services.smart_router import smart_route
@@ -20,6 +21,11 @@ from app.services.soul_engine import (
     build_system_prompt,
     calculate_affection_delta,
     get_unlockable_expressions,
+)
+from app.services.transparency_engine import (
+    assess_user_level,
+    detect_task_type,
+    get_transparency_instructions,
 )
 
 logger = logging.getLogger(__name__)
@@ -140,6 +146,17 @@ async def stream_chat_completion(
     memories = await get_relevant_memories(db, user_id)
     skill_prompts = await _fetch_skill_prompts(db, lucy_state)
     system_prompt = build_system_prompt(lucy_state, memories, skill_prompts)
+
+    # ── Adaptive Transparency: assess user level & inject instructions ──
+    try:
+        user_level = await assess_user_level(history, memories)
+        lucy_state.user_level = user_level.value
+
+        task_type = detect_task_type(user_content)
+        transparency_instructions = get_transparency_instructions(user_level, task_type)
+        system_prompt += f"\n\n[Communication style]\n{transparency_instructions}"
+    except Exception:
+        logger.debug("Transparency assessment skipped", exc_info=True)
 
     # Append concise instruction from Safety Guard when token budget is running low
     concise_instruction = guard.token_budget.get_concise_instruction()
@@ -275,6 +292,23 @@ async def stream_chat_completion(
 
     # ── Safety Guard: record token usage ──
     guard.record_tokens(tokens_input + tokens_output)
+
+    # ── Epistemic Humility: assess confidence & calibrate if needed ──
+    try:
+        epistemic_assessment = await assess_confidence(user_content, full_content)
+        calibrated = await calibrate_response(
+            full_content,
+            epistemic_assessment,
+            personality_type=lucy_state.personality_type,
+        )
+        if calibrated != full_content:
+            # Stream the epistemic addendum to the client
+            addendum = calibrated[len(full_content):]
+            if addendum:
+                yield json.dumps({"type": "stream", "content": addendum})
+            full_content = calibrated
+    except Exception:
+        logger.debug("Epistemic calibration skipped", exc_info=True)
 
     # Deduct credits
     try:
