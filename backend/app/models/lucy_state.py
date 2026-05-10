@@ -40,6 +40,9 @@ class LucyState(Base):
     # Model preference
     preferred_model: Mapped[str] = mapped_column(String(100), default="deepseek-chat")
 
+    # Cultural frame (cached detection to avoid re-detection every message)
+    cultural_frame: Mapped[str] = mapped_column(String(20), default="universal")
+
     # Push notification preferences
     push_channels: Mapped[list] = mapped_column(JSON, default=lambda: ["websocket"])  # enabled channels
     line_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # LINE user ID for push
