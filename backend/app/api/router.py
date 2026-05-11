@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, billing, chat, events, line_webhook, lucy, memory, models, skills, subtasks, tasks, tools, users
+from app.api.v1 import auth, billing, chat, events, knowledge, line_webhook, lucy, memory, models, skills, subtasks, tasks, tools, users
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -19,3 +19,4 @@ api_router.include_router(line_webhook.router)
 api_router.include_router(events.router)
 api_router.include_router(events.initiatives_router)
 api_router.include_router(events.webhooks_router)
+api_router.include_router(knowledge.router)

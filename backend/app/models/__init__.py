@@ -1,5 +1,6 @@
 from app.models.chat import Conversation, Message
 from app.models.credits import CreditTransaction
+from app.models.knowledge import KnowledgeBase, KnowledgeChunk, KnowledgeDocument
 from app.models.lucy_event import LucyEvent, LucyInitiative
 from app.models.lucy_state import LucyState
 from app.models.lucy_task import LucyTask
@@ -14,6 +15,9 @@ __all__ = [
     "CreditTransaction",
     "Conversation",
     "Message",
+    "KnowledgeBase",
+    "KnowledgeDocument",
+    "KnowledgeChunk",
     "LucyState",
     "LucyEvent",
     "LucyInitiative",

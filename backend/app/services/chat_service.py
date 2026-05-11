@@ -193,6 +193,21 @@ async def stream_chat_completion(
     if concise_instruction:
         system_prompt += f"\n\n{concise_instruction}"
 
+    # ── Knowledge Base RAG: inject relevant context from user's knowledge bases ──
+    try:
+        from app.services import knowledge_service
+
+        kb_context = await knowledge_service.get_relevant_context(
+            db, user_id, user_content, max_tokens=2000
+        )
+        if kb_context:
+            system_prompt += (
+                f"\n\n[Knowledge Base Context]\n{kb_context}\n\n"
+                "Use this information to answer accurately."
+            )
+    except Exception:
+        logger.debug("Knowledge base context injection skipped", exc_info=True)
+
     # Prepend the assembled system prompt to the message history
     history.insert(0, {"role": "system", "content": system_prompt})
 
