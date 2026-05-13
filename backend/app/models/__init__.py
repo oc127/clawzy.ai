@@ -1,3 +1,4 @@
+from app.models.agent import Agent
 from app.models.chat import Conversation, Message
 from app.models.credits import CreditTransaction
 from app.models.knowledge import KnowledgeBase, KnowledgeChunk, KnowledgeDocument
@@ -10,6 +11,7 @@ from app.models.subscription import Subscription
 from app.models.user import User
 
 __all__ = [
+    "Agent",
     "User",
     "Subscription",
     "CreditTransaction",

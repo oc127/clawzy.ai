@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.database import Base, get_db
 from app.core.security import create_access_token, hash_password
+import app.models  # noqa: F401 — register all models with Base.metadata
 from app.models.skill import Skill
 from app.models.user import User
 
