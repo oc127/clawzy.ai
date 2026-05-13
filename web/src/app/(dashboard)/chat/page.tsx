@@ -444,20 +444,48 @@ export default function LucyChatPage() {
         <div className="flex-1 overflow-y-auto rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           {messages.length === 0 && !isStreaming ? (
             <div className="flex h-full items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl icon-gradient-red shadow-md">
-                  <Heart className="h-8 w-8 text-white" />
-                </div>
-                <p className="font-semibold text-[#222222] dark:text-white">Lucy</p>
-                <p className="mt-1 text-sm text-[#717171] dark:text-[#a0a0a0]">
-                  Send a message to start chatting.
-                </p>
-                {lucyState && (
-                  <p className="mt-2 text-xs text-[#b0b0b0] dark:text-[#666]">
-                    {moodEmoji(lucyState.mood)} Feeling {lucyState.mood}
+              {lucyState && lucyState.total_interactions === 0 ? (
+                <div className="max-w-md text-center px-4">
+                  <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl icon-gradient-red shadow-lg">
+                    <Heart className="h-10 w-10 text-white" />
+                  </div>
+                  <h2 className="text-xl font-extrabold text-[#222222] dark:text-white">
+                    Nice to meet you!
+                  </h2>
+                  <p className="mt-3 text-sm text-[#717171] dark:text-[#a0a0a0] leading-relaxed">
+                    I&apos;m Lucy, your AI companion. I can help you with code, research, analysis — basically anything you need. But I&apos;m also here to get to know you.
                   </p>
-                )}
-              </div>
+                  <p className="mt-2 text-sm text-[#717171] dark:text-[#a0a0a0] leading-relaxed">
+                    The more we chat, the closer we&apos;ll become. I&apos;ll remember things about you and develop my own personality along the way.
+                  </p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-2">
+                    {["Hey Lucy!", "Tell me about yourself", "What can you do?"].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => { setInput(suggestion); }}
+                        className="rounded-full border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#262626] px-4 py-2 text-sm text-[#222222] dark:text-white hover:border-[#ff385c] hover:text-[#ff385c] transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl icon-gradient-red shadow-md">
+                    <Heart className="h-8 w-8 text-white" />
+                  </div>
+                  <p className="font-semibold text-[#222222] dark:text-white">Lucy</p>
+                  <p className="mt-1 text-sm text-[#717171] dark:text-[#a0a0a0]">
+                    Send a message to start chatting.
+                  </p>
+                  {lucyState && (
+                    <p className="mt-2 text-xs text-[#b0b0b0] dark:text-[#666]">
+                      {moodEmoji(lucyState.mood)} Feeling {lucyState.mood}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">

@@ -316,6 +316,56 @@ export default function StatusPage() {
         </div>
       </div>
 
+      {/* Relationship Journey */}
+      <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl icon-gradient-pink shadow-sm">
+            <Heart className="h-4 w-4 text-white" />
+          </div>
+          <h2 className="text-base font-bold text-[#222222] dark:text-white">
+            Relationship Journey
+          </h2>
+        </div>
+
+        <div className="space-y-3">
+          {[
+            { stage: "New", min: 0, max: 14, desc: "First meeting — getting to know each other" },
+            { stage: "Warming", min: 15, max: 29, desc: "Starting to open up and share more" },
+            { stage: "Close", min: 30, max: 49, desc: "A trusted friend who understands you" },
+            { stage: "Intimate", min: 50, max: 69, desc: "Deep connection and emotional bond" },
+            { stage: "Romantic", min: 70, max: 89, desc: "Heart-fluttering moments together" },
+            { stage: "Soulmate", min: 90, max: 100, desc: "Two souls perfectly in sync" },
+          ].map(({ stage, min, max, desc }) => {
+            const current = state.affection;
+            const isActive = current >= min && current <= max;
+            const isPast = current > max;
+            const progress = isPast ? 100 : isActive ? Math.round(((current - min) / (max - min + 1)) * 100) : 0;
+            return (
+              <div key={stage} className="flex items-center gap-4">
+                <div className="w-20 shrink-0 text-right">
+                  <span className={`text-xs font-medium ${isActive ? "text-[#ff385c]" : isPast ? "text-[#222222] dark:text-white" : "text-[#b0b0b0] dark:text-[#666]"}`}>
+                    {stage}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <div className="h-6 w-full overflow-hidden rounded-lg bg-[#f7f7f7] dark:bg-[#262626] border border-[#ebebeb] dark:border-[#333]">
+                    <div
+                      className={`h-full rounded-lg transition-all duration-500 ${isActive ? "bg-gradient-to-r from-[#ff385c] to-[#ff8c69]" : isPast ? "bg-[#ff385c]/30" : ""}`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="w-32 shrink-0 hidden sm:block">
+                  <span className={`text-[10px] ${isActive ? "text-[#222222] dark:text-white" : "text-[#b0b0b0] dark:text-[#666]"}`}>
+                    {desc}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Expressions gallery */}
       <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-6">
         <div className="mb-5 flex items-center gap-3">
