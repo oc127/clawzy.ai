@@ -7,6 +7,7 @@ import { useLanguage } from "@/context/language-context";
 import { toast } from "sonner";
 import { Heart, AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LucyAvatar } from "@/components/lucy-avatar";
 
 interface ExpressionsData {
   unlocked: string[];
@@ -242,7 +243,7 @@ export default function StatusPage() {
           </div>
 
           <div className="flex flex-col items-center justify-center py-6">
-            <span className="text-6xl mb-4">{mood.emoji}</span>
+            <LucyAvatar mood={state.mood} size="lg" className="mb-4" />
             <p className="text-base text-[#222222] dark:text-white">
               Lucy is feeling{" "}
               <span className="font-semibold capitalize text-[#ff385c]">

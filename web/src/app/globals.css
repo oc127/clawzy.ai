@@ -166,6 +166,25 @@ html {
   background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
 }
 
+/* Lucy avatar animations */
+@keyframes lucy-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@keyframes lucy-blush {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.4; }
+}
+
+.animate-lucy-breathe {
+  animation: lucy-breathe 3s ease-in-out infinite;
+}
+
+.animate-lucy-blush {
+  animation: lucy-blush 2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

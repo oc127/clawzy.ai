@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { ArtifactsPanel, type Artifact } from "@/components/artifacts-panel";
 import { cn } from "@/lib/cn";
+import { LucyAvatar } from "@/components/lucy-avatar";
 import { useLanguage } from "@/context/language-context";
 import { toast } from "sonner";
 import {
@@ -334,9 +335,7 @@ export default function LucyChatPage() {
         {/* Lucy info card */}
         <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl icon-gradient-red shadow-sm">
-              <Heart className="h-5 w-5 text-white" />
-            </div>
+            <LucyAvatar mood={lucyState?.mood ?? "neutral"} size="sm" />
             <div>
               <h2 className="font-bold text-[#222222] dark:text-white">Lucy</h2>
               <p className="text-xs text-[#717171] dark:text-[#a0a0a0]">Your AI companion</p>
