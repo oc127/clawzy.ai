@@ -25,7 +25,7 @@ class TestRegister:
             "/api/v1/auth/register",
             json={
                 "email": "test@thelucy.ai",
-                "password": "pass",
+                "password": "password123",
                 "name": "Dup",
             },
         )

@@ -270,7 +270,7 @@ async def export_conversation(
     conversation_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    format: str = Query(default="md", regex="^(md|json|txt)$"),
+    format: str = Query(default="md", pattern="^(md|json|txt)$"),
 ):
     result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
     conv = result.scalar_one_or_none()

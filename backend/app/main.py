@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -55,7 +56,32 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Migration skipped (%s): %s", stmt.split()[-1], e)
     logger.info("Database tables ready")
+
+    # Start proactive engine scheduler (runs every 15 minutes)
+    async def _proactive_loop():
+        from app.services.proactive_engine import run_proactive_cycle
+        from app.core.database import async_session
+
+        while True:
+            try:
+                async with async_session() as db:
+                    await run_proactive_cycle(db)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.debug("Proactive cycle error", exc_info=True)
+            await asyncio.sleep(900)  # 15 minutes
+
+    proactive_task = asyncio.create_task(_proactive_loop())
+    logger.info("Proactive engine scheduler started (15 min interval)")
+
     yield
+
+    proactive_task.cancel()
+    try:
+        await proactive_task
+    except asyncio.CancelledError:
+        pass
 
 
 _is_production = os.getenv("DEPLOY_ENV") == "production"
