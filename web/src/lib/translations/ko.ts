@@ -150,6 +150,7 @@ const ko: Translations = {
     billing: "결제",
     settings: "설정",
     memory: "메모리",
+    knowledge: "지식베이스",
     credits: "크레딧",
     usage: "사용량",
     recentActivity: "최근 활동",

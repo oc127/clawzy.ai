@@ -150,6 +150,7 @@ const ja: Translations = {
     billing: "請求",
     settings: "設定",
     memory: "メモリ",
+    knowledge: "ナレッジ",
     credits: "クレジット",
     usage: "使用量",
     recentActivity: "最近のアクティビティ",

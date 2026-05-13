@@ -150,6 +150,7 @@ const zh: Translations = {
     billing: "账单",
     settings: "设置",
     memory: "记忆",
+    knowledge: "知识库",
     credits: "积分",
     usage: "用量",
     recentActivity: "最近活动",

@@ -7,9 +7,10 @@ import { apiPatch, apiGet, apiPost, ApiError } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Shield, AlertCircle, User, Info, Lock } from "lucide-react";
+import { Shield, AlertCircle, User, Info, Lock, Bell } from "lucide-react";
 
 interface TodayUsage { used_today: number; daily_limit: number | null; }
+interface PushSettings { push_channels: string[]; line_user_id: string | null; push_quiet_start: number | null; push_quiet_end: number | null; }
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
@@ -26,6 +27,8 @@ export default function SettingsPage() {
   );
   const [savingLimit, setSavingLimit] = useState(false);
   const [todayUsage, setTodayUsage] = useState<TodayUsage | null>(null);
+  const [pushSettings, setPushSettings] = useState<PushSettings | null>(null);
+  const [savingPush, setSavingPush] = useState(false);
 
   useEffect(() => {
     setName(user?.name ?? "");
@@ -35,6 +38,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     apiGet<TodayUsage>("/billing/credits/today").then(setTodayUsage).catch(() => {});
+    apiGet<PushSettings>("/lucy/push-channels").then(setPushSettings).catch(() => {});
   }, []);
 
   if (!user) return null;
@@ -250,6 +254,97 @@ export default function SettingsPage() {
             </div>
           </form>
         </div>
+
+        {/* Push Notification Settings */}
+        {pushSettings && (
+          <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl icon-gradient-pink shadow-sm">
+                <Bell className="h-4 w-4 text-white" />
+              </div>
+              <h2 className="text-base font-bold text-[#222222] dark:text-white">Push Notifications</h2>
+            </div>
+            <p className="mb-4 text-sm text-[#717171] dark:text-[#a0a0a0]">
+              Choose how Lucy reaches you when she has something to say.
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-[#222222] dark:text-white">Channels</label>
+                {["websocket", "line", "email"].map((ch) => (
+                  <label key={ch} className="flex items-center gap-3 py-1.5">
+                    <input
+                      type="checkbox"
+                      checked={pushSettings.push_channels.includes(ch)}
+                      onChange={(e) => {
+                        const channels = e.target.checked
+                          ? [...pushSettings.push_channels, ch]
+                          : pushSettings.push_channels.filter((c) => c !== ch);
+                        setPushSettings({ ...pushSettings, push_channels: channels });
+                      }}
+                      className="h-4 w-4 rounded border-[#dddddd] text-[#ff385c] focus:ring-[#ff385c]"
+                    />
+                    <span className="text-sm text-[#222222] dark:text-white capitalize">{ch === "websocket" ? "In-app (WebSocket)" : ch === "line" ? "LINE" : "Email"}</span>
+                  </label>
+                ))}
+              </div>
+
+              {pushSettings.push_channels.includes("line") && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-[#222222] dark:text-white">LINE User ID</label>
+                  <Input
+                    value={pushSettings.line_user_id ?? ""}
+                    onChange={(e) => setPushSettings({ ...pushSettings, line_user_id: e.target.value || null })}
+                    placeholder="U1234567890abcdef..."
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-[#222222] dark:text-white">Quiet Hours</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={pushSettings.push_quiet_start ?? ""}
+                    onChange={(e) => setPushSettings({ ...pushSettings, push_quiet_start: e.target.value ? parseInt(e.target.value) : null })}
+                    placeholder="Start (0-23)"
+                    className="w-28"
+                  />
+                  <span className="text-sm text-[#717171] dark:text-[#a0a0a0]">to</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={pushSettings.push_quiet_end ?? ""}
+                    onChange={(e) => setPushSettings({ ...pushSettings, push_quiet_end: e.target.value ? parseInt(e.target.value) : null })}
+                    placeholder="End (0-23)"
+                    className="w-28"
+                  />
+                </div>
+                <p className="text-xs text-[#b0b0b0] dark:text-[#666]">Lucy won&apos;t send notifications during these hours.</p>
+              </div>
+
+              <Button
+                onClick={async () => {
+                  setSavingPush(true);
+                  try {
+                    await apiPatch("/lucy/push-channels", pushSettings);
+                    toast.success("Notification settings saved");
+                  } catch {
+                    toast.error("Failed to save notification settings");
+                  } finally {
+                    setSavingPush(false);
+                  }
+                }}
+                loading={savingPush}
+                className="bg-[#ff385c] hover:bg-[#e31c5f] text-white rounded-xl font-semibold shadow-sm"
+              >
+                Save Notifications
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Account Info */}
         <div className="rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">

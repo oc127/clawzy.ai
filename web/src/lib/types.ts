@@ -177,3 +177,34 @@ export interface SkillSubmission {
   created_at: string;
   updated_at: string;
 }
+
+export interface KnowledgeBase {
+  id: string;
+  name: string;
+  description: string | null;
+  document_count: number;
+  total_chunks: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  knowledge_base_id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  chunk_count: number;
+  status: string;
+  error: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeSearchResult {
+  content: string;
+  score: number;
+  document: string;
+  knowledge_base: string;
+  chunk_index: number;
+}

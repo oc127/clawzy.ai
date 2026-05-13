@@ -23,6 +23,8 @@ import {
   StopCircle,
   Download,
   FileText,
+  Sparkles,
+  X,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -142,6 +144,13 @@ function LucyStatusBadge({ lucy }: { lucy: LucyState }) {
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 
+interface Initiative {
+  id: string;
+  initiative_type: string;
+  message: string;
+  created_at: string;
+}
+
 export default function LucyChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -152,6 +161,7 @@ export default function LucyChatPage() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [showArtifacts, setShowArtifacts] = useState(false);
+  const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { t } = useLanguage();
@@ -175,10 +185,12 @@ export default function LucyChatPage() {
     Promise.all([
       apiGet<Conversation[]>("/lucy/conversations"),
       getLucyState(),
+      apiGet<Initiative[]>("/lucy/initiatives?delivered=false").catch(() => []),
     ])
-      .then(([c, ls]) => {
+      .then(([c, ls, ini]) => {
         setConversations(c);
         setLucyState(ls);
+        setInitiatives(ini);
       })
       .catch((err) => setFetchError(err.message || "Failed to load data"))
       .finally(() => setLoading(false));
@@ -396,6 +408,38 @@ export default function LucyChatPage() {
       {/* Right: chat area + artifacts */}
       <div className="flex flex-1 gap-4 min-w-0">
       <div className="flex flex-1 flex-col min-w-0">
+        {/* Lucy initiative notifications */}
+        {initiatives.length > 0 && (
+          <div className="mb-3 space-y-2">
+            {initiatives.map((ini) => (
+              <div
+                key={ini.id}
+                className="flex items-start gap-3 rounded-2xl border border-[#ffd6dd] dark:border-[#ff385c]/20 bg-[#fff0f2] dark:bg-[#ff385c]/10 px-4 py-3 shadow-sm"
+              >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg icon-gradient-red shadow-sm mt-0.5">
+                  <Sparkles className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#222222] dark:text-white">{ini.message}</p>
+                  <p className="mt-1 text-[10px] text-[#b0b0b0] dark:text-[#666]">
+                    {new Date(ini.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    apiPost(`/lucy/initiatives/${ini.id}/deliver`).catch(() => {});
+                    setInitiatives((prev) => prev.filter((i) => i.id !== ini.id));
+                  }}
+                  className="shrink-0 rounded-lg p-1 text-[#b0b0b0] hover:text-[#ff385c] hover:bg-white/50 dark:hover:bg-white/10 transition-colors"
+                  aria-label="Dismiss"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto rounded-2xl border border-[#ebebeb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           {messages.length === 0 && !isStreaming ? (

@@ -253,3 +253,51 @@ export function execCode(agentId: string, code: string, language = "python"): Pr
 export function runSubtask(agentId: string, task: string, parentConversationId?: string): Promise<SubtaskResult> {
   return apiPost<SubtaskResult>("/subtasks", { agent_id: agentId, task, parent_conversation_id: parentConversationId });
 }
+
+// --- Knowledge Base ---
+
+import type { KnowledgeBase, KnowledgeDocument, KnowledgeSearchResult } from "./types";
+
+export function getKnowledgeBases(): Promise<KnowledgeBase[]> {
+  return apiGet<KnowledgeBase[]>("/lucy/knowledge");
+}
+
+export function createKnowledgeBase(data: { name: string; description?: string }): Promise<KnowledgeBase> {
+  return apiPost<KnowledgeBase>("/lucy/knowledge", data);
+}
+
+export function updateKnowledgeBase(id: string, data: { name?: string; description?: string; is_active?: boolean }): Promise<KnowledgeBase> {
+  return apiPatch<KnowledgeBase>(`/lucy/knowledge/${id}`, data);
+}
+
+export function deleteKnowledgeBase(id: string): Promise<void> {
+  return apiDelete(`/lucy/knowledge/${id}`);
+}
+
+export function getKnowledgeDocuments(kbId: string): Promise<KnowledgeDocument[]> {
+  return apiGet<KnowledgeDocument[]>(`/lucy/knowledge/${kbId}/documents`);
+}
+
+export function deleteKnowledgeDocument(kbId: string, docId: string): Promise<void> {
+  return apiDelete(`/lucy/knowledge/${kbId}/documents/${docId}`);
+}
+
+export async function uploadKnowledgeDocument(kbId: string, file: File): Promise<KnowledgeDocument> {
+  const token = (await import("./auth")).getAccessToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`/api/v1/lucy/knowledge/${kbId}/documents`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: "Upload failed" }));
+    throw new ApiError(res.status, body.detail || "Upload failed");
+  }
+  return res.json();
+}
+
+export function searchKnowledge(query: string, kbIds?: string[], limit = 5): Promise<KnowledgeSearchResult[]> {
+  return apiPost<KnowledgeSearchResult[]>("/lucy/knowledge/search", { query, kb_ids: kbIds, limit });
+}

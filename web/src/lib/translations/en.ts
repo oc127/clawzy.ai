@@ -159,6 +159,7 @@ const en = {
     billing: "Billing",
     settings: "Settings",
     memory: "Memory",
+    knowledge: "Knowledge",
     credits: "Credits",
     usage: "Usage",
     recentActivity: "Recent Activity",

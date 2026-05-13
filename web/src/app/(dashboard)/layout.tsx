@@ -26,12 +26,14 @@ import {
   Moon,
   Mail,
   Brain,
+  BookOpen,
 } from "lucide-react";
 
 const SIDEBAR_LINKS_CONFIG = [
   { href: "/chat", key: "chat" as const, icon: MessageSquare, gradient: "icon-gradient-red" },
   { href: "/status", key: "status" as const, icon: Heart, gradient: "icon-gradient-pink" },
   { href: "/memory", key: "memory" as const, icon: Brain, gradient: "icon-gradient-purple" },
+  { href: "/knowledge", key: "knowledge" as const, icon: BookOpen, gradient: "icon-gradient-teal" },
   { href: "/personality", key: "personality" as const, icon: Sparkles, gradient: "icon-gradient-blue" },
   { href: "/lucyhub", key: "lucyhub" as const, icon: Package, gradient: "icon-gradient-teal" },
   { href: "/billing", key: "billing" as const, icon: CreditCard, gradient: "icon-gradient-green" },
@@ -67,6 +69,7 @@ export default function DashboardLayout({
     chat: t.dashboard.chat,
     status: t.dashboard.status,
     memory: t.dashboard.memory,
+    knowledge: t.dashboard.knowledge ?? "Knowledge",
     personality: t.dashboard.personality,
     lucyhub: t.dashboard.lucyhub,
     billing: t.dashboard.billing,
