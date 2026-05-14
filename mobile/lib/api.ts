@@ -197,3 +197,33 @@ export interface CreditTransaction {
 }
 export const getTransactions = () =>
   apiGet<CreditTransaction[]>("/billing/transactions");
+
+// --- Knowledge Base ---
+export interface KnowledgeBase {
+  id: string;
+  name: string;
+  description: string | null;
+  document_count: number;
+  total_chunks: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  knowledge_base_id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  chunk_count: number;
+  status: string;
+  error: string | null;
+  created_at: string;
+}
+
+export const getKnowledgeBases = () => apiGet<KnowledgeBase[]>("/lucy/knowledge");
+export const createKnowledgeBase = (data: { name: string; description?: string }) => apiPost<KnowledgeBase>("/lucy/knowledge", data);
+export const deleteKnowledgeBase = (id: string) => apiDelete(`/lucy/knowledge/${id}`);
+export const getKnowledgeDocuments = (kbId: string) => apiGet<KnowledgeDocument[]>(`/lucy/knowledge/${kbId}/documents`);
+export const deleteKnowledgeDocument = (kbId: string, docId: string) => apiDelete(`/lucy/knowledge/${kbId}/documents/${docId}`);

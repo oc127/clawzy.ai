@@ -45,6 +45,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="knowledge"
+        options={{
+          title: t.tabs.knowledge ?? "Knowledge",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="📚" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: t.tabs.settings,

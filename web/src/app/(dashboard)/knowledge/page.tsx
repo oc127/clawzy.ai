@@ -10,6 +10,7 @@ import {
   uploadKnowledgeDocument,
   deleteKnowledgeDocument,
   searchKnowledge,
+  exportKnowledgeBase,
 } from "@/lib/api";
 import type {
   KnowledgeBase,
@@ -29,6 +30,7 @@ import {
   ChevronRight,
   AlertCircle,
   RefreshCw,
+  Download,
 } from "lucide-react";
 
 function Skeleton({ className }: { className?: string }) {
@@ -251,8 +253,8 @@ export default function KnowledgePage() {
           </div>
         </div>
 
-        {/* Upload button + hidden input */}
-        <div>
+        {/* Upload + Export buttons + hidden input */}
+        <div className="flex gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -267,6 +269,18 @@ export default function KnowledgePage() {
           >
             <Upload className="mr-2 h-4 w-4" />
             {uploading ? "Uploading..." : "Upload Document"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              exportKnowledgeBase(selectedKb.id).catch(() =>
+                toast.error("Failed to export knowledge base")
+              );
+            }}
+            className="rounded-xl border-[#ebebeb] dark:border-[#333]"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export
           </Button>
         </div>
 

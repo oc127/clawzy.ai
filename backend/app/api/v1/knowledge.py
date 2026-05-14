@@ -1,12 +1,18 @@
 """Knowledge Base API — CRUD for knowledge bases, document upload, and semantic search."""
 
+import json as _json
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.deps import get_current_user
+from app.models.knowledge import KnowledgeBase
 from app.models.user import User
 from app.schemas.knowledge import (
     DocumentResponse,
@@ -83,6 +89,85 @@ async def search_knowledge(
         db, user.id, body.query, body.kb_ids, body.limit
     )
     return results
+
+
+# ---------------------------------------------------------------------------
+#  Export (defined before /{kb_id} routes to avoid path parameter conflicts)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{kb_id}/export")
+async def export_knowledge_base(
+    kb_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export a full knowledge base as a JSON download."""
+    result = await db.execute(
+        select(KnowledgeBase)
+        .where(KnowledgeBase.id == kb_id, KnowledgeBase.user_id == user.id)
+        .options(
+            selectinload(KnowledgeBase.documents),
+            selectinload(KnowledgeBase.chunks),
+        )
+    )
+    kb = result.scalar_one_or_none()
+    if kb is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Knowledge base not found",
+        )
+
+    data = {
+        "knowledge_base": {
+            "id": kb.id,
+            "name": kb.name,
+            "description": kb.description,
+            "document_count": kb.document_count,
+            "total_chunks": kb.total_chunks,
+            "is_active": kb.is_active,
+            "created_at": kb.created_at.isoformat() if kb.created_at else None,
+            "updated_at": kb.updated_at.isoformat() if kb.updated_at else None,
+        },
+        "documents": [
+            {
+                "id": doc.id,
+                "filename": doc.filename,
+                "file_type": doc.file_type,
+                "content_text": doc.content_text,
+                "file_size": doc.file_size,
+                "chunk_count": doc.chunk_count,
+                "status": doc.status,
+                "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            }
+            for doc in kb.documents
+        ],
+        "chunks": [
+            {
+                "id": chunk.id,
+                "document_id": chunk.document_id,
+                "chunk_index": chunk.chunk_index,
+                "content": chunk.content,
+                "token_count": chunk.token_count,
+                "metadata": chunk.metadata_json,
+                "created_at": chunk.created_at.isoformat() if chunk.created_at else None,
+            }
+            for chunk in kb.chunks
+        ],
+        "exported_at": datetime.utcnow().isoformat(),
+    }
+
+    json_bytes = _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    safe_name = kb.name.replace(" ", "_").replace("/", "_")
+    filename = f"knowledge_base_{safe_name}_{kb.id[:8]}.json"
+
+    return Response(
+        content=json_bytes,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

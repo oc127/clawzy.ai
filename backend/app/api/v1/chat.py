@@ -13,7 +13,7 @@ from app.deps import get_current_user
 from app.models.chat import Conversation, Message
 from app.models.lucy_state import LucyState
 from app.models.user import User
-from app.schemas.chat import ConversationResponse, MessageResponse
+from app.schemas.chat import ConversationResponse, MessageResponse, MessageSearchResult
 from app.services.chat_service import (
     get_or_create_conversation,
     stream_chat_completion,
@@ -263,6 +263,39 @@ async def list_conversations(
         .order_by(Conversation.updated_at.desc())
     )
     return list(result.scalars().all())
+
+
+@router.get("/lucy/conversations/search", response_model=list[MessageSearchResult])
+async def search_conversations(
+    q: str = Query(min_length=1),
+    limit: int = Query(default=20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search across the current user's Lucy message history."""
+    result = await db.execute(
+        select(Message, Conversation.title)
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .where(
+            Conversation.agent_id == LUCY_AGENT_ID,
+            Conversation.user_id == user.id,
+            Message.content.ilike(f"%{q}%"),
+        )
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+    )
+    rows = result.all()
+    return [
+        MessageSearchResult(
+            message_id=msg.id,
+            conversation_id=msg.conversation_id,
+            conversation_title=conv_title or "New conversation",
+            role=msg.role.value,
+            content_snippet=msg.content[:200],
+            created_at=msg.created_at,
+        )
+        for msg, conv_title in rows
+    ]
 
 
 @router.get("/conversations/{conversation_id}/export")

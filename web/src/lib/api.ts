@@ -301,3 +301,41 @@ export async function uploadKnowledgeDocument(kbId: string, file: File): Promise
 export function searchKnowledge(query: string, kbIds?: string[], limit = 5): Promise<KnowledgeSearchResult[]> {
   return apiPost<KnowledgeSearchResult[]>("/lucy/knowledge/search", { query, kb_ids: kbIds, limit });
 }
+
+// --- Conversation Search ---
+
+export interface MessageSearchResult {
+  message_id: string;
+  conversation_id: string;
+  conversation_title: string;
+  role: string;
+  content_snippet: string;
+  created_at: string;
+}
+
+export function searchConversations(query: string, limit = 20): Promise<MessageSearchResult[]> {
+  const q = encodeURIComponent(query);
+  return apiGet<MessageSearchResult[]>(`/lucy/conversations/search?q=${q}&limit=${limit}`);
+}
+
+// --- Knowledge Base Export ---
+
+export async function exportKnowledgeBase(kbId: string): Promise<void> {
+  const token = (await import("./auth")).getAccessToken();
+  const res = await fetch(`/api/v1/lucy/knowledge/${kbId}/export`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: "Export failed" }));
+    throw new ApiError(res.status, body.detail || "Export failed");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const disposition = res.headers.get("content-disposition");
+  const match = disposition?.match(/filename="?([^"]+)"?/);
+  a.download = match?.[1] ?? `knowledge-base-${kbId}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

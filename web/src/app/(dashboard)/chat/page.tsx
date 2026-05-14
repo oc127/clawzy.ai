@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiGet, getLucyState } from "@/lib/api";
+import { apiGet, apiPost, getLucyState, searchConversations, type MessageSearchResult } from "@/lib/api";
 import type { Conversation, Message, LucyState } from "@/lib/types";
 import { useChat } from "@/hooks/use-chat";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
   Download,
   FileText,
   Sparkles,
+  Search,
   X,
 } from "lucide-react";
 
@@ -163,6 +164,10 @@ export default function LucyChatPage() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [showArtifacts, setShowArtifacts] = useState(false);
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<MessageSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { t } = useLanguage();
@@ -200,6 +205,23 @@ export default function LucyChatPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleSearch = useCallback((q: string) => {
+    setSearchQuery(q);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!q.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    searchTimeout.current = setTimeout(() => {
+      searchConversations(q.trim())
+        .then(setSearchResults)
+        .catch(() => setSearchResults([]))
+        .finally(() => setIsSearching(false));
+    }, 300);
+  }, []);
 
   // Extract artifacts (code blocks) from assistant messages
   useEffect(() => {
@@ -348,52 +370,120 @@ export default function LucyChatPage() {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-bold text-[#222222] dark:text-white">Conversations</h3>
-          <div className="flex items-center gap-1">
-            {activeConvId && (
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#b0b0b0] dark:text-[#666]" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search messages..."
+            className="w-full rounded-xl border border-[#ebebeb] dark:border-[#333] bg-[#f7f7f7] dark:bg-[#262626] pl-8 pr-3 py-1.5 text-xs text-[#222222] dark:text-white placeholder:text-[#b0b0b0] dark:placeholder:text-[#666] focus:outline-none focus:border-[#ff385c] transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => handleSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#b0b0b0] hover:text-[#717171]"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+
+        {/* Search results or conversation list */}
+        {searchQuery.trim() ? (
+          <>
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-sm font-bold text-[#222222] dark:text-white">
+                {isSearching ? "Searching..." : `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`}
+              </h3>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleExport("md")}
-                title="Export conversation"
-                className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
+                onClick={() => handleSearch("")}
+                className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] text-xs"
               >
-                <Download className="h-4 w-4" />
+                Clear
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleNewConversation}
-              className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+            </div>
+            <div className="flex-1 space-y-1 overflow-y-auto">
+              {searchResults.map((r) => (
+                <button
+                  key={r.message_id}
+                  onClick={() => {
+                    loadConversation(r.conversation_id);
+                    handleSearch("");
+                  }}
+                  className="flex w-full flex-col gap-0.5 rounded-xl px-3 py-2 text-left transition-colors text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] hover:text-[#222222] dark:hover:text-white"
+                >
+                  <span className="text-xs font-medium text-[#222222] dark:text-white truncate">
+                    {r.conversation_title}
+                  </span>
+                  <span className="text-[11px] leading-tight line-clamp-2">
+                    {r.content_snippet}
+                  </span>
+                  <span className="text-[10px] text-[#b0b0b0] dark:text-[#666]">
+                    {r.role} · {new Date(r.created_at).toLocaleDateString()}
+                  </span>
+                </button>
+              ))}
+              {!isSearching && searchResults.length === 0 && (
+                <p className="px-3 py-4 text-xs text-[#b0b0b0] dark:text-[#666] text-center">
+                  No messages found
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-sm font-bold text-[#222222] dark:text-white">Conversations</h3>
+              <div className="flex items-center gap-1">
+                {activeConvId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleExport("md")}
+                    title="Export conversation"
+                    className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNewConversation}
+                  className="rounded-lg text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626]"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
-        <div className="flex-1 space-y-0.5 overflow-y-auto">
-          {conversations.map((conv) => (
-            <button
-              key={conv.id}
-              onClick={() => loadConversation(conv.id)}
-              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                activeConvId === conv.id
-                  ? "bg-[#fff0f2] dark:bg-[#ff385c]/10 text-[#ff385c]"
-                  : "text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] hover:text-[#222222] dark:hover:text-white"
-              }`}
-            >
-              <MessageSquare className="h-3 w-3 shrink-0" />
-              <span className="truncate">{conv.title}</span>
-            </button>
-          ))}
-          {conversations.length === 0 && (
-            <p className="px-3 text-xs text-[#b0b0b0] dark:text-[#666]">
-              No conversations yet. Send a message to start.
-            </p>
-          )}
-        </div>
+            <div className="flex-1 space-y-0.5 overflow-y-auto">
+              {conversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  onClick={() => loadConversation(conv.id)}
+                  className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
+                    activeConvId === conv.id
+                      ? "bg-[#fff0f2] dark:bg-[#ff385c]/10 text-[#ff385c]"
+                      : "text-[#717171] dark:text-[#a0a0a0] hover:bg-[#f7f7f7] dark:hover:bg-[#262626] hover:text-[#222222] dark:hover:text-white"
+                  }`}
+                >
+                  <MessageSquare className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{conv.title}</span>
+                </button>
+              ))}
+              {conversations.length === 0 && (
+                <p className="px-3 text-xs text-[#b0b0b0] dark:text-[#666]">
+                  No conversations yet. Send a message to start.
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Overlay for mobile sidebar */}
