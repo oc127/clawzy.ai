@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -17,9 +18,6 @@ logger = logging.getLogger(__name__)
 
 # Columns added after initial deployment — ensure they exist on upgrade
 _COLUMN_MIGRATIONS = [
-    "ALTER TABLE agents ADD COLUMN IF NOT EXISTS gateway_token VARCHAR(100)",
-    "ALTER TABLE agents ADD COLUMN IF NOT EXISTS container_id VARCHAR(100)",
-    "ALTER TABLE agents ADD COLUMN IF NOT EXISTS ws_port INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_credit_limit INTEGER",
     "ALTER TABLE skills ADD COLUMN IF NOT EXISTS security_status VARCHAR(20) DEFAULT 'unreviewed'",
 ]
@@ -58,7 +56,32 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Migration skipped (%s): %s", stmt.split()[-1], e)
     logger.info("Database tables ready")
+
+    # Start proactive engine scheduler (runs every 15 minutes)
+    async def _proactive_loop():
+        from app.services.proactive_engine import run_proactive_cycle
+        from app.core.database import async_session
+
+        while True:
+            try:
+                async with async_session() as db:
+                    await run_proactive_cycle(db)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.debug("Proactive cycle error", exc_info=True)
+            await asyncio.sleep(900)  # 15 minutes
+
+    proactive_task = asyncio.create_task(_proactive_loop())
+    logger.info("Proactive engine scheduler started (15 min interval)")
+
     yield
+
+    proactive_task.cancel()
+    try:
+        await proactive_task
+    except asyncio.CancelledError:
+        pass
 
 
 _is_production = os.getenv("DEPLOY_ENV") == "production"
@@ -95,4 +118,4 @@ app.include_router(api_router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "clawzy-backend"}
+    return {"status": "ok", "service": "lucy-backend"}

@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, StyleSheet,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -13,6 +14,7 @@ import { Logo } from "@/components/Logo";
 import { colors, spacing, radius, typography } from "@/lib/theme";
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
   const { register } = useAuth();
   const { t } = useLanguage();
   const [name, setName] = useState("");
@@ -23,7 +25,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name || !email || !password) return;
-    if (password.length < 6) { setError("Password must be at least 6 characters"); return; }
+    if (password.length < 8) { setError(t.auth.register.passwordHint); return; }
     setError("");
     setLoading(true);
     try {
@@ -41,7 +43,7 @@ export default function RegisterScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + spacing.sm }]}
         keyboardShouldPersistTaps="handled"
       >
         <TouchableOpacity
@@ -75,7 +77,7 @@ export default function RegisterScreen() {
           <View style={styles.form}>
             <Input
               label={t.auth.register.name}
-              placeholder="Your name"
+              placeholder={t.auth.register.namePlaceholder}
               value={name}
               onChangeText={setName}
               textContentType="name"
@@ -90,7 +92,7 @@ export default function RegisterScreen() {
             />
             <Input
               label={t.auth.register.password}
-              placeholder="At least 6 characters"
+              placeholder={t.auth.register.passwordHint}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -100,7 +102,7 @@ export default function RegisterScreen() {
 
           {/* Perks */}
           <View style={styles.perks}>
-            {["500 free credits", "6+ AI models", "No credit card needed"].map((p) => (
+            {[t.auth.register.perk1, t.auth.register.perk2, t.auth.register.perk3].map((p) => (
               <View key={p} style={styles.perkRow}>
                 <View style={styles.perkDot} />
                 <Text style={styles.perkText}>{p}</Text>
@@ -137,7 +139,6 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: 56,
     paddingBottom: 40,
   },
   topBack: {
@@ -173,9 +174,9 @@ const styles = StyleSheet.create({
   title: { ...typography.xl, ...typography.extrabold, color: colors.text, marginBottom: 4 },
   subtitle: { ...typography.base, color: colors.textSecondary, marginBottom: 24 },
   errorBox: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: colors.errorBorder,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,

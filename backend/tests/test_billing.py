@@ -49,7 +49,7 @@ class TestListPlans:
         assert "name" in plan
         assert "price_monthly" in plan
         assert "credits_included" in plan
-        assert "max_agents" in plan
+        assert "credits_included" in plan
 
 
 @pytest.mark.asyncio

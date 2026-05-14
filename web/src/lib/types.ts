@@ -69,10 +69,11 @@ export interface Skill {
   name: string;
   summary: string;
   description: string;
+  prompt_template: string | null;
   category: string;
   tags: string[] | null;
   icon_url: string | null;
-  clawhub_url: string | null;
+  lucyhub_url: string | null;
   author: string | null;
   version: string | null;
   install_count: number;
@@ -121,6 +122,45 @@ export interface SkillReview {
   updated_at: string;
 }
 
+export interface Memory {
+  id: string;
+  fact: string;
+  agent_id: string | null;
+  source_conversation_id: string | null;
+  created_at: string;
+}
+
+export interface WebFetchResult {
+  url: string;
+  content: string;
+  title: string;
+  type: string;
+  error: string | null;
+}
+
+export interface CodeExecResult {
+  stdout: string;
+  stderr: string;
+  exit_code: number;
+}
+
+export interface SubtaskResult {
+  result: string;
+  conversation_id: string | null;
+}
+
+export interface LucyState {
+  personality_type: string;
+  mood: string;
+  affection: number;
+  relationship_stage: string;
+  interaction_streak: number;
+  total_interactions: number;
+  unlocked_expressions: string[];
+  preferred_model: string;
+  last_interaction_at: string | null;
+}
+
 export interface SkillSubmission {
   id: string;
   user_id: string;
@@ -136,4 +176,35 @@ export interface SkillSubmission {
   review_notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface KnowledgeBase {
+  id: string;
+  name: string;
+  description: string | null;
+  document_count: number;
+  total_chunks: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  knowledge_base_id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  chunk_count: number;
+  status: string;
+  error: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeSearchResult {
+  content: string;
+  score: number;
+  document: string;
+  knowledge_base: string;
+  chunk_index: number;
 }

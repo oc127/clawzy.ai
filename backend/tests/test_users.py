@@ -9,7 +9,7 @@ class TestGetMe:
         resp = await client.get("/api/v1/users/me", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
-        assert data["email"] == "test@clawzy.ai"
+        assert data["email"] == "test@thelucy.ai"
         assert data["name"] == "Test User"
         assert data["credit_balance"] == 500
         assert "password_hash" not in data

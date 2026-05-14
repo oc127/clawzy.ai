@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
@@ -31,7 +31,4 @@ class Agent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user = relationship("User", back_populates="agents")
-    conversations = relationship("Conversation", back_populates="agent", cascade="all, delete-orphan")
-    agent_skills = relationship("AgentSkill", back_populates="agent", cascade="all, delete-orphan")
-    credit_transactions = relationship("CreditTransaction", back_populates="agent")
+    # Relationships removed -- kept as table-only for migration compatibility.

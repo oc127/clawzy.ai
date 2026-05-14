@@ -13,6 +13,11 @@ export const colors = {
   warning: "#F59E0B",
   error: "#EF4444",
   white: "#FFFFFF",
+  purple: "#8B5CF6",
+  indigoLight: "#EEF2FF",
+  errorLight: "#FEF2F2",
+  errorBorder: "#FECACA",
+  dangerLight: "#FEE2E2",
   shadow: "rgba(0,0,0,0.08)",
   // Gradient stops (used as flat fallback too)
   gradientBlue: ["#3B82F6", "#8B5CF6"] as [string, string],

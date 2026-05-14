@@ -1,16 +1,14 @@
-import json
 import logging
-import os
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.config import settings
-from app.models.agent import Agent
 from app.models.skill import AgentSkill, Skill, SkillReview, SkillSubmission
 
 logger = logging.getLogger(__name__)
+
+LUCY_AGENT_ID = "lucy"
 
 
 # ─── Skill Browsing ───
@@ -114,16 +112,10 @@ async def get_recommended_skills(db: AsyncSession, skill_id: str, limit: int = 6
     return recommendations
 
 
-# ─── Agent Skill Install / Uninstall ───
+# ─── Lucy Skill Install / Uninstall ───
 
 
-async def install_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id: str) -> AgentSkill:
-    # Verify agent belongs to user
-    agent = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
-    agent = agent.scalar_one_or_none()
-    if agent is None:
-        raise ValueError("Agent not found")
-
+async def install_skill(db: AsyncSession, skill_id: str) -> AgentSkill:
     # Verify skill exists
     skill = await get_skill_by_id(db, skill_id)
     if skill is None:
@@ -131,13 +123,13 @@ async def install_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id:
 
     # Check if already installed
     existing = await db.execute(
-        select(AgentSkill).where(AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id)
+        select(AgentSkill).where(AgentSkill.agent_id == LUCY_AGENT_ID, AgentSkill.skill_id == skill_id)
     )
     if existing.scalar_one_or_none():
-        raise ValueError("Skill already installed on this agent")
+        raise ValueError("Skill already installed")
 
     # Create the association
-    agent_skill = AgentSkill(agent_id=agent_id, skill_id=skill_id)
+    agent_skill = AgentSkill(agent_id=LUCY_AGENT_ID, skill_id=skill_id)
     db.add(agent_skill)
 
     # Increment install count
@@ -146,24 +138,16 @@ async def install_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id:
     await db.commit()
     await db.refresh(agent_skill)
 
-    # Update agent's OpenClaw config
-    await _sync_agent_skills_config(db, agent_id)
-
     return agent_skill
 
 
-async def uninstall_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id: str) -> None:
-    # Verify agent belongs to user
-    agent = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
-    if agent.scalar_one_or_none() is None:
-        raise ValueError("Agent not found")
-
+async def uninstall_skill(db: AsyncSession, skill_id: str) -> None:
     result = await db.execute(
-        select(AgentSkill).where(AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id)
+        select(AgentSkill).where(AgentSkill.agent_id == LUCY_AGENT_ID, AgentSkill.skill_id == skill_id)
     )
     agent_skill = result.scalar_one_or_none()
     if agent_skill is None:
-        raise ValueError("Skill not installed on this agent")
+        raise ValueError("Skill not installed")
 
     # Decrement install count
     skill = await get_skill_by_id(db, skill_id)
@@ -173,37 +157,26 @@ async def uninstall_skill(db: AsyncSession, agent_id: str, skill_id: str, user_i
     await db.delete(agent_skill)
     await db.commit()
 
-    # Update agent's OpenClaw config
-    await _sync_agent_skills_config(db, agent_id)
 
-
-async def toggle_skill(db: AsyncSession, agent_id: str, skill_id: str, user_id: str, enabled: bool) -> AgentSkill:
-    # Verify agent belongs to user
-    agent = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
-    if agent.scalar_one_or_none() is None:
-        raise ValueError("Agent not found")
-
+async def toggle_skill(db: AsyncSession, skill_id: str, enabled: bool) -> AgentSkill:
     result = await db.execute(
-        select(AgentSkill).where(AgentSkill.agent_id == agent_id, AgentSkill.skill_id == skill_id)
+        select(AgentSkill).where(AgentSkill.agent_id == LUCY_AGENT_ID, AgentSkill.skill_id == skill_id)
     )
     agent_skill = result.scalar_one_or_none()
     if agent_skill is None:
-        raise ValueError("Skill not installed on this agent")
+        raise ValueError("Skill not installed")
 
     agent_skill.enabled = enabled
     await db.commit()
     await db.refresh(agent_skill)
 
-    # Update agent's OpenClaw config
-    await _sync_agent_skills_config(db, agent_id)
-
     return agent_skill
 
 
-async def get_agent_skills(db: AsyncSession, agent_id: str) -> list[AgentSkill]:
+async def get_lucy_skills(db: AsyncSession) -> list[AgentSkill]:
     result = await db.execute(
         select(AgentSkill)
-        .where(AgentSkill.agent_id == agent_id)
+        .where(AgentSkill.agent_id == LUCY_AGENT_ID)
         .options(selectinload(AgentSkill.skill))
         .order_by(AgentSkill.installed_at.desc())
     )
@@ -372,43 +345,3 @@ async def get_submission_by_id(db: AsyncSession, submission_id: str) -> SkillSub
     return result.scalar_one_or_none()
 
 
-# ─── Agent Config Sync ───
-
-
-async def _sync_agent_skills_config(db: AsyncSession, agent_id: str) -> None:
-    """Regenerate the agent's openclaw.json with current skills config.
-
-    OpenClaw's file watcher detects the change and hot-reloads automatically.
-    """
-    # Get the agent
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
-    agent = result.scalar_one_or_none()
-    if agent is None:
-        return
-
-    # Get enabled skills
-    skills_result = await db.execute(
-        select(AgentSkill)
-        .where(AgentSkill.agent_id == agent_id, AgentSkill.enabled == True)  # noqa: E712
-        .options(selectinload(AgentSkill.skill))
-    )
-    agent_skills = list(skills_result.scalars().all())
-
-    # Build the config
-    from app.core.docker_manager import docker_manager
-
-    skill_slugs = [as_.skill.slug for as_ in agent_skills]
-    config = docker_manager.generate_agent_config(
-        model_name=agent.model_name,
-        litellm_key=settings.litellm_master_key,
-        skill_slugs=skill_slugs,
-    )
-
-    # Write to the agent's config directory
-    config_dir = os.path.join(settings.openclaw_agent_config_dir, agent_id)
-    os.makedirs(config_dir, exist_ok=True)
-    config_path = os.path.join(config_dir, "openclaw.json")
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
-
-    logger.info("Updated skills config for agent %s: %s", agent_id, skill_slugs)

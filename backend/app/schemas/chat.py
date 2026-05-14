@@ -32,3 +32,14 @@ class MessageResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class MessageSearchResult(BaseModel):
+    message_id: str
+    conversation_id: str
+    conversation_title: str
+    role: MessageRoleSchema
+    content_snippet: str  # first 200 chars of content
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

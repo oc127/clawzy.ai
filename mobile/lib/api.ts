@@ -1,13 +1,20 @@
 import Constants from "expo-constants";
-import { getAccessToken, clearTokens } from "./storage";
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from "./storage";
 import { router } from "expo-router";
 
 /** Dev: set `extra.apiBaseUrl` in app.json to your backend LAN IP (same Wi‑Fi as the phone/simulator Mac). */
-function getApiBase(): string {
-  if (!__DEV__) return "https://www.nipponclaw.com/api/v1";
+export function getApiBase(): string {
+  if (!__DEV__) return "https://www.thelucy.ai/api/v1";
   const fromConfig = Constants.expoConfig?.extra?.apiBaseUrl as string | undefined;
   if (fromConfig?.startsWith("http")) return fromConfig.replace(/\/$/, "");
   return "http://192.168.2.172/api/v1";
+}
+
+/** Returns the origin (scheme + host) without the /api/v1 path. */
+export function getApiHost(): string {
+  const base = getApiBase();
+  const idx = base.indexOf("/api/v1");
+  return idx !== -1 ? base.slice(0, idx) : base;
 }
 
 const API_BASE = getApiBase();
@@ -21,7 +28,28 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+/** Prevent concurrent refresh requests */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    await saveTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}, _isRetry = false): Promise<T> {
   const token = await getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -49,9 +77,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (res.status === 401) {
-    const msg = await parseErrorBody();
-    // 登录/注册失败也返回 401，不能把「会话过期」逻辑套上去，否则会吞掉真实错误信息
     const isAuthForm = path === "/auth/login" || path === "/auth/register";
+    if (!isAuthForm && !_isRetry) {
+      // Try refreshing the token before giving up
+      if (!refreshPromise) {
+        refreshPromise = tryRefreshToken().finally(() => { refreshPromise = null; });
+      }
+      const refreshed = await refreshPromise;
+      if (refreshed) {
+        return request<T>(path, options, true);
+      }
+    }
+    const msg = await parseErrorBody();
     if (!isAuthForm) {
       await clearTokens();
       router.replace("/(auth)/login");
@@ -98,25 +135,24 @@ export interface User {
 }
 export const getMe = () => apiGet<User>("/users/me");
 
-// ── Agents ────────────────────────────────────────────────────────────────────
-/** Matches backend AgentResponse */
-export interface Agent {
-  id: string;
-  name: string;
-  model_name: string;
-  status: string;
-  created_at: string;
-  ws_port?: number | null;
-  last_active_at?: string | null;
+// ── Lucy ──────────────────────────────────────────────────────────────────────
+/** Matches backend LucyState */
+export interface LucyState {
+  personality_type: string;
+  mood: string;
+  affection: number;
+  relationship_stage: string;
+  interaction_streak: number;
+  total_interactions: number;
+  unlocked_expressions: string[];
+  preferred_model: string;
+  last_interaction_at: string | null;
 }
-export interface AgentCreate {
-  name: string;
-  model_name: string;
-}
-export const getAgents = () => apiGet<Agent[]>("/agents");
-export const getAgent = (id: string) => apiGet<Agent>(`/agents/${id}`);
-export const createAgent = (data: AgentCreate) => apiPost<Agent>("/agents", data);
-export const deleteAgent = (id: string) => apiDelete(`/agents/${id}`);
+export const getLucyState = () => apiGet<LucyState>("/lucy/state");
+export const getLucyPersonality = () => apiGet<{ personality_type: string; traits: string[] }>("/lucy/personality");
+export const getLucyExpressions = () => apiGet<string[]>("/lucy/expressions");
+export const postLucyInteraction = (data: { message: string }) =>
+  apiPost<{ response: string }>("/lucy/interaction", data);
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export interface Message {
@@ -127,17 +163,16 @@ export interface Message {
 }
 export interface Conversation {
   id: string;
-  agent_id: string;
   title: string;
   created_at: string;
   updated_at: string;
 }
-export const getConversations = (agentId: string) =>
-  apiGet<Conversation[]>(`/agents/${agentId}/conversations`);
-export const getMessages = (agentId: string, convId: string) =>
-  apiGet<Message[]>(`/agents/${agentId}/conversations/${convId}/messages`);
-export const createConversation = (agentId: string) =>
-  apiPost<Conversation>(`/agents/${agentId}/conversations`);
+export const getConversations = () =>
+  apiGet<Conversation[]>("/lucy/conversations");
+export const getMessages = (convId: string) =>
+  apiGet<Message[]>(`/lucy/conversations/${convId}/messages`);
+export const createConversation = () =>
+  apiPost<Conversation>("/lucy/conversations");
 
 // ── Models ────────────────────────────────────────────────────────────────────
 /** Matches backend ModelInfo */
@@ -162,3 +197,33 @@ export interface CreditTransaction {
 }
 export const getTransactions = () =>
   apiGet<CreditTransaction[]>("/billing/transactions");
+
+// --- Knowledge Base ---
+export interface KnowledgeBase {
+  id: string;
+  name: string;
+  description: string | null;
+  document_count: number;
+  total_chunks: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  knowledge_base_id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  chunk_count: number;
+  status: string;
+  error: string | null;
+  created_at: string;
+}
+
+export const getKnowledgeBases = () => apiGet<KnowledgeBase[]>("/lucy/knowledge");
+export const createKnowledgeBase = (data: { name: string; description?: string }) => apiPost<KnowledgeBase>("/lucy/knowledge", data);
+export const deleteKnowledgeBase = (id: string) => apiDelete(`/lucy/knowledge/${id}`);
+export const getKnowledgeDocuments = (kbId: string) => apiGet<KnowledgeDocument[]>(`/lucy/knowledge/${kbId}/documents`);
+export const deleteKnowledgeDocument = (kbId: string, docId: string) => apiDelete(`/lucy/knowledge/${kbId}/documents/${docId}`);

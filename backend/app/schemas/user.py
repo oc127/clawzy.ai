@@ -8,6 +8,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     name: str
     avatar_url: str | None = None
+    email_verified: bool = False
     credit_balance: int
     daily_credit_limit: int | None = None
     created_at: datetime

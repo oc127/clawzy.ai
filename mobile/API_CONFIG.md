@@ -12,4 +12,4 @@
 - Mac 与服务器要同一局域网（同一 Wi‑Fi）。
 - 改完后 Metro 里按 `r` 重载；若仍不行，重启 `npx expo run:ios`。
 
-生产环境会自动用 `https://www.nipponclaw.com/api/v1`。
+生产环境会自动用 `https://www.thelucy.ai/api/v1`。

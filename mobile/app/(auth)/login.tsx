@@ -77,6 +77,12 @@ export default function LoginScreen() {
             />
           </View>
 
+          <Link href="/(auth)/forgot-password" asChild>
+            <TouchableOpacity style={styles.forgotLink}>
+              <Text style={styles.forgotText}>{t.auth.login.forgotPassword}</Text>
+            </TouchableOpacity>
+          </Link>
+
           <Button
             onPress={handleLogin}
             loading={loading}
@@ -99,7 +105,7 @@ export default function LoginScreen() {
 
         {/* Bottom decoration */}
         <View style={styles.statsRow}>
-          {[["500", "Free credits"], ["6+", "AI models"], ["24/7", "Uptime"]].map(([val, label]) => (
+          {[["500", t.auth.login.stat1], ["6+", t.auth.login.stat2], ["24/7", t.auth.login.stat3]].map(([val, label]) => (
             <View key={label} style={styles.statItem}>
               <Text style={styles.statVal}>{val}</Text>
               <Text style={styles.statLabel}>{label}</Text>
@@ -147,15 +153,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   errorBox: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: colors.errorBorder,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
   },
   errorText: { ...typography.sm, color: colors.error },
-  form: { gap: 16, marginBottom: 20 },
+  form: { gap: 16, marginBottom: 8 },
+  forgotLink: { alignSelf: "flex-end", marginBottom: 12 },
+  forgotText: { ...typography.sm, color: colors.primary, fontWeight: "600" },
   submitBtn: { marginBottom: 16 },
   footer: {
     flexDirection: "row",

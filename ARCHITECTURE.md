@@ -1,7 +1,7 @@
-# Clawzy.ai — 完整系统架构规划
+# Lucy — 完整系统架构规划
 
 > **Product**: OpenClaw-as-a-Service 平台
-> **Domain**: clawzy.ai
+> **Domain**: thelucy.ai
 > **Tagline**: Your AI Lobster, Any Brain.
 > **Model**: Credits 积分制 + 三档订阅 ($9 / $19 / $39)
 > **Tech Stack**: FastAPI · Next.js · PostgreSQL · Redis · Docker · LiteLLM · OpenClaw
@@ -49,7 +49,7 @@
 ## 2. 项目目录结构
 
 ```
-clawzy.ai/
+thelucy.ai/
 ├── ARCHITECTURE.md                  # 本文档
 ├── DEPLOY.md                        # 部署指南
 ├── docker-compose.yml               # PoC 部署编排 (已有)
@@ -182,7 +182,7 @@ clawzy.ai/
 ├── nginx/                           # ===== Nginx 反向代理 =====
 │   ├── nginx.conf
 │   └── conf.d/
-│       └── clawzy.conf              # server block: 路由到各服务
+│       └── lucy.conf                # server block: 路由到各服务
 │
 └── scripts/                         # ===== 运维脚本 =====
     ├── setup-server.sh              # 服务器初始化 (已有)
@@ -546,7 +546,7 @@ class AgentService:
 
         container = self.client.containers.run(
             image="ghcr.io/openclaw/openclaw:latest",
-            name=f"clawzy-agent-{agent_id}",
+            name=f"lucy-agent-{agent_id}",
             detach=True,
             restart_policy={"Name": "unless-stopped"},
             environment={
@@ -557,10 +557,10 @@ class AgentService:
             },
             mem_limit="512m",
             cpu_quota=50000,  # 0.5 CPU
-            network="clawzy-network",
+            network="lucy-network",
             labels={
-                "clawzy.user_id": str(user_id),
-                "clawzy.agent_id": str(agent_id),
+                "lucy.user_id": str(user_id),
+                "lucy.agent_id": str(agent_id),
             },
         )
         return container.id
@@ -585,7 +585,7 @@ class AgentService:
 | 内存 | 512MB | OpenClaw 不开浏览器够用 |
 | CPU | 0.5 核 | 大部分时间等 API 响应，CPU 不密集 |
 | 磁盘 | Volume 挂载 | 对话记忆存 volume |
-| 网络 | clawzy-network | 容器间通信走内部网络 |
+| 网络 | lucy-network | 容器间通信走内部网络 |
 
 ### 6.3 端口分配
 
@@ -664,7 +664,7 @@ LiteLLM 支持自定义 callback，在每次请求完成后回调后端记录用
 # litellm/config.yaml 添加
 litellm_settings:
   success_callback: ["custom_callback_api"]
-  custom_callback_api_url: "http://clawzy-backend:8000/internal/usage-callback"
+  custom_callback_api_url: "http://lucy-backend:8000/internal/usage-callback"
 ```
 
 后端 `/internal/usage-callback` 接收用量数据后执行积分扣费。
@@ -678,7 +678,7 @@ litellm_settings:
 ```
 Browser                  Nginx              FastAPI            OpenClaw Container
    │                       │                   │                      │
-   │  wss://clawzy.ai/     │                   │                      │
+   │  wss://www.thelucy.ai/ │                   │                      │
    │  ws/chat/{agent_id}   │                   │                      │
    │ ──────────────────────▶                   │                      │
    │                       │  proxy_pass       │                      │
@@ -712,7 +712,7 @@ Browser                  Nginx              FastAPI            OpenClaw Containe
 ## 9. Nginx 反向代理
 
 ```nginx
-# nginx/conf.d/clawzy.conf
+# nginx/conf.d/lucy.conf
 
 upstream backend {
     server 127.0.0.1:8000;
@@ -724,17 +724,17 @@ upstream webapp {
 
 server {
     listen 80;
-    server_name clawzy.ai www.clawzy.ai;
+    server_name thelucy.ai www.thelucy.ai;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name clawzy.ai www.clawzy.ai;
+    server_name thelucy.ai www.thelucy.ai;
 
     # SSL certs (Let's Encrypt / Cloudflare Origin)
-    ssl_certificate     /etc/ssl/clawzy/cert.pem;
-    ssl_certificate_key /etc/ssl/clawzy/key.pem;
+    ssl_certificate     /etc/ssl/lucy/cert.pem;
+    ssl_certificate_key /etc/ssl/lucy/key.pem;
 
     # API 路由 → FastAPI
     location /api/ {
@@ -824,7 +824,7 @@ services:
     build: ./web
     ports: ["127.0.0.1:3000:3000"]
     environment:
-      NEXT_PUBLIC_API_URL: https://clawzy.ai/api
+      NEXT_PUBLIC_API_URL: https://www.thelucy.ai/api
 
   # --- 反向代理 ---
   nginx:
@@ -832,7 +832,7 @@ services:
     ports: ["80:80", "443:443"]
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/ssl/clawzy
+      - ./nginx/ssl:/etc/ssl/lucy
     depends_on: [backend, web]
 
 # 注意: OpenClaw 用户容器由 backend 通过 Docker SDK 动态创建
@@ -896,7 +896,7 @@ services:
 ### Week 6 — 上线
 - [ ] 阿里云新加坡 ECS 部署
 - [ ] Cloudflare DNS + SSL
-- [ ] 域名配置 (clawzy.ai)
+- [ ] 域名配置 (thelucy.ai)
 - [ ] 冒烟测试
 - [ ] Product Hunt / V2EX / 即刻发布
 - [ ] 监控 + 日志 (可选: Grafana)

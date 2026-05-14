@@ -1,7 +1,7 @@
-"""Initial skill seed data for ClawHub marketplace.
+"""Initial skill seed data for LucyHub marketplace.
 
 Each skill includes detailed descriptions with usage scenarios and examples.
-Install counts are approximate values from ClawHub registry popularity.
+Install counts are approximate values from LucyHub registry popularity.
 """
 
 SKILL_SEEDS = [
@@ -12,7 +12,7 @@ SKILL_SEEDS = [
         "summary": "Search the web in real-time to find current information and answer questions.",
         "description": """## Web Search
 
-Enable your agent to search the internet for real-time information.
+Enable Lucy to search the internet for real-time information.
 
 ### Features
 - Search Google, Bing, and other search engines
@@ -30,7 +30,7 @@ Enable your agent to search the internet for real-time information.
 """,
         "category": "search",
         "tags": ["search", "real-time", "web"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "2.1.0",
         "install_count": 12847,
         "is_featured": True,
@@ -60,7 +60,7 @@ Perform comprehensive research by searching multiple sources, cross-referencing 
 """,
         "category": "search",
         "tags": ["research", "multi-step", "synthesis"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "1.5.0",
         "install_count": 8432,
         "is_featured": True,
@@ -71,7 +71,7 @@ Perform comprehensive research by searching multiple sources, cross-referencing 
         "summary": "Search and retrieve Wikipedia articles in any language.",
         "description": """## Wikipedia
 
-Access Wikipedia's vast knowledge base directly from your agent.
+Access Wikipedia's vast knowledge base directly from Lucy.
 
 ### Features
 - Search articles in 300+ languages
@@ -97,7 +97,7 @@ Access Wikipedia's vast knowledge base directly from your agent.
         "summary": "Perform mathematical calculations, unit conversions, and statistical analysis.",
         "description": """## Calculator
 
-A powerful computation tool for your agent.
+A powerful computation tool for Lucy.
 
 ### Features
 - Basic and advanced math operations
@@ -116,7 +116,7 @@ A powerful computation tool for your agent.
 """,
         "category": "productivity",
         "tags": ["math", "calculation", "conversion"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "1.8.0",
         "install_count": 9156,
         "is_featured": False,
@@ -202,7 +202,7 @@ Run code safely inside a sandboxed environment.
 """,
         "category": "development",
         "tags": ["code", "python", "sandbox", "execution"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "3.2.0",
         "install_count": 11203,
         "is_featured": True,
@@ -213,7 +213,7 @@ Run code safely inside a sandboxed environment.
         "summary": "Interact with GitHub repositories, issues, pull requests, and more.",
         "description": """## GitHub
 
-Full GitHub integration for your AI agent.
+Full GitHub integration for Lucy.
 
 ### Features
 - Browse repositories and files
@@ -230,7 +230,7 @@ Full GitHub integration for your AI agent.
 """,
         "category": "development",
         "tags": ["github", "git", "code-review", "devops"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "2.5.0",
         "install_count": 7845,
         "is_featured": True,
@@ -238,10 +238,10 @@ Full GitHub integration for your AI agent.
     {
         "slug": "git",
         "name": "Git",
-        "summary": "Execute git commands to manage version control within agent workspace.",
+        "summary": "Execute git commands to manage version control within Lucy's workspace.",
         "description": """## Git
 
-Enable your agent to use git version control.
+Enable Lucy to use git version control.
 
 ### Features
 - Clone, pull, push repositories
@@ -257,7 +257,7 @@ Enable your agent to use git version control.
 """,
         "category": "development",
         "tags": ["git", "version-control", "scm"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "1.9.0",
         "install_count": 6234,
         "is_featured": False,
@@ -289,7 +289,7 @@ Parse and extract content from various file formats.
 """,
         "category": "data",
         "tags": ["file", "pdf", "excel", "parsing"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "2.0.0",
         "install_count": 8901,
         "is_featured": True,
@@ -376,7 +376,7 @@ Create images from text prompts using state-of-the-art AI models.
 """,
         "category": "ai",
         "tags": ["image", "generation", "dall-e", "creative"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "2.3.0",
         "install_count": 10234,
         "is_featured": True,
@@ -431,7 +431,7 @@ High-quality translation powered by multiple translation engines.
 """,
         "category": "ai",
         "tags": ["translation", "language", "localization", "i18n"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "2.0.0",
         "install_count": 7654,
         "is_featured": True,
@@ -443,7 +443,7 @@ High-quality translation powered by multiple translation engines.
         "summary": "Send, read, and manage emails through Gmail, Outlook, and other providers.",
         "description": """## Email
 
-Full email management for your AI agent.
+Full email management for Lucy.
 
 ### Features
 - Send and receive emails
@@ -471,7 +471,7 @@ Full email management for your AI agent.
         "summary": "Send messages, manage channels, and interact with Slack workspaces.",
         "description": """## Slack
 
-Integrate your agent with Slack for team communication.
+Integrate Lucy with Slack for team communication.
 
 ### Features
 - Send and read messages in channels
@@ -522,7 +522,7 @@ Control a browser programmatically for web automation tasks.
 """,
         "category": "browser",
         "tags": ["browser", "automation", "scraping", "puppeteer"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "3.0.0",
         "install_count": 9876,
         "is_featured": True,
@@ -607,7 +607,7 @@ Run system commands with built-in safety guardrails.
 """,
         "category": "development",
         "tags": ["shell", "bash", "cli", "system"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "2.4.0",
         "install_count": 7123,
         "is_featured": False,
@@ -618,7 +618,7 @@ Run system commands with built-in safety guardrails.
         "summary": "Store and recall information across conversations for persistent context.",
         "description": """## Long-term Memory
 
-Give your agent persistent memory across conversations.
+Give Lucy persistent memory across conversations.
 
 ### Features
 - Store key facts and preferences
@@ -639,7 +639,7 @@ Give your agent persistent memory across conversations.
 """,
         "category": "ai",
         "tags": ["memory", "context", "persistence", "personalization"],
-        "author": "OpenClaw",
+        "author": "Lucy",
         "version": "2.0.0",
         "install_count": 8765,
         "is_featured": True,

@@ -1,4 +1,4 @@
-import { getAccessToken, clearTokens } from "./auth";
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from "./auth";
 
 const API_BASE = "/api/v1";
 
@@ -11,9 +11,32 @@ export class ApiError extends Error {
   }
 }
 
+/** Prevent concurrent refresh requests */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  _isRetry = false,
 ): Promise<T> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
@@ -30,7 +53,19 @@ async function request<T>(
     headers,
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !_isRetry) {
+    // Don't refresh for login/register endpoints
+    const isAuthEndpoint = path.startsWith("/auth/");
+    if (!isAuthEndpoint) {
+      // Deduplicate concurrent refresh calls
+      if (!refreshPromise) {
+        refreshPromise = tryRefreshToken().finally(() => { refreshPromise = null; });
+      }
+      const refreshed = await refreshPromise;
+      if (refreshed) {
+        return request<T>(path, options, true);
+      }
+    }
     clearTokens();
     if (typeof window !== "undefined") {
       window.location.href = "/login";
@@ -69,7 +104,23 @@ export function apiDelete(path: string): Promise<void> {
   return request<void>(path, { method: "DELETE" });
 }
 
-// --- Skills / ClawHub API ---
+// --- Lucy ---
+
+import type { LucyState } from "./types";
+
+export function getLucyState(): Promise<LucyState> {
+  return apiGet<LucyState>("/lucy/state");
+}
+
+export function recordInteraction(): Promise<LucyState> {
+  return apiPost<LucyState>("/lucy/interaction");
+}
+
+export function updatePersonality(data: { personality_type: string; custom_personality_prompt?: string }): Promise<LucyState> {
+  return apiPatch<LucyState>("/lucy/personality", data);
+}
+
+// --- Skills / LucyHub API ---
 
 import type { SkillBrief, Skill, AgentSkill, SkillReview, SkillSubmission } from "./types";
 
@@ -116,16 +167,16 @@ export function getAgentSkills(agentId: string): Promise<AgentSkill[]> {
   return apiGet<AgentSkill[]>(`/skills/agents/${agentId}/installed`);
 }
 
-export function installSkill(agentId: string, skillId: string): Promise<AgentSkill> {
-  return apiPost<AgentSkill>(`/skills/agents/${agentId}/install`, { skill_id: skillId });
+export function installSkill(skillId: string): Promise<AgentSkill> {
+  return apiPost<AgentSkill>("/skills/lucy/skills/install", { skill_id: skillId });
 }
 
-export function uninstallSkill(agentId: string, skillId: string): Promise<void> {
-  return apiDelete(`/skills/agents/${agentId}/uninstall/${skillId}`);
+export function uninstallSkill(skillId: string): Promise<void> {
+  return apiDelete(`/skills/lucy/skills/uninstall/${skillId}`);
 }
 
-export function toggleAgentSkill(agentId: string, skillId: string, enabled: boolean): Promise<AgentSkill> {
-  return apiPatch<AgentSkill>(`/skills/agents/${agentId}/toggle/${skillId}`, { enabled });
+export function getLucySkills(): Promise<AgentSkill[]> {
+  return apiGet<AgentSkill[]>("/skills/lucy/skills");
 }
 
 // --- Reviews ---
@@ -173,4 +224,118 @@ export function submitSkill(data: {
 
 export function getMySubmissions(): Promise<SkillSubmission[]> {
   return apiGet<SkillSubmission[]>("/skills/submissions/mine");
+}
+
+// --- Memory ---
+
+import type { Memory, WebFetchResult, CodeExecResult, SubtaskResult } from "./types";
+
+export function getMemories(): Promise<Memory[]> {
+  return apiGet<Memory[]>("/memory");
+}
+
+export function deleteMemory(id: string): Promise<void> {
+  return apiDelete(`/memory/${id}`);
+}
+
+// --- Tools ---
+
+export function webFetch(url: string): Promise<WebFetchResult> {
+  return apiPost<WebFetchResult>("/tools/web-fetch", { url });
+}
+
+export function execCode(agentId: string, code: string, language = "python"): Promise<CodeExecResult> {
+  return apiPost<CodeExecResult>("/tools/exec", { agent_id: agentId, code, language });
+}
+
+// --- Subtasks ---
+
+export function runSubtask(agentId: string, task: string, parentConversationId?: string): Promise<SubtaskResult> {
+  return apiPost<SubtaskResult>("/subtasks", { agent_id: agentId, task, parent_conversation_id: parentConversationId });
+}
+
+// --- Knowledge Base ---
+
+import type { KnowledgeBase, KnowledgeDocument, KnowledgeSearchResult } from "./types";
+
+export function getKnowledgeBases(): Promise<KnowledgeBase[]> {
+  return apiGet<KnowledgeBase[]>("/lucy/knowledge");
+}
+
+export function createKnowledgeBase(data: { name: string; description?: string }): Promise<KnowledgeBase> {
+  return apiPost<KnowledgeBase>("/lucy/knowledge", data);
+}
+
+export function updateKnowledgeBase(id: string, data: { name?: string; description?: string; is_active?: boolean }): Promise<KnowledgeBase> {
+  return apiPatch<KnowledgeBase>(`/lucy/knowledge/${id}`, data);
+}
+
+export function deleteKnowledgeBase(id: string): Promise<void> {
+  return apiDelete(`/lucy/knowledge/${id}`);
+}
+
+export function getKnowledgeDocuments(kbId: string): Promise<KnowledgeDocument[]> {
+  return apiGet<KnowledgeDocument[]>(`/lucy/knowledge/${kbId}/documents`);
+}
+
+export function deleteKnowledgeDocument(kbId: string, docId: string): Promise<void> {
+  return apiDelete(`/lucy/knowledge/${kbId}/documents/${docId}`);
+}
+
+export async function uploadKnowledgeDocument(kbId: string, file: File): Promise<KnowledgeDocument> {
+  const token = (await import("./auth")).getAccessToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`/api/v1/lucy/knowledge/${kbId}/documents`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: "Upload failed" }));
+    throw new ApiError(res.status, body.detail || "Upload failed");
+  }
+  return res.json();
+}
+
+export function searchKnowledge(query: string, kbIds?: string[], limit = 5): Promise<KnowledgeSearchResult[]> {
+  return apiPost<KnowledgeSearchResult[]>("/lucy/knowledge/search", { query, kb_ids: kbIds, limit });
+}
+
+// --- Conversation Search ---
+
+export interface MessageSearchResult {
+  message_id: string;
+  conversation_id: string;
+  conversation_title: string;
+  role: string;
+  content_snippet: string;
+  created_at: string;
+}
+
+export function searchConversations(query: string, limit = 20): Promise<MessageSearchResult[]> {
+  const q = encodeURIComponent(query);
+  return apiGet<MessageSearchResult[]>(`/lucy/conversations/search?q=${q}&limit=${limit}`);
+}
+
+// --- Knowledge Base Export ---
+
+export async function exportKnowledgeBase(kbId: string): Promise<void> {
+  const token = (await import("./auth")).getAccessToken();
+  const res = await fetch(`/api/v1/lucy/knowledge/${kbId}/export`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: "Export failed" }));
+    throw new ApiError(res.status, body.detail || "Export failed");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const disposition = res.headers.get("content-disposition");
+  const match = disposition?.match(/filename="?([^"]+)"?/);
+  a.download = match?.[1] ?? `knowledge-base-${kbId}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

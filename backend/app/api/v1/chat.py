@@ -1,7 +1,9 @@
 import json
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,18 +11,37 @@ from app.core.database import async_session, get_db
 from app.core.security import decode_token
 from app.deps import get_current_user
 from app.models.chat import Conversation, Message
+from app.models.lucy_state import LucyState
 from app.models.user import User
-from app.schemas.chat import ConversationResponse, MessageResponse
-from app.services.agent_service import get_agent
+from app.schemas.chat import ConversationResponse, MessageResponse, MessageSearchResult
 from app.services.chat_service import (
     get_or_create_conversation,
     stream_chat_completion,
 )
 from app.services.credits_service import DailyLimitExceededError, check_daily_limit
+from app.services.push_service import register_connection, unregister_connection
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
+
+# Fixed agent_id used for all Lucy conversations (avoids schema changes).
+LUCY_AGENT_ID = "lucy"
+
+
+async def _get_or_create_lucy_state(db: AsyncSession, user_id: str) -> LucyState:
+    """Fetch the user's LucyState, creating a default one if it doesn't exist."""
+    result = await db.execute(
+        select(LucyState).where(LucyState.user_id == user_id)
+    )
+    lucy = result.scalar_one_or_none()
+    if lucy is not None:
+        return lucy
+
+    lucy = LucyState(user_id=user_id)
+    db.add(lucy)
+    await db.flush()
+    return lucy
 
 
 # --------------------------------------------------------------------------- #
@@ -28,12 +49,12 @@ router = APIRouter(tags=["chat"])
 # --------------------------------------------------------------------------- #
 
 
-@router.websocket("/ws/chat/{agent_id}")
-async def ws_chat(websocket: WebSocket, agent_id: str):
+@router.websocket("/ws/chat")
+async def ws_chat(websocket: WebSocket):
     """
-    WebSocket chat endpoint.
+    WebSocket chat endpoint for Lucy.
 
-    Connection: ws://host/api/v1/ws/chat/{agent_id}?token=<JWT>
+    Connection: ws://host/api/v1/ws/chat?token=<JWT>
 
     Client sends:
       {"type": "message", "content": "hello", "conversation_id": "optional-uuid"}
@@ -57,7 +78,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 
     user_id = payload["sub"]
 
-    # Verify agent ownership
+    # Verify user and load Lucy state
     async with async_session() as db:
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -65,12 +86,14 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
             await websocket.close(code=4001, reason="User not found")
             return
 
-        agent = await get_agent(db, agent_id, user_id)
-        if agent is None:
-            await websocket.close(code=4004, reason="Agent not found")
+        lucy_state = await _get_or_create_lucy_state(db, user_id)
+        if lucy_state is None:
+            await websocket.close(code=4004, reason="Lucy not initialized")
             return
+        await db.commit()
 
     await websocket.accept()
+    register_connection(user_id, websocket)
 
     try:
         while True:
@@ -110,15 +133,15 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                 conversation_id = data.get("conversation_id")
 
                 async with async_session() as db:
-                    # Re-fetch agent to get latest model_name
-                    agent = await get_agent(db, agent_id, user_id)
-                    if agent is None:
+                    # Re-fetch Lucy state to get latest preferred_model
+                    lucy_state = await _get_or_create_lucy_state(db, user_id)
+                    if lucy_state is None:
                         await websocket.send_text(
                             json.dumps(
                                 {
                                     "type": "error",
-                                    "code": "agent_not_found",
-                                    "message": "Agent no longer exists",
+                                    "code": "lucy_not_initialized",
+                                    "message": "Lucy state could not be loaded",
                                 }
                             )
                         )
@@ -166,7 +189,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                         continue
 
                     try:
-                        conv = await get_or_create_conversation(db, agent_id, conversation_id)
+                        conv = await get_or_create_conversation(db, LUCY_AGENT_ID, conversation_id)
                         await db.commit()
                     except Exception:
                         logger.exception("Failed to get/create conversation")
@@ -182,7 +205,7 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                         continue
                     conv_id = conv.id
 
-                    async for event in stream_chat_completion(db, user_id, agent, conv_id, content):
+                    async for event in stream_chat_completion(db, user_id, lucy_state, conv_id, content):
                         await websocket.send_text(event)
 
             elif msg_type == "switch_model":
@@ -202,9 +225,9 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                         )
                         continue
                     async with async_session() as db:
-                        agent = await get_agent(db, agent_id, user_id)
-                        if agent:
-                            agent.model_name = new_model
+                        lucy_state = await _get_or_create_lucy_state(db, user_id)
+                        if lucy_state:
+                            lucy_state.preferred_model = new_model
                             await db.commit()
                             await websocket.send_text(
                                 json.dumps(
@@ -219,7 +242,9 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
                 await websocket.send_text(json.dumps({"type": "pong"}))
 
     except WebSocketDisconnect:
-        logger.info("WebSocket disconnected: user=%s agent=%s", user_id, agent_id)
+        logger.info("WebSocket disconnected: user=%s", user_id)
+    finally:
+        unregister_connection(user_id, websocket)
 
 
 # --------------------------------------------------------------------------- #
@@ -227,20 +252,107 @@ async def ws_chat(websocket: WebSocket, agent_id: str):
 # --------------------------------------------------------------------------- #
 
 
-@router.get("/agents/{agent_id}/conversations", response_model=list[ConversationResponse])
+@router.get("/lucy/conversations", response_model=list[ConversationResponse])
 async def list_conversations(
-    agent_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-
     result = await db.execute(
-        select(Conversation).where(Conversation.agent_id == agent_id).order_by(Conversation.updated_at.desc())
+        select(Conversation)
+        .where(Conversation.agent_id == LUCY_AGENT_ID)
+        .order_by(Conversation.updated_at.desc())
     )
     return list(result.scalars().all())
+
+
+@router.get("/lucy/conversations/search", response_model=list[MessageSearchResult])
+async def search_conversations(
+    q: str = Query(min_length=1),
+    limit: int = Query(default=20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search across the current user's Lucy message history."""
+    result = await db.execute(
+        select(Message, Conversation.title)
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .where(
+            Conversation.agent_id == LUCY_AGENT_ID,
+            Conversation.user_id == user.id,
+            Message.content.ilike(f"%{q}%"),
+        )
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+    )
+    rows = result.all()
+    return [
+        MessageSearchResult(
+            message_id=msg.id,
+            conversation_id=msg.conversation_id,
+            conversation_title=conv_title or "New conversation",
+            role=msg.role.value,
+            content_snippet=msg.content[:200],
+            created_at=msg.created_at,
+        )
+        for msg, conv_title in rows
+    ]
+
+
+@router.get("/conversations/{conversation_id}/export")
+async def export_conversation(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    format: str = Query(default="md", pattern="^(md|json|txt)$"),
+):
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = result.scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    # Verify the conversation belongs to Lucy and the user owns it
+    if conv.agent_id != LUCY_AGENT_ID:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc())
+    )
+    messages = list(result.scalars().all())
+
+    if format == "json":
+        data = {
+            "conversation_id": conversation_id,
+            "title": conv.title,
+            "exported_at": datetime.utcnow().isoformat(),
+            "messages": [
+                {
+                    "role": m.role,
+                    "content": m.content,
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
+                    "model_name": m.model_name,
+                    "credits_used": m.credits_used,
+                }
+                for m in messages
+            ],
+        }
+        return data
+
+    if format == "txt":
+        lines = [f"Conversation: {conv.title or 'Untitled'}\n"]
+        for m in messages:
+            ts = m.created_at.strftime("%Y-%m-%d %H:%M") if m.created_at else ""
+            lines.append(f"[{ts}] {m.role.upper()}: {m.content}\n")
+        return PlainTextResponse("".join(lines), media_type="text/plain")
+
+    # Markdown (default)
+    lines = [f"# {conv.title or 'Untitled'}\n\n"]
+    for m in messages:
+        ts = m.created_at.strftime("%Y-%m-%d %H:%M") if m.created_at else ""
+        role_label = "**You**" if m.role == "user" else "**Assistant**"
+        lines.append(f"### {role_label} — {ts}\n\n{m.content}\n\n---\n\n")
+    return PlainTextResponse("".join(lines), media_type="text/markdown")
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[MessageResponse])
@@ -256,8 +368,8 @@ async def list_messages(
     if conv is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
-    agent = await get_agent(db, conv.agent_id, user.id)
-    if agent is None:
+    # Verify the conversation belongs to Lucy
+    if conv.agent_id != LUCY_AGENT_ID:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     result = await db.execute(

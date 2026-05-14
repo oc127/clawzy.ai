@@ -1,5 +1,5 @@
-const ACCESS_TOKEN_KEY = "clawzy_access_token";
-const REFRESH_TOKEN_KEY = "clawzy_refresh_token";
+const ACCESS_TOKEN_KEY = "lucy_access_token";
+const REFRESH_TOKEN_KEY = "lucy_refresh_token";
 
 export function saveTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);

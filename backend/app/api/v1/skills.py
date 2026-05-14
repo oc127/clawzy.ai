@@ -198,58 +198,54 @@ async def get_my_submissions(
     return await skill_service.get_user_submissions(db, user.id)
 
 
-# ─── Agent skill management ───
+# ─── Lucy skill management ───
 
 
-@router.get("/agents/{agent_id}/installed", response_model=list[AgentSkillResponse])
-async def get_agent_skills(
-    agent_id: str,
+@router.get("/lucy/skills", response_model=list[AgentSkillResponse])
+async def get_lucy_skills(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return await skill_service.get_agent_skills(db, agent_id)
+    return await skill_service.get_lucy_skills(db)
 
 
-@router.post("/agents/{agent_id}/install", status_code=status.HTTP_201_CREATED, response_model=AgentSkillResponse)
+@router.post("/lucy/skills/install", status_code=status.HTTP_201_CREATED, response_model=AgentSkillResponse)
 async def install_skill(
-    agent_id: str,
     body: SkillInstallRequest,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     try:
-        await skill_service.install_skill(db, agent_id, body.skill_id, user.id)
+        await skill_service.install_skill(db, body.skill_id)
         # Reload with skill relationship
-        skills = await skill_service.get_agent_skills(db, agent_id)
+        skills = await skill_service.get_lucy_skills(db)
         return next(s for s in skills if s.skill_id == body.skill_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.delete("/agents/{agent_id}/uninstall/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/lucy/skills/uninstall/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def uninstall_skill(
-    agent_id: str,
     skill_id: str,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     try:
-        await skill_service.uninstall_skill(db, agent_id, skill_id, user.id)
+        await skill_service.uninstall_skill(db, skill_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.patch("/agents/{agent_id}/toggle/{skill_id}", response_model=AgentSkillResponse)
+@router.patch("/lucy/skills/toggle/{skill_id}", response_model=AgentSkillResponse)
 async def toggle_skill(
-    agent_id: str,
     skill_id: str,
     body: SkillToggleRequest,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     try:
-        await skill_service.toggle_skill(db, agent_id, skill_id, user.id, body.enabled)
-        skills = await skill_service.get_agent_skills(db, agent_id)
+        await skill_service.toggle_skill(db, skill_id, body.enabled)
+        skills = await skill_service.get_lucy_skills(db)
         return next(s for s in skills if s.skill_id == skill_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

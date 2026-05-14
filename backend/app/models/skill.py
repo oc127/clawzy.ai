@@ -15,10 +15,11 @@ class Skill(Base):
     name: Mapped[str] = mapped_column(String(200))
     summary: Mapped[str] = mapped_column(String(500))
     description: Mapped[str] = mapped_column(Text)
+    prompt_template: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(50), index=True)
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    clawhub_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    lucyhub_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     author: Mapped[str | None] = mapped_column(String(200), nullable=True)
     version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     install_count: Mapped[int] = mapped_column(Integer, default=0, index=True)
@@ -47,7 +48,6 @@ class AgentSkill(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     installed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    agent = relationship("Agent", back_populates="agent_skills")
     skill = relationship("Skill", back_populates="agent_skills")
 
 

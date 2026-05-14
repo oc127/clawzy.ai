@@ -9,7 +9,7 @@ class TestRegister:
         resp = await client.post(
             "/api/v1/auth/register",
             json={
-                "email": "new@clawzy.ai",
+                "email": "new@thelucy.ai",
                 "password": "securepass",
                 "name": "New User",
             },
@@ -24,8 +24,8 @@ class TestRegister:
         resp = await client.post(
             "/api/v1/auth/register",
             json={
-                "email": "test@clawzy.ai",
-                "password": "pass",
+                "email": "test@thelucy.ai",
+                "password": "password123",
                 "name": "Dup",
             },
         )
@@ -59,7 +59,7 @@ class TestLogin:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "email": "test@clawzy.ai",
+                "email": "test@thelucy.ai",
                 "password": "password123",
             },
         )
@@ -72,7 +72,7 @@ class TestLogin:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "email": "test@clawzy.ai",
+                "email": "test@thelucy.ai",
                 "password": "wrongpass",
             },
         )
@@ -82,7 +82,7 @@ class TestLogin:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "email": "nobody@clawzy.ai",
+                "email": "nobody@thelucy.ai",
                 "password": "pass",
             },
         )
@@ -96,7 +96,7 @@ class TestRefresh:
         login_resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "email": "test@clawzy.ai",
+                "email": "test@thelucy.ai",
                 "password": "password123",
             },
         )

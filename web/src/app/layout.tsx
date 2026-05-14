@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
 import { LanguageProvider } from "@/context/language-context";
+import { ThemeProvider } from "@/context/theme-context";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "NipponClaw — Your AI Agent, Any Brain.",
+  title: "Lucy — Your AI Agent, Any Brain.",
   description:
     "AI agent platform powered by multiple LLM models. Create custom agents, chat with any AI model, pay only for what you use.",
   icons: {
@@ -19,11 +20,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>{children}</AuthProvider>
         </LanguageProvider>
+        </ThemeProvider>
         <Toaster
           position="bottom-center"
           duration={4000}

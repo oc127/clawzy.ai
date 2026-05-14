@@ -102,6 +102,9 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="block text-sm font-semibold text-[#222222]">{t.auth.login.password}</label>
+                <Link href="/forgot-password" className="text-xs text-[#ff385c] hover:underline">
+                  {t.auth.forgotPassword.title}
+                </Link>
               </div>
               <Input
                 type="password"
