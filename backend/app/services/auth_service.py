@@ -1,10 +1,14 @@
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
+from app.models.credits import CreditReason, CreditTransaction
 from app.models.user import User
-from app.models.credits import CreditTransaction, CreditReason
+from app.services.email_service import send_password_reset_email, send_verification_email
 
 
 class AuthError(Exception):
@@ -18,11 +22,14 @@ async def register_user(db: AsyncSession, email: str, password: str, name: str) 
     if result.scalar_one_or_none() is not None:
         raise AuthError("Email already registered")
 
+    verification_token = secrets.token_urlsafe(48)
     user = User(
         email=email,
         password_hash=hash_password(password),
         name=name,
         credit_balance=settings.signup_bonus_credits,
+        email_verified=False,
+        verification_token=verification_token,
     )
     db.add(user)
     await db.flush()
@@ -40,7 +47,33 @@ async def register_user(db: AsyncSession, email: str, password: str, name: str) 
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
+
+    await send_verification_email(email, verification_token)
+
     return user, access_token, refresh_token
+
+
+async def verify_email(db: AsyncSession, token: str) -> User:
+    """Verify a user's email address using their verification token."""
+    result = await db.execute(select(User).where(User.verification_token == token))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise AuthError("Invalid verification token")
+    user.email_verified = True
+    user.verification_token = None
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def resend_verification(db: AsyncSession, user: User) -> None:
+    """Generate a new verification token and send it."""
+    if user.email_verified:
+        raise AuthError("Email is already verified")
+    token = secrets.token_urlsafe(48)
+    user.verification_token = token
+    await db.commit()
+    await send_verification_email(user.email, token)
 
 
 async def login_user(db: AsyncSession, email: str, password: str) -> tuple[User, str, str]:
@@ -53,3 +86,49 @@ async def login_user(db: AsyncSession, email: str, password: str) -> tuple[User,
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
     return user, access_token, refresh_token
+
+
+async def request_password_reset(db: AsyncSession, email: str) -> None:
+    """Generate a reset token and send an email. Always succeeds (no email leak)."""
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        return  # Don't reveal whether the email exists
+
+    token = secrets.token_urlsafe(48)
+    user.password_reset_token = token
+    user.password_reset_expires = datetime.now(UTC) + timedelta(
+        minutes=settings.password_reset_expire_minutes
+    )
+    await db.commit()
+
+    await send_password_reset_email(email, token)
+
+
+async def reset_password(db: AsyncSession, token: str, new_password: str) -> User:
+    """Validate the reset token and update the user's password."""
+    result = await db.execute(
+        select(User).where(User.password_reset_token == token)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise AuthError("Invalid or expired reset token")
+    if user.password_reset_expires is None or user.password_reset_expires < datetime.now(UTC):
+        raise AuthError("Invalid or expired reset token")
+
+    user.password_hash = hash_password(new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def change_password(db: AsyncSession, user: User, current_password: str, new_password: str) -> User:
+    """Change password for an authenticated user."""
+    if not verify_password(current_password, user.password_hash):
+        raise AuthError("Current password is incorrect")
+    user.password_hash = hash_password(new_password)
+    await db.commit()
+    await db.refresh(user)
+    return user

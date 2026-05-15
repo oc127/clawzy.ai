@@ -1,226 +1,251 @@
-"""Skills API — manage agent skills and browse built-in skill library."""
-
-import logging
-import re
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
-from app.schemas.skill import SkillCreate, SkillUpdate, SkillToggle, SkillExtractRequest, SkillResponse
-from app.services.agent_service import get_agent
-from app.services.skill_service import (
-    install_skill,
-    update_skill,
-    list_skills,
-    get_skill,
-    toggle_skill,
-    delete_skill,
-    auto_extract_skill,
+from app.schemas.skill import (
+    AgentSkillResponse,
+    SkillBriefResponse,
+    SkillInstallRequest,
+    SkillResponse,
+    SkillReviewCreateRequest,
+    SkillReviewResponse,
+    SkillReviewUpdateRequest,
+    SkillSubmissionCreateRequest,
+    SkillSubmissionResponse,
+    SkillToggleRequest,
 )
+from app.services import skill_service
 
-logger = logging.getLogger(__name__)
-
-router = APIRouter(prefix="/agents/{agent_id}/skills", tags=["skills"])
-
-# ── Built-in skill library (no agent/auth scope) ───────────────────────────
-builtin_router = APIRouter(prefix="/skills/builtin", tags=["builtin-skills"])
+router = APIRouter(prefix="/skills", tags=["skills"])
 
 
-def _slugify(name: str) -> str:
-    """Generate a slug from a skill name."""
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-    return slug or "custom-skill"
+# ─── Browsing ───
 
 
-@router.get("", response_model=list[SkillResponse])
-async def list_agent_skills(
-    agent_id: str,
-    user: User = Depends(get_current_user),
+@router.get("", response_model=list[SkillBriefResponse])
+async def list_skills(
+    category: str | None = Query(None),
+    search: str | None = Query(None),
+    tag: str | None = Query(None),
+    sort_by: str = Query("install_count", pattern="^(install_count|newest|featured|rating)$"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-):
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    return await list_skills(db, agent_id)
-
-
-@router.post("", response_model=SkillResponse, status_code=status.HTTP_201_CREATED)
-async def create_custom_skill(
-    agent_id: str,
-    body: SkillCreate,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-
-    slug = body.slug or _slugify(body.name)
-    return await install_skill(
-        db,
-        agent_id=agent_id,
-        slug=slug,
-        name=body.name,
-        source="custom",
-        content=body.content,
-        description=body.description,
-        triggers=body.triggers,
-    )
+    return await skill_service.list_skills(db, category, search, sort_by, tag, limit, offset)
 
 
-@router.put("/{skill_id}", response_model=SkillResponse)
-async def update_agent_skill(
-    agent_id: str,
-    skill_id: str,
-    body: SkillUpdate,
+@router.get("/categories", response_model=list[str])
+async def get_categories(
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-
-    skill = await get_skill(db, skill_id)
-    if skill is None or skill.agent_id != agent_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
-
-    updated = await update_skill(
-        db,
-        skill_id=skill_id,
-        name=body.name,
-        description=body.description,
-        triggers=body.triggers,
-        content=body.content,
-        enabled=body.enabled,
-    )
-    return updated
+    return await skill_service.get_categories(db)
 
 
-@router.patch("/{skill_id}", response_model=SkillResponse)
-async def toggle_agent_skill(
-    agent_id: str,
-    skill_id: str,
-    body: SkillToggle,
+@router.get("/tags", response_model=list[str])
+async def get_tags(
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    return await skill_service.get_all_tags(db)
 
-    skill = await toggle_skill(db, skill_id, body.enabled)
+
+@router.get("/trending", response_model=list[SkillBriefResponse])
+async def get_trending(
+    limit: int = Query(10, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return await skill_service.get_trending_skills(db, limit)
+
+
+@router.get("/{slug}", response_model=SkillResponse)
+async def get_skill(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    skill = await skill_service.get_skill_by_slug(db, slug)
     if skill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
     return skill
 
 
-@router.delete("/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_agent_skill(
-    agent_id: str,
-    skill_id: str,
-    user: User = Depends(get_current_user),
+@router.get("/{slug}/recommendations", response_model=list[SkillBriefResponse])
+async def get_recommendations(
+    slug: str,
+    limit: int = Query(6, ge=1, le=12),
     db: AsyncSession = Depends(get_db),
-):
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-
-    deleted = await delete_skill(db, skill_id)
-    if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
-
-
-@router.post("/extract", response_model=SkillResponse | None, status_code=status.HTTP_200_OK)
-async def extract_skill_from_conversation(
-    agent_id: str,
-    body: SkillExtractRequest,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Manually trigger skill extraction from a conversation history.
-
-    Returns the created skill if a reusable pattern was found, or null if not.
-    """
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-
-    skill = await auto_extract_skill(db, agent_id, body.messages)
-    return skill
-
-
-# ── Built-in skill library endpoints ──────────────────────────────────────
-
-@builtin_router.get("", summary="List all built-in skills (compact index)")
-async def list_builtin_skills(
-    category: Optional[str] = Query(None, description="Filter by category"),
     user: User = Depends(get_current_user),
 ):
-    """Return compact metadata for all built-in disk-based skills."""
-    from app.services.skill_loader import list_all_skills
-
-    skills = list_all_skills()
-    if category:
-        skills = [s for s in skills if s.category == category]
-
-    return [
-        {
-            "name": s.name,
-            "description": s.description,
-            "category": s.category,
-            "tags": s.tags,
-            "triggers": s.triggers,
-            "version": s.version,
-            "platform": s.platform,
-        }
-        for s in skills
-    ]
-
-
-@builtin_router.get("/search", summary="Search built-in skills")
-async def search_builtin_skills(
-    q: str = Query(..., min_length=1, description="Search query"),
-    user: User = Depends(get_current_user),
-):
-    """Search built-in skills by name, description, tags, or triggers."""
-    from app.services.skill_loader import search_skills
-
-    results = search_skills(q)
-    return [
-        {
-            "name": s.name,
-            "description": s.description,
-            "category": s.category,
-            "tags": s.tags,
-            "triggers": s.triggers,
-        }
-        for s in results
-    ]
-
-
-@builtin_router.get("/{name}", summary="Get full content of a built-in skill")
-async def get_builtin_skill(
-    name: str,
-    user: User = Depends(get_current_user),
-):
-    """Return full SKILL.md content for a specific built-in skill."""
-    from app.services.skill_loader import get_skill as load_skill
-
-    skill = load_skill(name)
+    skill = await skill_service.get_skill_by_slug(db, slug)
     if skill is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Built-in skill '{name}' not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+    return await skill_service.get_recommended_skills(db, skill.id, limit)
 
-    return {
-        "name": skill.name,
-        "description": skill.description,
-        "category": skill.category,
-        "tags": skill.tags,
-        "triggers": skill.triggers,
-        "version": skill.version,
-        "platform": skill.platform,
-        "content": skill.content,
-    }
+
+# ─── Reviews ───
+
+
+@router.get("/{slug}/reviews", response_model=list[SkillReviewResponse])
+async def get_reviews(
+    slug: str,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    skill = await skill_service.get_skill_by_slug(db, slug)
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+    return await skill_service.get_skill_reviews(db, skill.id, limit, offset)
+
+
+@router.get("/{slug}/reviews/mine", response_model=SkillReviewResponse | None)
+async def get_my_review(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    skill = await skill_service.get_skill_by_slug(db, slug)
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+    return await skill_service.get_user_review(db, skill.id, user.id)
+
+
+@router.post("/{slug}/reviews", status_code=status.HTTP_201_CREATED, response_model=SkillReviewResponse)
+async def create_review(
+    slug: str,
+    body: SkillReviewCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    skill = await skill_service.get_skill_by_slug(db, slug)
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+    try:
+        return await skill_service.create_review(db, skill.id, user.id, body.rating, body.title, body.content)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.patch("/{slug}/reviews", response_model=SkillReviewResponse)
+async def update_review(
+    slug: str,
+    body: SkillReviewUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    skill = await skill_service.get_skill_by_slug(db, slug)
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+    try:
+        return await skill_service.update_review(db, skill.id, user.id, body.rating, body.title, body.content)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/{slug}/reviews", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_review(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    skill = await skill_service.get_skill_by_slug(db, slug)
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+    try:
+        await skill_service.delete_review(db, skill.id, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# ─── Skill Submissions ───
+
+
+@router.post("/submissions", status_code=status.HTTP_201_CREATED, response_model=SkillSubmissionResponse)
+async def submit_skill(
+    body: SkillSubmissionCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        return await skill_service.create_submission(
+            db,
+            user_id=user.id,
+            name=body.name,
+            slug=body.slug,
+            summary=body.summary,
+            description=body.description,
+            category=body.category,
+            tags=body.tags,
+            version=body.version,
+            source_url=body.source_url,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/submissions/mine", response_model=list[SkillSubmissionResponse])
+async def get_my_submissions(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return await skill_service.get_user_submissions(db, user.id)
+
+
+# ─── Lucy skill management ───
+
+
+@router.get("/lucy/skills", response_model=list[AgentSkillResponse])
+async def get_lucy_skills(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return await skill_service.get_lucy_skills(db)
+
+
+@router.post("/lucy/skills/install", status_code=status.HTTP_201_CREATED, response_model=AgentSkillResponse)
+async def install_skill(
+    body: SkillInstallRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        await skill_service.install_skill(db, body.skill_id)
+        # Reload with skill relationship
+        skills = await skill_service.get_lucy_skills(db)
+        return next(s for s in skills if s.skill_id == body.skill_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/lucy/skills/uninstall/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def uninstall_skill(
+    skill_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        await skill_service.uninstall_skill(db, skill_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.patch("/lucy/skills/toggle/{skill_id}", response_model=AgentSkillResponse)
+async def toggle_skill(
+    skill_id: str,
+    body: SkillToggleRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        await skill_service.toggle_skill(db, skill_id, body.enabled)
+        skills = await skill_service.get_lucy_skills(db)
+        return next(s for s in skills if s.skill_id == skill_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

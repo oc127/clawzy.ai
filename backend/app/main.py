@@ -1,33 +1,107 @@
+import asyncio
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
+# Import all models so Base.metadata knows about them
+import app.models  # noqa: F401
 from app.api.router import api_router
-from app.api.v1.legal import router as legal_router
 from app.config import settings
-from app.middleware.rate_limit import RateLimitMiddleware
+from app.core.database import Base, engine
+from app.core.rate_limit import RateLimitMiddleware
 
-# Conditionally expose API docs (disabled in production)
-_is_dev = settings.environment.lower() in ("development", "dev", "local", "test")
-_docs_url = "/docs" if _is_dev else None
-_redoc_url = "/redoc" if _is_dev else None
+logger = logging.getLogger(__name__)
+
+# Columns added after initial deployment — ensure they exist on upgrade
+_COLUMN_MIGRATIONS = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_credit_limit INTEGER",
+    "ALTER TABLE skills ADD COLUMN IF NOT EXISTS security_status VARCHAR(20) DEFAULT 'unreviewed'",
+]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Fail fast only in production; warn otherwise
+    if os.getenv("DEPLOY_ENV") == "production":
+        if settings.jwt_secret in ("change-me-jwt-secret", ""):
+            logger.critical(
+                "JWT_SECRET is default in production! Set JWT_SECRET (openssl rand -hex 32)"
+            )
+            raise SystemExit(1)
+        if settings.cors_origins.strip() == "*":
+            logger.critical(
+                "CORS_ORIGINS is '*' in production! Restrict to your domain"
+            )
+            raise SystemExit(1)
+    elif not settings.debug:
+        if settings.jwt_secret in ("change-me-jwt-secret", ""):
+            logger.critical(
+                "JWT_SECRET is default! Set JWT_SECRET in production (openssl rand -hex 32)"
+            )
+        if settings.cors_origins.strip() == "*":
+            logger.warning(
+                "CORS_ORIGINS is '*' — restrict to your domain in production"
+            )
+    # Create tables on startup (safe: CREATE IF NOT EXISTS)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        # Ensure newer columns exist (no-op if already present)
+        for stmt in _COLUMN_MIGRATIONS:
+            try:
+                await conn.execute(text(stmt))
+            except Exception as e:
+                logger.warning("Migration skipped (%s): %s", stmt.split()[-1], e)
+    logger.info("Database tables ready")
+
+    # Start proactive engine scheduler (runs every 15 minutes)
+    async def _proactive_loop():
+        from app.services.proactive_engine import run_proactive_cycle
+        from app.core.database import async_session
+
+        while True:
+            try:
+                async with async_session() as db:
+                    await run_proactive_cycle(db)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.debug("Proactive cycle error", exc_info=True)
+            await asyncio.sleep(900)  # 15 minutes
+
+    proactive_task = asyncio.create_task(_proactive_loop())
+    logger.info("Proactive engine scheduler started (15 min interval)")
+
+    yield
+
+    proactive_task.cancel()
+    try:
+        await proactive_task
+    except asyncio.CancelledError:
+        pass
+
+
+_is_production = os.getenv("DEPLOY_ENV") == "production"
 
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    docs_url=_docs_url,
-    redoc_url=_redoc_url,
+    # Disable API docs in production
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
+    lifespan=lifespan,
 )
 
-# CORS — allow configured origins, plus localhost variants in development
-_cors_origins = list(settings.cors_origins)
-if _is_dev:
-    _cors_origins += [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ]
+# Parse CORS origins from config (comma-separated or "*")
+_cors_origins = (
+    ["*"]
+    if settings.cors_origins.strip() == "*"
+    else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,88 +113,9 @@ app.add_middleware(
 
 app.add_middleware(RateLimitMiddleware)
 
-app.include_router(legal_router)   # /privacy, /terms (root-level for Apple/legal)
 app.include_router(api_router)
-
-
-@app.on_event("startup")
-async def validate_secrets():
-    """Crash in production if secrets still contain placeholder defaults."""
-    import sys
-
-    warnings = []
-    if "change-me" in settings.jwt_secret:
-        warnings.append("jwt_secret contains default value! Set JWT_SECRET in .env")
-    if "change-me" in settings.litellm_master_key:
-        warnings.append("litellm_master_key contains default value! Set LITELLM_MASTER_KEY in .env")
-
-    for w in warnings:
-        print(f"CRITICAL: {w}", file=sys.stderr)
-
-    if warnings and settings.environment.lower() == "production":
-        print("FATAL: refusing to start with default secrets in production", file=sys.stderr)
-        sys.exit(1)
-
-
-@app.on_event("startup")
-async def startup_event():
-    from app.services.scheduler_service import start_scheduler
-    start_scheduler()
-
-    # Background task: refresh ClawHub popular cache every 2 hours
-    import asyncio
-
-    async def _refresh_clawhub_cache():
-        """Pre-warm popular plugin caches for all languages every 2 hours."""
-        import logging
-        logger = logging.getLogger("clawhub_cache")
-        await asyncio.sleep(10)  # Wait for app to fully start
-        while True:
-            for lang in ("ja", "zh", "ko", "en"):
-                try:
-                    from app.api.v1.clawhub import (
-                        _popular_plugins, _translate_plugins, ClawHubPlugin,
-                    )
-                    from app.core.redis import get_redis
-                    import json
-
-                    rd = await get_redis()
-                    limit = 10
-                    cache_key = f"clawhub:popular:{lang}:{limit}"
-
-                    items = await _popular_plugins(limit)
-                    items = await _translate_plugins(items, lang)
-                    await rd.set(
-                        cache_key,
-                        json.dumps([p.model_dump() for p in items], ensure_ascii=False),
-                        ex=21600,
-                    )
-                    logger.info("Refreshed ClawHub popular cache: lang=%s, items=%d", lang, len(items))
-                except Exception as exc:
-                    logger.warning("ClawHub cache refresh failed for %s: %s", lang, exc)
-            await asyncio.sleep(7200)  # Every 2 hours
-
-    asyncio.create_task(_refresh_clawhub_cache())
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    from app.core.http_client import close_clients
-    await close_clients()
 
 
 @app.get("/health")
 async def health():
-    from app.core.docker_manager import docker_manager
-
-    openclaw_status = "ok"
-    try:
-        docker_manager.client.ping()
-    except Exception:
-        openclaw_status = "offline"
-
-    return {
-        "status": "ok",
-        "service": "nipponclaw-backend",
-        "openclaw": openclaw_status,
-    }
+    return {"status": "ok", "service": "lucy-backend"}

@@ -1,38 +1,32 @@
-from app.models.user import User
-from app.models.subscription import Subscription
-from app.models.credits import CreditTransaction
 from app.models.agent import Agent
 from app.models.chat import Conversation, Message
-from app.models.template import AgentTemplate
-from app.models.memory import AgentMemory
-from app.models.tool import AgentTool
-from app.models.skill import AgentSkill
-from app.models.mcp import AgentMCPServer
-from app.models.task import ScheduledTask, TaskRun
-from app.models.approval import ApprovalRequest
-from app.models.channel import AgentChannel
-from app.models.agent_task import AgentTask
-from app.models.agent_file import AgentFile
-from app.models.harness import TaskPipeline, PipelineStep
+from app.models.credits import CreditTransaction
+from app.models.knowledge import KnowledgeBase, KnowledgeChunk, KnowledgeDocument
+from app.models.lucy_event import LucyEvent, LucyInitiative
+from app.models.lucy_state import LucyState
+from app.models.lucy_task import LucyTask
+from app.models.memory import Memory
+from app.models.skill import AgentSkill, Skill, SkillReview, SkillSubmission
+from app.models.subscription import Subscription
+from app.models.user import User
 
 __all__ = [
+    "Agent",
     "User",
     "Subscription",
     "CreditTransaction",
-    "Agent",
     "Conversation",
     "Message",
-    "AgentTemplate",
-    "AgentMemory",
-    "AgentTool",
+    "KnowledgeBase",
+    "KnowledgeDocument",
+    "KnowledgeChunk",
+    "LucyState",
+    "LucyEvent",
+    "LucyInitiative",
+    "LucyTask",
+    "Memory",
+    "Skill",
     "AgentSkill",
-    "AgentMCPServer",
-    "ScheduledTask",
-    "TaskRun",
-    "ApprovalRequest",
-    "AgentChannel",
-    "AgentTask",
-    "AgentFile",
-    "TaskPipeline",
-    "PipelineStep",
+    "SkillReview",
+    "SkillSubmission",
 ]

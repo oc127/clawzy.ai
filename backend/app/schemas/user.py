@@ -8,7 +8,9 @@ class UserResponse(BaseModel):
     email: EmailStr
     name: str
     avatar_url: str | None = None
+    email_verified: bool = False
     credit_balance: int
+    daily_credit_limit: int | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -17,3 +19,4 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     name: str | None = None
     avatar_url: str | None = None
+    daily_credit_limit: int | None = None

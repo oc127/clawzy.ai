@@ -1,4 +1,4 @@
-# Clawzy.ai — PoC 部署指南
+# Lucy — PoC 部署指南
 
 > 目标：阿里云新加坡 ECS (4C8G Ubuntu 22.04)
 > 架构：OpenClaw + LiteLLM Proxy + PostgreSQL，Docker Compose 编排
@@ -58,9 +58,9 @@ ssh -i ~/.ssh/your-key.pem root@<YOUR_ECS_IP>
 首次登录建议：
 ```bash
 # 创建非 root 用户（推荐）
-adduser clawzy
-usermod -aG sudo clawzy
-su - clawzy
+adduser lucy
+usermod -aG sudo lucy
+su - lucy
 ```
 
 ---
@@ -119,9 +119,9 @@ docker compose version
 ```bash
 # 克隆项目
 cd /opt
-sudo mkdir -p clawzy && sudo chown $USER:$USER clawzy
-git clone <YOUR_REPO_URL> clawzy
-cd clawzy
+sudo mkdir -p lucy && sudo chown $USER:$USER lucy
+git clone <YOUR_REPO_URL> lucy
+cd lucy
 
 # 从模板创建 .env
 cp .env.example .env
@@ -137,7 +137,7 @@ nano .env
 ```env
 # 自动生成 or 手动设置安全的密码
 POSTGRES_PASSWORD=<生成一个强密码>
-LITELLM_MASTER_KEY=sk-clawzy-<随机字符串>
+LITELLM_MASTER_KEY=sk-lucy-<随机字符串>
 LITELLM_SALT_KEY=salt-<随机字符串>
 
 # ⬇️ 这两个必须填你自己的 API Key
@@ -152,7 +152,7 @@ OPENCLAW_GATEWAY_TOKEN=<随机字符串>
 ```bash
 # 生成各项密钥
 echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
-echo "LITELLM_MASTER_KEY=sk-clawzy-$(openssl rand -hex 16)"
+echo "LITELLM_MASTER_KEY=sk-lucy-$(openssl rand -hex 16)"
 echo "LITELLM_SALT_KEY=salt-$(openssl rand -hex 16)"
 echo "OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32)"
 ```
@@ -177,7 +177,7 @@ sudo ufw enable
 ## Step 5: 启动服务
 
 ```bash
-cd /opt/clawzy
+cd /opt/lucy
 
 # 拉取镜像
 docker compose pull
@@ -308,7 +308,7 @@ docker compose down -v
 ## 文件结构
 
 ```
-clawzy.ai/
+thelucy.ai/
 ├── docker-compose.yml          # 服务编排
 ├── .env.example                # 环境变量模板
 ├── .env                        # 实际配置（不入 git）

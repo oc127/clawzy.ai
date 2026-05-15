@@ -1,15 +1,11 @@
-"""Docker container management with async wrappers.
-
-All Docker SDK calls run in a thread pool via asyncio.to_thread()
-to avoid blocking the FastAPI event loop.
-"""
-
-import asyncio
+import logging
 
 import docker
 from docker.errors import NotFound
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class DockerManager:
@@ -22,89 +18,100 @@ class DockerManager:
             self._client = docker.from_env()
         return self._client
 
-    # ── Sync methods (called via to_thread) ─────────────────────────
+    def restart_container(self, container_id: str, timeout: int = 10) -> None:
+        """Restart a running container."""
+        try:
+            container = self.client.containers.get(container_id)
+            container.restart(timeout=timeout)
+        except NotFound as e:
+            raise ValueError(f"Container {container_id} not found") from e
 
-    def _create_agent_container(
-        self,
-        agent_id: str,
-        gateway_token: str,
-        litellm_key: str,
-        model_name: str,
-        ws_port: int,
-    ) -> str:
-        container = self.client.containers.run(
-            image=settings.openclaw_image,
-            name=f"clawzy-agent-{agent_id}",
-            detach=True,
-            restart_policy={"Name": "unless-stopped"},
-            environment={
-                "OPENCLAW_GATEWAY_TOKEN": gateway_token,
-            },
-            ports={
-                "18789/tcp": ("127.0.0.1", ws_port),
-            },
-            network=settings.openclaw_network,
-            mem_limit="512m",
-            cpu_quota=50000,
-            labels={
-                "clawzy.agent_id": agent_id,
-                "clawzy.managed": "true",
-            },
-        )
-        return container.id
+    def get_container_logs(self, container_id: str, tail: int = 50) -> str:
+        """Get recent container logs."""
+        try:
+            container = self.client.containers.get(container_id)
+            return container.logs(tail=tail, timestamps=True).decode("utf-8", errors="replace")
+        except NotFound:
+            return ""
 
-    def _stop_container(self, container_id: str) -> None:
+    def get_container_health(self, container_id: str) -> dict:
+        """Get detailed container health info."""
+        try:
+            container = self.client.containers.get(container_id)
+            attrs = container.attrs
+            state = attrs.get("State", {})
+            health = state.get("Health", {})
+            return {
+                "status": container.status,
+                "running": state.get("Running", False),
+                "started_at": state.get("StartedAt"),
+                "health_status": health.get("Status", "unknown"),
+                "health_log": (health.get("Log") or [])[-3:],  # last 3 health checks
+                "restart_count": attrs.get("RestartCount", 0),
+            }
+        except NotFound:
+            return {"status": "not_found", "running": False}
+
+    def stop_container(self, container_id: str) -> None:
         try:
             container = self.client.containers.get(container_id)
             container.stop(timeout=10)
         except NotFound:
             pass
 
-    def _start_container(self, container_id: str) -> None:
+    def start_container(self, container_id: str) -> None:
         try:
             container = self.client.containers.get(container_id)
             container.start()
         except NotFound as e:
             raise ValueError(f"Container {container_id} not found") from e
 
-    def _remove_container(self, container_id: str) -> None:
-        try:
-            container = self.client.containers.get(container_id)
-            container.remove(force=True)
-        except NotFound:
-            pass
-
-    def _get_container_status(self, container_id: str) -> str | None:
+    def get_container_status(self, container_id: str) -> str | None:
         try:
             container = self.client.containers.get(container_id)
             return container.status
         except NotFound:
             return None
 
-    def _exec_in_container(self, container_id: str, cmd: list[str]) -> tuple[int, bytes]:
-        container = self.client.containers.get(container_id)
-        exit_code, output = container.exec_run(cmd, demux=False)
-        return exit_code, output or b""
+    async def run_sandbox(self, language: str, code: str, timeout: int = 30) -> dict:
+        """Run code in an ephemeral sandbox container."""
+        image_map = {
+            "python": "python:3.12-slim",
+            "node": "node:20-slim",
+            "bash": "ubuntu:22.04",
+        }
+        image = image_map.get(language, "ubuntu:22.04")
 
-    # ── Async wrappers (safe for FastAPI event loop) ────────────────
+        if language == "python":
+            cmd = ["python", "-c", code]
+        elif language == "node":
+            cmd = ["node", "-e", code]
+        else:
+            cmd = ["bash", "-c", code]
 
-    async def create_agent_container(self, **kwargs) -> str:
-        return await asyncio.to_thread(self._create_agent_container, **kwargs)
+        container = self.client.containers.run(
+            image,
+            cmd,
+            detach=True,
+            mem_limit="256m",
+            network_disabled=True,
+            remove=False,
+        )
 
-    async def stop_container(self, container_id: str) -> None:
-        await asyncio.to_thread(self._stop_container, container_id)
-
-    async def start_container(self, container_id: str) -> None:
-        await asyncio.to_thread(self._start_container, container_id)
-
-    async def remove_container(self, container_id: str) -> None:
-        await asyncio.to_thread(self._remove_container, container_id)
-
-    async def get_container_status(self, container_id: str) -> str | None:
-        return await asyncio.to_thread(self._get_container_status, container_id)
-
-    async def exec_in_container(self, container_id: str, cmd: list[str]) -> tuple[int, bytes]:
-        return await asyncio.to_thread(self._exec_in_container, container_id, cmd)
+        try:
+            result = container.wait(timeout=timeout)
+            stdout = container.logs(stdout=True, stderr=False).decode()
+            stderr = container.logs(stdout=False, stderr=True).decode()
+            return {
+                "stdout": stdout,
+                "stderr": stderr,
+                "exit_code": result.get("StatusCode", -1),
+            }
+        except Exception as e:
+            container.kill()
+            return {"stdout": "", "stderr": str(e), "exit_code": -1}
+        finally:
+            container.remove(force=True)
 
 
 docker_manager = DockerManager()
