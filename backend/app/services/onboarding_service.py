@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import Agent
 from app.models.user import User
-from app.services.personality_engine import LUCY_BASE_PERSONALITY
+from app.services.personality_engine import LUCY_PERSONALITY
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ async def ensure_lucy_agent(db: AsyncSession, user_id: str) -> Agent:
         user_id=user_id,
         name="Lucy",
         model_name=LUCY_DEFAULT_MODEL,
-        system_prompt=LUCY_BASE_PERSONALITY,
+        system_prompt=LUCY_PERSONALITY,
     )
     db.add(agent)
     await db.flush()
