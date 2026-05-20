@@ -1,6 +1,13 @@
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel
+
+
+class MessageRoleSchema(StrEnum):
+    user = "user"
+    assistant = "assistant"
+    system = "system"
 
 
 class ConversationResponse(BaseModel):
@@ -16,12 +23,23 @@ class ConversationResponse(BaseModel):
 class MessageResponse(BaseModel):
     id: str
     conversation_id: str
-    role: str
+    role: MessageRoleSchema
     content: str
     tokens_input: int | None = None
     tokens_output: int | None = None
     credits_used: int | None = None
     model_name: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class MessageSearchResult(BaseModel):
+    message_id: str
+    conversation_id: str
+    conversation_title: str
+    role: MessageRoleSchema
+    content_snippet: str  # first 200 chars of content
     created_at: datetime
 
     model_config = {"from_attributes": True}

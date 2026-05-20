@@ -1,49 +1,51 @@
-"""Chat service — streams LLM responses via OpenClaw -> LiteLLM fallback.
+"""Chat service — streams LLM responses for Lucy companion and manages conversations."""
 
-Supports:
-- Dual-channel routing (OpenClaw primary, LiteLLM fallback)
-- Long-term memory injection and extraction
-- Tool calling with iterative execution loop
-"""
-
-import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.agent import Agent
 from app.models.chat import Conversation, Message, MessageRole
-from app.services.credits_service import (
-    deduct_credits,
-    calculate_credits,
-    InsufficientCreditsError,
+from app.models.lucy_state import LucyState
+from app.services.credits_service import InsufficientCreditsError, deduct_credits
+from app.services.cultural_engine import CulturalFrame, detect_cultural_frame
+from app.services.epistemic_engine import assess_confidence, calibrate_response
+from app.services.existential_memory import get_lucy_narrative
+from app.services.memory_service import extract_memories, get_relevant_memories
+from app.services.model_router import route as model_route
+from app.services.safety_guard import SafetyGuard
+from app.services.smart_router import smart_route
+from app.services.soul_engine import (
+    analyze_mood,
+    build_system_prompt,
+    calculate_affection_delta,
+    get_unlockable_expressions,
+)
+from app.services.symbiotic_evolution import get_evolution_context
+from app.services.transparency_engine import (
+    assess_user_level,
+    detect_task_type,
+    get_transparency_instructions,
 )
 
 logger = logging.getLogger(__name__)
 
-# Minimum credits required to start a request.
-# Set to 50 to prevent overdraft: a single conversation turn can easily cost
-# 50+ credits, so we reject the call up-front if the user can't cover at least
-# one small turn.  Without this guard a user with 1 credit could receive a full
-# response before the post-completion deduction discovers the shortfall.
-_MIN_CREDITS_GUARD = 50
-
-# How long to wait for OpenClaw to accept the connection before falling back
-_OPENCLAW_CONNECT_TIMEOUT = 5.0
-
-# Maximum tool-call iterations to prevent infinite loops
-_MAX_TOOL_ITERATIONS = 10
+# Fixed identifier used as agent_id placeholder in conversations for Lucy.
+LUCY_AGENT_ID = "lucy"
 
 
 async def get_or_create_conversation(
     db: AsyncSession, agent_id: str, conversation_id: str | None = None
 ) -> Conversation:
-    """Get existing conversation or create a new one."""
+    """Get existing conversation or create a new one.
+
+    ``agent_id`` is kept in the signature for backward compatibility with the
+    Conversation model; callers should pass ``LUCY_AGENT_ID``.
+    """
     if conversation_id:
         result = await db.execute(
             select(Conversation).where(
@@ -86,9 +88,7 @@ async def save_message(
     return msg
 
 
-async def get_conversation_history(
-    db: AsyncSession, conversation_id: str, limit: int = 100
-) -> list[dict]:
+async def get_conversation_history(db: AsyncSession, conversation_id: str, limit: int = 20) -> list[dict]:
     """Get recent messages for context."""
     result = await db.execute(
         select(Message)
@@ -100,484 +100,404 @@ async def get_conversation_history(
     return [{"role": m.role.value, "content": m.content} for m in messages]
 
 
-def _build_litellm_url() -> str:
-    """Return the LiteLLM chat completions endpoint."""
-    return f"{settings.litellm_url}/v1/chat/completions"
+async def _fetch_skill_prompts(db: AsyncSession, lucy_state: LucyState) -> list[str]:
+    """Query enabled skill prompt templates for the user's Lucy instance.
 
+    We reuse the AgentSkill join table with ``LUCY_AGENT_ID`` as a placeholder.
+    If no rows match the fixed identifier we fall back to an empty list.
+    """
+    from app.models.skill import AgentSkill as AgentSkillModel, Skill as SkillModel
 
-def _build_openclaw_url() -> str:
-    """Return the OpenClaw chat completions endpoint."""
-    return f"{settings.openclaw_url}/v1/chat/completions"
-
-
-async def _non_streaming_completion(
-    url: str,
-    headers: dict,
-    payload: dict,
-    timeout: httpx.Timeout,
-) -> dict | None:
-    """Make a non-streaming LLM call (used for tool-loop iterations)."""
-    payload_copy = {**payload, "stream": False}
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        try:
-            resp = await client.post(url, headers=headers, json=payload_copy)
-            if resp.status_code != 200:
-                logger.error("Non-streaming LLM error %s: %s", resp.status_code, resp.text[:500])
-                return None
-            return resp.json()
-        except Exception as exc:
-            logger.error("Non-streaming LLM call failed: %s", exc)
-            return None
+    result = await db.execute(
+        select(SkillModel.prompt_template)
+        .join(AgentSkillModel, AgentSkillModel.skill_id == SkillModel.id)
+        .where(
+            AgentSkillModel.agent_id == LUCY_AGENT_ID,
+            AgentSkillModel.enabled == True,  # noqa: E712
+            SkillModel.prompt_template.isnot(None),
+        )
+    )
+    return [row[0] for row in result.all() if row[0]]
 
 
 async def stream_chat_completion(
     db: AsyncSession,
     user_id: str,
-    agent: Agent,
+    lucy_state: LucyState,
     conversation_id: str,
     user_content: str,
-    images: list[str] | None = None,
 ):
     """
-    Stream a chat completion through OpenClaw with automatic LiteLLM fallback.
-
-    Primary channel:  OpenClaw  (http://clawzy-openclaw:18789/v1/chat/completions)
-    Fallback channel: LiteLLM   (http://litellm:4000/v1/chat/completions)
-
-    If OpenClaw is unreachable or times out on connect (5 s), the request is
-    transparently retried against LiteLLM.  The fallback is logged at WARNING
-    level as "[FALLBACK] OpenClaw unreachable, using LiteLLM directly".
-
-    Supports tool calling: if the model returns tool_calls, they are executed
-    and the results fed back in a loop (max 10 iterations).
+    Stream a chat completion for Lucy.
 
     Yields JSON-encoded event dicts:
       {"type": "stream", "content": "..."}
-      {"type": "tool_call", "tool": "...", "arguments": {...}}
-      {"type": "tool_result", "tool": "...", "result": "..."}
       {"type": "done", "usage": {"credits": N, "balance": M}, "conversation_id": "..."}
       {"type": "error", "code": "...", "message": "..."}
     """
-    # ── 1. Pre-flight credit check ──────────────────────────────────────────
-    from app.models.user import User
+    # ── Safety Guard setup ──
+    guard = SafetyGuard()
+    guard.start_turn()
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one()
-    if user.credit_balance < _MIN_CREDITS_GUARD:
-        yield json.dumps({
-            "type": "error",
-            "code": "insufficient_credits",
-            "message": "Insufficient credits. Please top up to continue.",
-        })
-        return
-
-    # ── 2. Save user message ────────────────────────────────────────────────
-    await save_message(db, conversation_id, MessageRole.user, user_content or "[image]")
+    # Save user message
+    await save_message(db, conversation_id, MessageRole.user, user_content)
     await db.commit()
 
-    # ── 3. Build message history ────────────────────────────────────────────
+    # Build message history for context
     history = await get_conversation_history(db, conversation_id)
 
-    # ── 3a. Inject Lucy personality (highest priority) ─────────────────────
-    from app.services.personality_engine import build_lucy_system_prompt
-    system_prompt = build_lucy_system_prompt(
-        base_system_prompt=agent.system_prompt or None,
-        user_name=None,
+    # ── Soul Engine: build system prompt ──
+    memories = await get_relevant_memories(db, user_id)
+    skill_prompts = await _fetch_skill_prompts(db, lucy_state)
+    lucy_experiences = await get_lucy_narrative(db, user_id, limit=5)
+    evolution_ctx = await get_evolution_context(db, user_id)
+
+    # ── Cultural Frame Switching: detect and apply cultural cognitive framework ──
+    try:
+        cached_frame = getattr(lucy_state, "cultural_frame", None)
+        if cached_frame and cached_frame != "universal":
+            cultural_frame = CulturalFrame(cached_frame)
+        else:
+            cultural_frame = await detect_cultural_frame(
+                messages=history,
+                user_language=None,
+                user_memories=memories,
+            )
+            # Cache the detected frame on the state to avoid re-detection
+            if hasattr(lucy_state, "cultural_frame"):
+                lucy_state.cultural_frame = cultural_frame.value
+    except Exception:
+        logger.debug("Cultural frame detection skipped", exc_info=True)
+        cultural_frame = None
+
+    system_prompt = build_system_prompt(
+        lucy_state, memories, skill_prompts,
+        lucy_experiences=lucy_experiences or None,
+        evolution_context=evolution_ctx or None,
+        cultural_frame=cultural_frame,
     )
 
-    # ── 3b. Inject memory context ───────────────────────────────────────────
-    if agent.memory_enabled:
-        try:
-            from app.services.memory_service import get_memory_context
-            memory_ctx = await get_memory_context(db, agent.id)
-            if memory_ctx:
-                system_prompt = f"{system_prompt}\n\n{memory_ctx}" if system_prompt else memory_ctx
-        except Exception as exc:
-            logger.warning("Failed to load memory context for agent %s: %s", agent.id, exc)
-
-    # ── 3c. Inject relevant skills ──────────────────────
+    # ── Adaptive Transparency: assess user level & inject instructions ──
     try:
-        from app.services.skill_service import inject_skills_to_prompt
-        system_prompt = await inject_skills_to_prompt(db, agent.id, user_content, system_prompt)
-    except Exception as exc:
-        logger.warning("Failed to inject skills for agent %s: %s", agent.id, exc)
+        user_level = await assess_user_level(history, memories)
+        lucy_state.user_level = user_level.value
 
-    if system_prompt:
-        history = [{"role": "system", "content": system_prompt}] + history
+        task_type = detect_task_type(user_content)
+        transparency_instructions = get_transparency_instructions(user_level, task_type)
+        system_prompt += f"\n\n[Communication style]\n{transparency_instructions}"
+    except Exception:
+        logger.debug("Transparency assessment skipped", exc_info=True)
 
-    if images:
-        model_to_use = "qwen-vl-plus"
-        content_parts: list = []
-        if user_content:
-            content_parts.append({"type": "text", "text": user_content})
-        for img_url in images:
-            content_parts.append({"type": "image_url", "image_url": {"url": img_url}})
-        if history and history[-1]["role"] == "user":
-            history[-1]["content"] = content_parts
-        else:
-            history.append({"role": "user", "content": content_parts})
-    elif getattr(agent, "adaptive_depth", False):
-        from app.services.reasoning_depth_service import select_adaptive_model
-        model_to_use, depth_level = select_adaptive_model(agent.model_name, user_content or "")
-        logger.info("Adaptive depth: %s → %s", depth_level, model_to_use)
-    else:
-        model_to_use = agent.model_name
+    # Append concise instruction from Safety Guard when token budget is running low
+    concise_instruction = guard.token_budget.get_concise_instruction()
+    if concise_instruction:
+        system_prompt += f"\n\n{concise_instruction}"
 
-    # ── 3b. Load enabled tools ──────────────────────────────────────────────
-    tools_definitions = []
+    # ── Knowledge Base RAG: inject relevant context from user's knowledge bases ──
     try:
-        from app.services.tool_service import get_enabled_tools
-        tools_definitions = await get_enabled_tools(db, agent.id)
-    except Exception as exc:
-        logger.warning("Failed to load tools for agent %s: %s", agent.id, exc)
+        from app.services import knowledge_service
 
-    # ── 4. Dual-channel routing ─────────────────────────────────────────────
-    # OpenClaw and LiteLLM use different auth tokens.
-    openclaw_headers = {
-        "Authorization": f"Bearer {settings.openclaw_gateway_token}",
-        "Content-Type": "application/json",
-    }
-    litellm_headers = {
-        "Authorization": f"Bearer {settings.litellm_master_key}",
-        "Content-Type": "application/json",
-    }
+        kb_context = await knowledge_service.get_relevant_context(
+            db, user_id, user_content, max_tokens=2000
+        )
+        if kb_context:
+            system_prompt += (
+                f"\n\n[Knowledge Base Context]\n{kb_context}\n\n"
+                "Use this information to answer accurately."
+            )
+    except Exception:
+        logger.debug("Knowledge base context injection skipped", exc_info=True)
+
+    # Prepend the assembled system prompt to the message history
+    history.insert(0, {"role": "system", "content": system_prompt})
+
+    # ── Morphogenic Fluidity: intelligent model routing based on task nature ──
+    try:
+        route_config = await model_route(
+            message=user_content,
+            conversation_context=history,
+            user_preferred_model=lucy_state.preferred_model,
+        )
+        effective_model = route_config["model"]
+        cognitive_mode = route_config.get("cognitive_mode", "conversational")
+        was_downgraded = effective_model != lucy_state.preferred_model
+    except Exception:
+        logger.debug("Model router failed, falling back to smart_route", exc_info=True)
+        route_config = None
+        cognitive_mode = "conversational"
+        effective_model, was_downgraded = smart_route(lucy_state.preferred_model, user_content, history_len=len(history))
+
+    from app.services.credits_service import CREDIT_RATES
+
+    if effective_model not in CREDIT_RATES:
+        logger.error("model_route returned unknown model %s, falling back to %s", effective_model, lucy_state.preferred_model)
+        effective_model = lucy_state.preferred_model
+        was_downgraded = False
+        route_config = None
+    if was_downgraded:
+        logger.info(
+            "Model route: %s -> %s (mode=%s) for user %s",
+            lucy_state.preferred_model,
+            effective_model,
+            cognitive_mode,
+            user_id,
+        )
+
+    # ── Gateway endpoint (shared only — no per-agent containers) ──
+    if not (settings.openclaw_gateway_url and settings.openclaw_gateway_token):
+        logger.error("Gateway not configured — check OPENCLAW_GATEWAY_URL and OPENCLAW_GATEWAY_TOKEN")
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "configuration_error",
+                "message": "Gateway not configured",
+            }
+        )
+        return
+
+    gateway_url = f"{settings.openclaw_gateway_url}/v1/chat/completions"
+    gateway_auth = f"Bearer {settings.openclaw_gateway_token}"
+
     payload = {
-        "model": model_to_use,
+        "model": effective_model,
         "messages": history,
-        "max_tokens": 8192,
+        "max_tokens": route_config.get("max_tokens", 4096) if route_config else 4096,
         "stream": True,
     }
+    # Apply temperature from model router if available
+    if route_config and "temperature" in route_config:
+        payload["temperature"] = route_config["temperature"]
 
-    # Include tools in payload if any are enabled
-    if tools_definitions:
-        payload["tools"] = tools_definitions
-
-    openclaw_url = _build_openclaw_url()
-    litellm_url = _build_litellm_url()
-
-    # --- Attempt to connect to OpenClaw with a short connect timeout.
-    openclaw_timeout = httpx.Timeout(
-        connect=_OPENCLAW_CONNECT_TIMEOUT,
-        read=120.0,
-        write=30.0,
-        pool=5.0,
-    )
-    litellm_timeout = httpx.Timeout(120.0)
-
-    active_url = openclaw_url
-    active_headers = openclaw_headers
-    active_timeout = openclaw_timeout
-    using_fallback = False
-
-    # Try to establish the OpenClaw connection
-    _probe_client = httpx.AsyncClient(timeout=openclaw_timeout)
-    _stream_ctx = _probe_client.stream("POST", openclaw_url, headers=openclaw_headers, json=payload)
-    try:
-        _response = await _stream_ctx.__aenter__()
-    except (httpx.ConnectError, httpx.TimeoutException) as exc:
-        # OpenClaw unreachable — clean up and switch to LiteLLM
-        await _probe_client.aclose()
-        logger.warning(
-            "[FALLBACK] OpenClaw unreachable (%s), using LiteLLM directly", exc
-        )
-        using_fallback = True
-        active_url = litellm_url
-        active_headers = litellm_headers
-        active_timeout = litellm_timeout
-        _probe_client = httpx.AsyncClient(timeout=litellm_timeout)
-        _stream_ctx = _probe_client.stream("POST", litellm_url, headers=litellm_headers, json=payload)
-        try:
-            _response = await _stream_ctx.__aenter__()
-        except (httpx.ConnectError, httpx.TimeoutException):
-            await _probe_client.aclose()
-            yield json.dumps({
-                "type": "error",
-                "code": "connection_error",
-                "message": "Cannot connect to model service",
-            })
-            return
-
-    # ── 5. Stream from the active backend ──────────────────────────────────
     full_content = ""
     tokens_input = 0
     tokens_output = 0
-    tool_calls_buffer: list[dict] = []
 
+    headers = {
+        "Authorization": gateway_auth,
+        "Content-Type": "application/json",
+    }
     try:
-        if _response.status_code != 200:
-            body = await _response.aread()
-            backend = "LiteLLM" if using_fallback else "OpenClaw"
-            logger.error("%s error %s: %s", backend, _response.status_code, body)
-            yield json.dumps({
-                "type": "error",
-                "code": "model_error",
-                "message": f"Model returned HTTP {_response.status_code}",
-            })
-            return
-
-        async for line in _response.aiter_lines():
-            if not line.startswith("data: "):
-                continue
-            data_str = line[6:]
-            if data_str.strip() == "[DONE]":
-                break
-
-            try:
-                chunk = json.loads(data_str)
-            except json.JSONDecodeError:
-                continue
-
-            choices = chunk.get("choices", [])
-            if choices:
-                delta = choices[0].get("delta", {})
-                content = delta.get("content")
-                if content:
-                    full_content += content
-                    yield json.dumps({"type": "stream", "content": content})
-
-                # Accumulate tool calls from streaming deltas
-                tc_deltas = delta.get("tool_calls", [])
-                for tc_delta in tc_deltas:
-                    idx = tc_delta.get("index", 0)
-                    while len(tool_calls_buffer) <= idx:
-                        tool_calls_buffer.append({"id": "", "function": {"name": "", "arguments": ""}})
-                    if "id" in tc_delta and tc_delta["id"]:
-                        tool_calls_buffer[idx]["id"] = tc_delta["id"]
-                    fn = tc_delta.get("function", {})
-                    if "name" in fn and fn["name"]:
-                        tool_calls_buffer[idx]["function"]["name"] = fn["name"]
-                    if "arguments" in fn:
-                        tool_calls_buffer[idx]["function"]["arguments"] += fn["arguments"]
-
-            usage = chunk.get("usage")
-            if usage:
-                tokens_input = usage.get("prompt_tokens", 0)
-                tokens_output = usage.get("completion_tokens", 0)
-
-    except httpx.TimeoutException:
-        yield json.dumps({
-            "type": "error",
-            "code": "timeout",
-            "message": "Model request timed out",
-        })
-        return
-    finally:
-        await _stream_ctx.__aexit__(None, None, None)
-        await _probe_client.aclose()
-
-    # ── 5b. Tool loop — execute tool calls and re-call LLM ─────────────────
-    if tool_calls_buffer and tools_definitions:
-        from app.services.tool_service import execute_tool
-
-        # Add the assistant message with tool_calls to history
-        assistant_msg_with_tools = {"role": "assistant", "content": full_content or None}
-        assistant_msg_with_tools["tool_calls"] = [
-            {
-                "id": tc["id"],
-                "type": "function",
-                "function": {
-                    "name": tc["function"]["name"],
-                    "arguments": tc["function"]["arguments"],
-                },
-            }
-            for tc in tool_calls_buffer
-        ]
-        history.append(assistant_msg_with_tools)
-
-        for iteration in range(_MAX_TOOL_ITERATIONS):
-            # Execute each tool call
-            for tc in tool_calls_buffer:
-                fn_name = tc["function"]["name"]
-                try:
-                    fn_args = json.loads(tc["function"]["arguments"])
-                except json.JSONDecodeError:
-                    fn_args = {}
-
-                yield json.dumps({
-                    "type": "tool_call",
-                    "tool": fn_name,
-                    "arguments": fn_args,
-                })
-
-                try:
-                    tool_result = await execute_tool(
-                        agent_id=agent.id,
-                        container_id=agent.container_id,
-                        tool_name=fn_name,
-                        arguments=fn_args,
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", gateway_url, headers=headers, json=payload) as response:
+                if response.status_code != 200:
+                    body = await response.aread()
+                    logger.error("LiteLLM error %s: %s", response.status_code, body)
+                    yield json.dumps(
+                        {
+                            "type": "error",
+                            "code": "model_error",
+                            "message": f"Model returned HTTP {response.status_code}",
+                        }
                     )
-                except Exception as texc:
-                    tool_result = f"Tool execution error: {texc}"
+                    return
 
-                yield json.dumps({
-                    "type": "tool_result",
-                    "tool": fn_name,
-                    "result": tool_result[:2000],
-                })
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str.strip() == "[DONE]":
+                        break
 
-                # Append tool result to history
-                history.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": tool_result[:4000],
-                })
+                    try:
+                        chunk = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
 
-            # Re-call LLM with tool results (non-streaming for intermediate calls)
-            tool_payload = {
-                "model": model_to_use,
-                "messages": history,
-                "max_tokens": 8192,
-                "tools": tools_definitions,
+                    # Extract content delta
+                    choices = chunk.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content")
+                        if content:
+                            full_content += content
+                            yield json.dumps({"type": "stream", "content": content})
+
+                    # Extract usage if present (final chunk)
+                    usage = chunk.get("usage")
+                    if usage:
+                        tokens_input = usage.get("prompt_tokens", 0)
+                        tokens_output = usage.get("completion_tokens", 0)
+
+    except httpx.ConnectError as exc:
+        logger.error("Cannot connect to shared gateway (%s): %s", gateway_url, exc)
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "connection_error",
+                "message": "Cannot connect to model service",
             }
-
-            llm_result = await _non_streaming_completion(
-                active_url, active_headers, tool_payload, active_timeout,
-            )
-
-            if llm_result is None:
-                yield json.dumps({
-                    "type": "error",
-                    "code": "tool_loop_error",
-                    "message": "LLM call failed during tool loop",
-                })
-                break
-
-            choice = llm_result.get("choices", [{}])[0]
-            msg = choice.get("message", {})
-
-            # Track token usage from tool loop
-            loop_usage = llm_result.get("usage", {})
-            tokens_input += loop_usage.get("prompt_tokens", 0)
-            tokens_output += loop_usage.get("completion_tokens", 0)
-
-            new_tool_calls = msg.get("tool_calls", [])
-            new_content = msg.get("content", "")
-
-            if new_content:
-                full_content += new_content
-                yield json.dumps({"type": "stream", "content": new_content})
-
-            if new_tool_calls:
-                # More tool calls — add to history and continue loop
-                history.append(msg)
-                tool_calls_buffer = [
-                    {
-                        "id": tc["id"],
-                        "function": {
-                            "name": tc["function"]["name"],
-                            "arguments": tc["function"]["arguments"]
-                                if isinstance(tc["function"]["arguments"], str)
-                                else json.dumps(tc["function"]["arguments"]),
-                        },
-                    }
-                    for tc in new_tool_calls
-                ]
-            else:
-                # No more tool calls — done
-                break
+        )
+        return
+    except httpx.TimeoutException:
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "timeout",
+                "message": "Model request timed out",
+            }
+        )
+        return
 
     if not full_content:
-        yield json.dumps({
-            "type": "error",
-            "code": "empty_response",
-            "message": "Model returned empty response",
-        })
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "empty_response",
+                "message": "Model returned empty response",
+            }
+        )
         return
 
+    # Estimate tokens if not provided by API
     if tokens_input == 0:
-        tokens_input = len(str(history)) // 4
+        tokens_input = max(1, len(str(history)) // 4)  # rough estimate
     if tokens_output == 0:
-        tokens_output = len(full_content) // 4
+        tokens_output = max(1, len(full_content) // 4)
 
-    # ── 6. Deduct credits (post-completion) ────────────────────────────────
-    credits_used = 0
+    # ── Safety Guard: record token usage ──
+    guard.record_tokens(tokens_input + tokens_output)
+
+    # ── Epistemic Humility: assess confidence & calibrate if needed ──
+    try:
+        epistemic_assessment = await assess_confidence(user_content, full_content)
+        calibrated = await calibrate_response(
+            full_content,
+            epistemic_assessment,
+            personality_type=lucy_state.personality_type,
+        )
+        if calibrated != full_content:
+            # Stream the epistemic addendum to the client
+            addendum = calibrated[len(full_content):]
+            if addendum:
+                yield json.dumps({"type": "stream", "content": addendum})
+            full_content = calibrated
+    except Exception:
+        logger.debug("Epistemic calibration skipped", exc_info=True)
+
+    # Deduct credits
     try:
         credits_used = await deduct_credits(
-            db, user_id, agent.model_name,
-            tokens_input, tokens_output, agent.id,
+            db,
+            user_id,
+            effective_model,
+            tokens_input,
+            tokens_output,
         )
     except InsufficientCreditsError:
-        yield json.dumps({
-            "type": "error",
-            "code": "insufficient_credits",
-            "message": "Credits insufficient after response, please top up",
-        })
+        # Still save the message but warn user
+        credits_used = 0
+        yield json.dumps(
+            {
+                "type": "error",
+                "code": "insufficient_credits",
+                "message": "Credits insufficient, please top up",
+            }
+        )
 
-    # ── 7. Persist assistant message ────────────────────────────────────────
+    # Save assistant message
     await save_message(
-        db, conversation_id, MessageRole.assistant, full_content,
-        model_name=agent.model_name,
+        db,
+        conversation_id,
+        MessageRole.assistant,
+        full_content,
+        model_name=effective_model,
         tokens_input=tokens_input,
         tokens_output=tokens_output,
         credits_used=credits_used,
     )
 
-    result = await db.execute(
-        select(Conversation).where(Conversation.id == conversation_id)
-    )
+    # Update conversation title from first message
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
     conv = result.scalar_one_or_none()
     if conv and conv.title == "New conversation":
         conv.title = user_content[:80]
 
-    agent.last_active_at = datetime.now(timezone.utc)
+    # ── Post-chat emotion & affection update ──
+    updated_history = await get_conversation_history(db, conversation_id)
+
+    new_mood = await analyze_mood(updated_history)
+    lucy_state.mood = new_mood
+    lucy_state.total_interactions = (lucy_state.total_interactions or 0) + 1
+    lucy_state.last_interaction_at = datetime.now(UTC)
+
+    affection_delta = calculate_affection_delta("chat", new_mood)
+    lucy_state.affection = min(100, max(0, (lucy_state.affection or 0) + affection_delta))
+
+    # Check for newly unlocked expressions
+    all_unlocked = get_unlockable_expressions(lucy_state.affection)
+    current_unlocked = lucy_state.unlocked_expressions or []
+    if set(all_unlocked) != set(current_unlocked):
+        lucy_state.unlocked_expressions = all_unlocked
+
     await db.commit()
 
-    # ── 7b. Fire-and-forget memory extraction ──────────────────────────────
-    if agent.memory_enabled and full_content:
-        try:
-            from app.services.memory_service import extract_memories
-            # Use asyncio.create_task for fire-and-forget
-            # We need a fresh db session since the current one may be closed
-            from app.core.database import async_session
-
-            async def _extract_bg():
-                try:
-                    async with async_session() as bg_db:
-                        await extract_memories(
-                            bg_db, agent.id, conversation_id,
-                            user_content, full_content,
-                        )
-                except Exception as exc:
-                    logger.warning("Background memory extraction failed: %s", exc)
-
-            asyncio.create_task(_extract_bg())
-        except Exception as exc:
-            logger.warning("Failed to schedule memory extraction: %s", exc)
-
-    # ── 7c. Fire-and-forget skill auto-extraction ──────────────────────────
-    if full_content:
-        try:
-            from app.services.skill_service import auto_extract_skill
-            from app.core.database import async_session
-
-            _skill_messages = [
-                {"role": "user", "content": user_content},
-                {"role": "assistant", "content": full_content},
-            ]
-            _skill_agent_id = agent.id
-
-            async def _skill_extract_bg():
-                try:
-                    async with async_session() as bg_db:
-                        await auto_extract_skill(bg_db, _skill_agent_id, _skill_messages)
-                except Exception as exc:
-                    logger.warning("Background skill extraction failed: %s", exc)
-
-            asyncio.create_task(_skill_extract_bg())
-        except Exception as exc:
-            logger.warning("Failed to schedule skill extraction: %s", exc)
+    # Refresh user balance
+    from app.models.user import User
 
     result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one()
+    user = result.scalar_one_or_none()
+    balance = user.credit_balance if user else 0
 
-    yield json.dumps({
-        "type": "done",
-        "conversation_id": conversation_id,
-        "usage": {
-            "credits_used": credits_used,
-            "balance": user.credit_balance,
-            "tokens_input": tokens_input,
-            "tokens_output": tokens_output,
-            "model": model_to_use,
-        },
-    })
+    yield json.dumps(
+        {
+            "type": "done",
+            "conversation_id": conversation_id,
+            "usage": {
+                "credits_used": credits_used,
+                "balance": balance,
+                "tokens_input": tokens_input,
+                "tokens_output": tokens_output,
+                "model": effective_model,
+                "routed": was_downgraded,
+                "cognitive_mode": cognitive_mode,
+            },
+        }
+    )
+
+    # Background: extract memories from this conversation
+    try:
+        await extract_memories(db, user_id, LUCY_AGENT_ID, conversation_id, updated_history)
+    except Exception:
+        logger.debug("Memory extraction skipped", exc_info=True)
+
+    # Background: record Lucy's existential experience (if significant)
+    try:
+        from app.services.existential_memory import process_conversation_for_experience
+
+        user_mems = await get_relevant_memories(db, user_id, limit=5)
+        await process_conversation_for_experience(db, user_id, updated_history, lucy_state, user_mems)
+    except Exception:
+        logger.debug("Experience recording skipped", exc_info=True)
+
+    # Background: update symbiotic evolution cognitive profile
+    try:
+        from app.services.symbiotic_evolution import process_conversation_for_evolution
+
+        await process_conversation_for_evolution(db, user_id, updated_history, lucy_state)
+    except Exception:
+        logger.debug("Symbiotic evolution update skipped", exc_info=True)
+
+
+async def run_subtask(
+    db: AsyncSession,
+    user_id: str,
+    lucy_state: LucyState,
+    task_description: str,
+    parent_conversation_id: str,
+) -> str:
+    """Run a sub-task: create a temporary conversation, get a single response."""
+    conv = Conversation(agent_id=LUCY_AGENT_ID, title=f"[subtask] {task_description[:60]}")
+    db.add(conv)
+    await db.flush()
+    await db.commit()
+
+    full_response = ""
+    async for event_str in stream_chat_completion(db, user_id, lucy_state, conv.id, task_description):
+        event = json.loads(event_str)
+        if event["type"] == "stream":
+            full_response += event["content"]
+        elif event["type"] == "error":
+            full_response = f"[Subtask error: {event['message']}]"
+            break
+
+    return full_response

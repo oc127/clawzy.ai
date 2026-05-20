@@ -1,58 +1,75 @@
-"""Tools API — manage agent tool availability."""
+"""Tools API — web fetch and sandbox code execution."""
 
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel, HttpUrl
 
-from app.core.database import get_db
+from app.core.docker_manager import docker_manager
 from app.deps import get_current_user
 from app.models.user import User
-from app.services.agent_service import get_agent
-from app.services.tool_service import get_tools_status, update_tool
+from app.services.web_fetch_service import web_fetch
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agents/{agent_id}/tools", tags=["tools"])
+router = APIRouter(prefix="/tools", tags=["tools"])
 
 
-class ToolUpdate(BaseModel):
-    enabled: bool | None = None
-    requires_approval: bool | None = None
+# ---------- Web Fetch ----------
+
+class WebFetchRequest(BaseModel):
+    url: HttpUrl
 
 
-@router.get("")
-async def list_agent_tools(
-    agent_id: str,
+class WebFetchResponse(BaseModel):
+    url: str
+    content: str
+    title: str = ""
+    type: str = "text"
+    error: str | None = None
+
+
+@router.post("/web-fetch", response_model=WebFetchResponse)
+async def fetch_web_page(
+    body: WebFetchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
-    """List available tools with their enabled status."""
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-
-    tools = await get_tools_status(db, agent_id)
-    return {"tools": tools}
+    result = await web_fetch(str(body.url))
+    return WebFetchResponse(**result)
 
 
-@router.patch("/{tool_name}")
-async def update_agent_tool(
-    agent_id: str,
-    tool_name: str,
-    body: ToolUpdate,
+# ---------- Sandbox Code Execution ----------
+
+class CodeExecRequest(BaseModel):
+    language: str = "python"
+    code: str
+
+
+class CodeExecResponse(BaseModel):
+    stdout: str
+    stderr: str
+    exit_code: int
+
+
+@router.post("/exec", response_model=CodeExecResponse)
+async def execute_code(
+    body: CodeExecRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
-    """Enable/disable a tool or set requires_approval."""
-    agent = await get_agent(db, agent_id, user.id)
-    if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    supported = {"python", "node", "bash"}
+    if body.language not in supported:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported language: {body.language}",
+        )
 
-    try:
-        result = await update_tool(db, agent_id, tool_name, body.enabled, body.requires_approval)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    result = await docker_manager.run_sandbox(
+        language=body.language,
+        code=body.code,
+    )
 
-    return result
+    return CodeExecResponse(
+        stdout=result["stdout"][:10000],
+        stderr=result["stderr"][:5000],
+        exit_code=result["exit_code"],
+    )

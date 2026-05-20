@@ -1,9 +1,10 @@
-import uuid
-from datetime import datetime, timezone
 import enum
+import uuid
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Enum as SAEnum, JSON, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
@@ -23,16 +24,11 @@ class Agent(Base):
     name: Mapped[str] = mapped_column(String(100))
     model_name: Mapped[str] = mapped_column(String(50), default="deepseek-chat")
     container_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    gateway_token: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[AgentStatus] = mapped_column(SAEnum(AgentStatus), default=AgentStatus.creating)
-    system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    memory_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
-    adaptive_depth: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
-    ws_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    ws_port: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user = relationship("User", back_populates="agents")
-    conversations = relationship("Conversation", back_populates="agent", cascade="all, delete-orphan")
+    # Relationships removed -- kept as table-only for migration compatibility.
